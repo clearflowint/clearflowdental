@@ -168,6 +168,12 @@ function formatDate(value: string | null | undefined) {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`)
   return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
+function dateDay(value: string | null) {
+  return value ? new Date(`${value.slice(0, 10)}T00:00:00`).getDate() : '—'
+}
+function dateMonth(value: string | null) {
+  return value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: 'short' }) : ''
+}
 </script>
 
 <template>
@@ -255,7 +261,7 @@ function formatDate(value: string | null | undefined) {
           </section>
           <aside class="panel upcoming-panel"><div class="section-heading"><div><span class="eyebrow">FOLLOW-UP DATES</span><h2>Next visits</h2></div><span class="calendar-mark">▦</span></div><p class="muted small-copy">Dates recommended by the doctor. This is a date list only; reminders are not active.</p>
             <div v-if="!upcomingVisits.length" class="empty-compact"><span>▦</span><p>No future visit dates recorded.</p></div>
-            <article v-for="visit in upcomingVisits" :key="visit.id" class="upcoming-row"><div class="date-block"><strong>{{ new Date(visit.next_visit_date + 'T00:00:00').getDate() }}</strong><small>{{ new Date(visit.next_visit_date + 'T00:00:00').toLocaleDateString(undefined,{month:'short'}) }}</small></div><div class="upcoming-copy"><strong>{{ patients.find(p => p.id === visit.patient_id)?.full_name || 'Patient' }}</strong><small>{{ visit.treatment_name }}</small><span>{{ formatDate(visit.next_visit_date) }}</span></div></article>
+            <article v-for="visit in upcomingVisits" :key="visit.id" class="upcoming-row"><div class="date-block"><strong>{{ dateDay(visit.next_visit_date) }}</strong><small>{{ dateMonth(visit.next_visit_date) }}</small></div><div class="upcoming-copy"><strong>{{ patients.find(p => p.id === visit.patient_id)?.full_name || 'Patient' }}</strong><small>{{ visit.treatment_name }}</small><span>{{ formatDate(visit.next_visit_date) }}</span></div></article>
           </aside>
         </div>
       </template>
