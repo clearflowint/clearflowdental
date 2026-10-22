@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { checkDirectusConnection, getDirectusUrl, loginToDirectus, logoutFromDirectus } from './lib/directus'
+import { checkDirectusConnection, loginToDirectus, logoutFromDirectus } from './lib/directus'
 
 const email = ref('')
 const password = ref('')
@@ -11,7 +11,6 @@ const connectionState = ref<'checking' | 'connected' | 'unreachable'>('checking'
 const signedInAs = ref('')
 const message = ref('')
 const messageType = ref<'success' | 'error' | 'info'>('info')
-const directusUrl = getDirectusUrl()
 
 onMounted(async () => {
   try {
