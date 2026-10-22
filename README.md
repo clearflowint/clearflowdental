@@ -1,25 +1,41 @@
 # ClearFlow Dental
 
-Mobile-first dental practice workspace built with Vue 3, TypeScript, and Vite.
+A minimal, mobile-first dental clinic workspace built with Vue 3, TypeScript, Vite, and the existing self-hosted Directus + PostgreSQL stack.
 
-## Local development
+## Current scope
+
+- Clinic workspace associated with the signed-in Directus user
+- Basic patient details: name, phone, optional notes
+- Patient visit history: treatment name/date, doctor advice, optional next-visit date
+- Simple list of upcoming advised visit dates (display only; no reminders are scheduled or sent)
+- No payments, billing, WhatsApp, or AI in this phase
+
+## Architecture
+
+- Frontend: Cloudflare Pages
+- API/auth/data access: existing Directus instance
+- Database: existing PostgreSQL managed by Directus
+- No additional backend server
+
+## Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Production build
+Production build:
 
 ```bash
 npm run build
 ```
 
-The first screen is a frontend-only sign-in prototype. Authentication is intentionally not simulated or connected yet. Directus authentication and tenant-isolation testing are the next integration stages.
+## Environment
 
-## Cloudflare Pages
+`VITE_DIRECTUS_URL` is optional. If omitted, the app uses `https://clearflow-data.duckdns.org`.
 
-- Framework preset: Vue
-- Build command: `npm run build`
-- Build output directory: `dist`
-- Root directory: repository root (`/`)
+For Cloudflare Pages, use build command `npm run build` and output directory `dist`.
+
+## Important before real patient data
+
+Tenant ownership fields are included in the data model, but backend-enforced tenant permissions and authenticated end-to-end verification must be completed before storing real clinic/patient data. UI filters alone are not a security boundary.
