@@ -21,13 +21,15 @@ export function getAccessToken(): string | null {
 }
 
 export async function checkDirectusConnection(): Promise<boolean> {
-  const response = await fetch(`${DIRECTUS_URL}/server/health`, {
+  // Directus v12 requires authentication for /server/health.
+  // /server/ping is the public liveness endpoint and returns "pong".
+  const response = await fetch(`${DIRECTUS_URL}/server/ping`, {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'text/plain' },
   })
   if (!response.ok) return false
-  const result = (await response.json()) as { status?: string }
-  return result.status === 'ok'
+  const result = await response.text()
+  return result.trim().toLowerCase() === 'pong'
 }
 
 export async function loginToDirectus(email: string, password: string): Promise<DirectusLoginResult> {
