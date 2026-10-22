@@ -1,14 +1,54 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { checkDirectusConnection, getDirectusUrl, loginToDirectus, logoutFromDirectus } from './lib/directus'
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
-const remember = ref(true)
+const isLoading = ref(false)
+const isAuthenticated = ref(false)
+const connectionState = ref<'checking' | 'connected' | 'unreachable'>('checking')
+const signedInAs = ref('')
 const message = ref('')
+const messageType = ref<'success' | 'error' | 'info'>('info')
+const directusUrl = getDirectusUrl()
 
-function handleSignIn() {
-  message.value = 'Authentication is not connected yet. We’ll connect this screen to Directus after the frontend deploys.'
+onMounted(async () => {
+  try {
+    connectionState.value = (await checkDirectusConnection()) ? 'connected' : 'unreachable'
+  } catch {
+    // A failed browser request can mean the server is down or its CORS policy blocks this site.
+    connectionState.value = 'unreachable'
+  }
+})
+
+async function handleSignIn() {
+  message.value = ''
+  messageType.value = 'info'
+  isLoading.value = true
+  try {
+    await loginToDirectus(email.value.trim(), password.value)
+    signedInAs.value = email.value.trim()
+    isAuthenticated.value = true
+    messageType.value = 'success'
+    message.value = 'Directus authentication succeeded. Dental data access has not been connected yet.'
+  } catch {
+    messageType.value = 'error'
+    message.value = connectionState.value === 'unreachable'
+      ? 'The browser cannot reach Directus. Check the Directus URL and its CORS settings.'
+      : 'Sign-in failed. Check the email and password for an account in Directus.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function handleSignOut() {
+  logoutFromDirectus()
+  isAuthenticated.value = false
+  signedInAs.value = ''
+  password.value = ''
+  message.value = 'You have signed out.'
+  messageType.value = 'info'
 }
 </script>
 
@@ -25,7 +65,10 @@ function handleSignIn() {
         </span>
         <span class="brand-copy"><strong>ClearFlow</strong><small>DENTAL</small></span>
       </a>
-      <div class="secure-note"><span class="secure-dot"></span> Practice workspace</div>
+      <div class="secure-note" :class="{ 'connection-down': connectionState === 'unreachable' }">
+        <span class="secure-dot" :class="{ 'dot-checking': connectionState === 'checking', 'dot-down': connectionState === 'unreachable' }"></span>
+        {{ connectionState === 'checking' ? 'Connecting to Directus…' : connectionState === 'connected' ? 'Directus connected' : 'Directus unreachable' }}
+      </div>
     </header>
 
     <section class="content-grid">
@@ -73,7 +116,7 @@ function handleSignIn() {
             <h2 id="login-title">Good to see you.</h2>
             <p>Sign in to your practice workspace.</p>
           </div>
-          <form @submit.prevent="handleSignIn">
+          <form v-if="!isAuthenticated" @submit.prevent="handleSignIn">
             <label for="email">Work email</label>
             <div class="input-shell">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -88,10 +131,18 @@ function handleSignIn() {
                 <svg v-else viewBox="0 0 24 24" fill="none"><path d="m3 3 18 18M10.6 6.2A10.8 10.8 0 0 1 12 6c6.1 0 9.5 6 9.5 6a16 16 0 0 1-3.1 3.7M6.2 6.4C3.8 8 2.5 12 2.5 12s3.4 6 9.5 6c1.2 0 2.3-.3 3.2-.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
               </button>
             </div>
-            <label class="remember-row"><input v-model="remember" type="checkbox" /><span class="custom-check"></span><span>Keep me signed in</span></label>
-            <button class="submit-button" type="submit">Sign in <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-            <p v-if="message" class="status-message" role="status">{{ message }}</p>
+            <p class="session-note">Secure sign-in via Directus. This prototype keeps the session in memory.</p>
+            <button class="submit-button" type="submit" :disabled="isLoading">{{ isLoading ? 'Signing in…' : 'Sign in' }} <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <p v-if="message" class="status-message" :class="'status-' + messageType" role="status">{{ message }}</p>
           </form>
+          <section v-else class="authenticated-panel">
+            <span class="authenticated-icon">✓</span>
+            <h3>You’re signed in.</h3>
+            <p class="signed-in-email">{{ signedInAs }}</p>
+            <p class="auth-explanation">{{ message }}</p>
+            <p class="session-note">This confirms authentication only. No patient or practice records are being requested yet.</p>
+            <button class="submit-button signout-button" type="button" @click="handleSignOut">Sign out</button>
+          </section>
           <div class="login-bottom"><span class="lock-mini">⌑</span> Your practice space, kept private.</div>
         </section>
         <p class="help-line">Need a hand? <a href="mailto:support@clearflow.dental">Contact your practice administrator</a></p>
