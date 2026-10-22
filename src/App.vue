@@ -1,152 +1,265 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { checkDirectusConnection, loginToDirectus, logoutFromDirectus } from './lib/directus'
+import { computed, onMounted, ref } from 'vue'
+import {
+  checkDirectusConnection, loginToDirectus, logoutFromDirectus,
+  getCurrentUser, getMyClinic, createClinic, listPatients, createPatient,
+  listVisits, createVisit,
+  type Clinic, type Patient, type Visit,
+} from './lib/directus'
 
+type Screen = 'login' | 'setup' | 'workspace'
+const screen = ref<Screen>('login')
+const connectionState = ref<'checking' | 'connected' | 'unreachable'>('checking')
 const email = ref('')
 const password = ref('')
-const showPassword = ref(false)
 const isLoading = ref(false)
-const isAuthenticated = ref(false)
-const connectionState = ref<'checking' | 'connected' | 'unreachable'>('checking')
-const signedInAs = ref('')
-const message = ref('')
-const messageType = ref<'success' | 'error' | 'info'>('info')
+const busy = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+const userId = ref('')
+const clinic = ref<Clinic | null>(null)
+const patients = ref<Patient[]>([])
+const visits = ref<Visit[]>([])
+const search = ref('')
+const selectedPatientId = ref<number | null>(null)
+const showPatientForm = ref(false)
+const showVisitForm = ref(false)
+const clinicName = ref('')
+const patientForm = ref({ full_name: '', phone: '', notes: '' })
+const visitForm = ref({ treatment_name: '', treatment_date: new Date().toISOString().slice(0, 10), doctor_advice: '', next_visit_date: '' })
+
+const filteredPatients = computed(() => {
+  const query = search.value.trim().toLowerCase()
+  if (!query) return patients.value
+  return patients.value.filter((patient) =>
+    patient.full_name.toLowerCase().includes(query) || (patient.phone || '').toLowerCase().includes(query),
+  )
+})
+const selectedPatient = computed(() => patients.value.find((patient) => patient.id === selectedPatientId.value) ?? null)
+const selectedVisits = computed(() => visits.value.filter((visit) => visit.patient_id === selectedPatientId.value).sort((a, b) => b.treatment_date.localeCompare(a.treatment_date)))
+const upcomingVisits = computed(() => visits.value.filter((visit) => visit.next_visit_date && visit.next_visit_date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.next_visit_date || '').localeCompare(b.next_visit_date || '')).slice(0, 5))
 
 onMounted(async () => {
   try {
     connectionState.value = (await checkDirectusConnection()) ? 'connected' : 'unreachable'
   } catch {
-    // A failed browser request can mean the server is down or its CORS policy blocks this site.
     connectionState.value = 'unreachable'
   }
 })
 
+function clearMessages() {
+  errorMessage.value = ''
+  successMessage.value = ''
+}
+
 async function handleSignIn() {
-  message.value = ''
-  messageType.value = 'info'
+  clearMessages()
   isLoading.value = true
   try {
     await loginToDirectus(email.value.trim(), password.value)
-    signedInAs.value = email.value.trim()
-    isAuthenticated.value = true
-    messageType.value = 'success'
-    message.value = 'Directus authentication succeeded. Dental data access has not been connected yet.'
-  } catch {
-    messageType.value = 'error'
-    message.value = connectionState.value === 'unreachable'
-      ? 'The browser cannot reach Directus. Check the Directus URL and its CORS settings.'
-      : 'Sign-in failed. Check the email and password for an account in Directus.'
+    const user = await getCurrentUser()
+    userId.value = user.id
+    clinic.value = await getMyClinic(user.id)
+    if (clinic.value) {
+      await refreshWorkspace()
+      screen.value = 'workspace'
+    } else {
+      clinicName.value = ''
+      screen.value = 'setup'
+    }
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to sign in. Please try again.'
+    logoutFromDirectus()
   } finally {
     isLoading.value = false
   }
 }
 
-function handleSignOut() {
+async function handleCreateClinic() {
+  if (!clinicName.value.trim()) return
+  clearMessages()
+  busy.value = true
+  try {
+    clinic.value = await createClinic(clinicName.value, userId.value)
+    await refreshWorkspace()
+    screen.value = 'workspace'
+    successMessage.value = 'Your clinic workspace is ready.'
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Could not create clinic.'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function refreshWorkspace() {
+  if (!clinic.value) return
+  const [patientRows, visitRows] = await Promise.all([
+    listPatients(clinic.value.id),
+    listVisits(clinic.value.id),
+  ])
+  patients.value = patientRows
+  visits.value = visitRows
+  if (selectedPatientId.value && !patientRows.some((patient) => patient.id === selectedPatientId.value)) {
+    selectedPatientId.value = null
+  }
+}
+
+async function handleCreatePatient() {
+  if (!clinic.value || !patientForm.value.full_name.trim()) return
+  clearMessages()
+  busy.value = true
+  try {
+    const patient = await createPatient(clinic.value.id, patientForm.value)
+    patients.value = [...patients.value, patient].sort((a, b) => a.full_name.localeCompare(b.full_name))
+    selectedPatientId.value = patient.id
+    patientForm.value = { full_name: '', phone: '', notes: '' }
+    showPatientForm.value = false
+    successMessage.value = 'Patient saved.'
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Could not save patient.'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function handleCreateVisit() {
+  if (!clinic.value || !selectedPatient.value || !visitForm.value.treatment_name.trim() || !visitForm.value.treatment_date) return
+  clearMessages()
+  busy.value = true
+  try {
+    const visit = await createVisit(clinic.value.id, selectedPatient.value.id, visitForm.value)
+    visits.value = [visit, ...visits.value]
+    visitForm.value = { treatment_name: '', treatment_date: new Date().toISOString().slice(0, 10), doctor_advice: '', next_visit_date: '' }
+    showVisitForm.value = false
+    successMessage.value = 'Visit recorded. No reminder has been scheduled or sent.'
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Could not save visit.'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function handleRefresh() {
+  clearMessages()
+  busy.value = true
+  try {
+    await refreshWorkspace()
+    successMessage.value = 'Clinic records refreshed.'
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Could not refresh clinic records.'
+  } finally {
+    busy.value = false
+  }
+}
+
+function signOut() {
   logoutFromDirectus()
-  isAuthenticated.value = false
-  signedInAs.value = ''
+  screen.value = 'login'
+  userId.value = ''
+  clinic.value = null
+  patients.value = []
+  visits.value = []
+  selectedPatientId.value = null
   password.value = ''
-  message.value = 'You have signed out.'
-  messageType.value = 'info'
+  clearMessages()
+}
+function formatDate(value: string | null | undefined) {
+  if (!value) return 'Not set'
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`)
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 </script>
 
 <template>
-  <main class="page-shell">
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="ClearFlow Dental home">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="13" fill="currentColor" />
-            <path d="M11 21.2c4.3 0 5.1-7.2 9-7.2s4.7 12 9 12" stroke="#fff" stroke-width="2.7" stroke-linecap="round" />
-            <path d="M11 26.5c4.3 0 5.1-7.2 9-7.2s4.7 12 9 12" stroke="#B9F0DF" stroke-width="2.7" stroke-linecap="round" />
-          </svg>
-        </span>
-        <span class="brand-copy"><strong>ClearFlow</strong><small>DENTAL</small></span>
-      </a>
-      <div class="secure-note" :class="{ 'connection-down': connectionState === 'unreachable' }">
-        <span class="secure-dot" :class="{ 'dot-checking': connectionState === 'checking', 'dot-down': connectionState === 'unreachable' }"></span>
-        {{ connectionState === 'checking' ? 'Connecting to Directus…' : connectionState === 'connected' ? 'Directus connected' : 'Directus unreachable' }}
-      </div>
+  <main v-if="screen === 'login'" class="auth-shell">
+    <header class="brand-row">
+      <a class="brand" href="#" aria-label="ClearFlow Dental home"><span class="brand-mark">✳</span><span><strong>ClearFlow</strong><small>DENTAL</small></span></a>
+      <span class="connection" :class="{ online: connectionState === 'connected', offline: connectionState === 'unreachable' }"><i></i>{{ connectionState === 'checking' ? 'Connecting…' : connectionState === 'connected' ? 'Service connected' : 'Service unavailable' }}</span>
     </header>
-
-    <section class="content-grid">
-      <div class="welcome-panel">
-        <div class="eyebrow"><span class="eyebrow-line"></span> YOUR PRACTICE, IN FLOW</div>
-        <h1>Better care starts<br />with a <em>clearer day.</em></h1>
-        <p class="intro">A calmer workspace for the people who keep your practice smiling. Sign in to pick up where your team left off.</p>
-
-        <div class="preview-card">
-          <div class="preview-top">
-            <div>
-              <span class="preview-label">YOUR DAY AT A GLANCE</span>
-              <h3>Practice overview</h3>
-            </div>
-            <span class="live-pill"><span></span> Ready when you are</span>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <span class="metric-icon mint">
-                <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M8 3.5v3M16 3.5v3M4 9.5h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-              </span>
-              <span class="metric-caption">Appointments</span>
-              <strong>All in one place</strong>
-            </div>
-            <div class="metric">
-              <span class="metric-icon lilac">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.3-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.7-7 10-7 10Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-              </span>
-              <span class="metric-caption">Patient care</span>
-              <strong>People come first</strong>
-            </div>
-          </div>
-          <div class="preview-footer"><span class="avatar-stack"><i>DR</i><i>AN</i><i>+</i></span><span>Made for your whole team</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        </div>
-        <div class="trust-line"><span class="trust-check">✓</span> Thoughtfully designed for everyday practice</div>
+    <section class="auth-content">
+      <div class="auth-intro">
+        <span class="eyebrow">A CALMER CLINIC DAY</span>
+        <h1>Care that continues<br><em>between visits.</em></h1>
+        <p>Keep patient details, treatment history and the next recommended visit together in one simple workspace.</p>
+        <div class="intro-points"><span>✓ Patient records</span><span>✓ Treatment history</span><span>✓ Next-visit dates saved</span></div>
       </div>
-
-      <div class="login-wrap">
-        <section class="login-card" aria-labelledby="login-title">
-          <div class="mobile-mark">
-            <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="13" fill="currentColor"/><path d="M11 21.2c4.3 0 5.1-7.2 9-7.2s4.7 12 9 12" stroke="#fff" stroke-width="2.7" stroke-linecap="round"/><path d="M11 26.5c4.3 0 5.1-7.2 9-7.2s4.7 12 9 12" stroke="#B9F0DF" stroke-width="2.7" stroke-linecap="round"/></svg></span>
-          </div>
-          <div class="form-heading">
-            <span class="form-kicker">WELCOME BACK</span>
-            <h2 id="login-title">Good to see you.</h2>
-            <p>Sign in to your practice workspace.</p>
-          </div>
-          <form v-if="!isAuthenticated" @submit.prevent="handleSignIn">
-            <label for="email">Work email</label>
-            <div class="input-shell">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <input id="email" v-model="email" type="email" placeholder="you@yourpractice.com" autocomplete="username" required />
-            </div>
-            <div class="label-row"><label for="password">Password</label><button class="text-button" type="button" @click="message = 'Password recovery will be enabled when Directus authentication is connected.'">Forgot password?</button></div>
-            <div class="input-shell">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              <input id="password" v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Enter your password" autocomplete="current-password" required />
-              <button class="visibility-button" type="button" :aria-label="showPassword ? 'Hide password' : 'Show password'" @click="showPassword = !showPassword">
-                <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.6"/></svg>
-                <svg v-else viewBox="0 0 24 24" fill="none"><path d="m3 3 18 18M10.6 6.2A10.8 10.8 0 0 1 12 6c6.1 0 9.5 6 9.5 6a16 16 0 0 1-3.1 3.7M6.2 6.4C3.8 8 2.5 12 2.5 12s3.4 6 9.5 6c1.2 0 2.3-.3 3.2-.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              </button>
-            </div>
-            <p class="session-note">Secure sign-in via Directus. This prototype keeps the session in memory.</p>
-            <button class="submit-button" type="submit" :disabled="isLoading">{{ isLoading ? 'Signing in…' : 'Sign in' }} <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-            <p v-if="message" class="status-message" :class="'status-' + messageType" role="status">{{ message }}</p>
-          </form>
-          <section v-else class="authenticated-panel">
-            <span class="authenticated-icon">✓</span>
-            <h3>You’re signed in.</h3>
-            <p class="signed-in-email">{{ signedInAs }}</p>
-            <p class="auth-explanation">{{ message }}</p>
-            <p class="session-note">This confirms authentication only. No patient or practice records are being requested yet.</p>
-            <button class="submit-button signout-button" type="button" @click="handleSignOut">Sign out</button>
-          </section>
-          <div class="login-bottom"><span class="lock-mini">⌑</span> Your practice space, kept private.</div>
-        </section>
-        <p class="help-line">Need a hand? <a href="mailto:support@clearflow.dental">Contact your practice administrator</a></p>
-      </div>
+      <form class="panel auth-panel" @submit.prevent="handleSignIn">
+        <div class="panel-kicker">CLINIC WORKSPACE</div><h2>Welcome back</h2><p class="muted">Sign in to manage your clinic's patient visits.</p>
+        <label for="email">Email address</label><input id="email" v-model="email" type="email" autocomplete="username" placeholder="you@clinic.com" required>
+        <label for="password">Password</label><input id="password" v-model="password" type="password" autocomplete="current-password" placeholder="Your password" required>
+        <button class="primary full" type="submit" :disabled="isLoading || connectionState === 'unreachable'">{{ isLoading ? 'Signing in…' : 'Sign in' }} <span>→</span></button>
+        <p v-if="errorMessage" class="notice error" role="alert">{{ errorMessage }}</p>
+        <p class="privacy-note">Your clinic records should only be accessible to authorized clinic users.</p>
+      </form>
     </section>
-    <footer class="page-footer"><span>© {{ new Date().getFullYear() }} ClearFlow Dental</span><span><span class="footer-dot"></span> A little more calm in every day</span></footer>
+    <footer class="footer"><span>ClearFlow Dental</span><span>Simple records. Thoughtful follow-up.</span></footer>
+  </main>
+
+  <main v-else-if="screen === 'setup'" class="setup-shell">
+    <header class="brand-row"><a class="brand" href="#"><span class="brand-mark">✳</span><span><strong>ClearFlow</strong><small>DENTAL</small></span></a><span class="connection online"><i></i> Service connected</span></header>
+    <form class="panel setup-panel" @submit.prevent="handleCreateClinic">
+      <div class="setup-icon">✳</div><span class="eyebrow">LET'S GET STARTED</span><h1>Set up your clinic</h1><p class="muted">This creates the clinic workspace associated with your signed-in account.</p>
+      <label for="clinicName">Clinic name</label><input id="clinicName" v-model="clinicName" placeholder="e.g. Green Dental Clinic" required maxlength="255">
+      <button class="primary full" type="submit" :disabled="busy">{{ busy ? 'Setting up…' : 'Create clinic workspace' }} <span>→</span></button>
+      <p v-if="errorMessage" class="notice error" role="alert">{{ errorMessage }}</p>
+      <button class="quiet-button" type="button" @click="signOut">Sign out</button>
+    </form>
+  </main>
+
+  <main v-else class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" @click.prevent="selectedPatientId = null"><span class="brand-mark">✳</span><span><strong>ClearFlow</strong><small>DENTAL</small></span></a>
+      <div class="clinic-switch"><span class="clinic-avatar">{{ (clinic?.clinic_name || 'C').slice(0,1).toUpperCase() }}</span><span class="clinic-label"><strong>{{ clinic?.clinic_name }}</strong><small>Clinic workspace</small></span></div>
+      <div class="nav-label">WORKSPACE</div>
+      <button class="nav-item" :class="{ active: selectedPatientId === null }" @click="selectedPatientId = null"><span>▦</span> Overview</button>
+      <button class="nav-item" :class="{ active: selectedPatientId !== null }" @click="selectedPatientId = patients[0]?.id ?? null"><span>♙</span> Patients <span class="nav-count">{{ patients.length }}</span></button>
+      <div class="sidebar-bottom"><div class="user-chip"><span class="user-avatar">{{ email.slice(0,1).toUpperCase() || 'D' }}</span><span><strong>{{ email }}</strong><small>Signed in</small></span></div><button class="quiet-button" @click="signOut">Sign out ↗</button></div>
+    </aside>
+    <section class="main-area">
+      <header class="workspace-header"><div><div class="eyebrow">YOUR PRACTICE</div><h1>{{ selectedPatient ? selectedPatient.full_name : 'Clinic overview' }}</h1><p>{{ selectedPatient ? 'Patient details and visit history' : 'A simple view of your patients and upcoming visits.' }}</p></div><div class="header-actions"><span class="connection online"><i></i> Connected</span><button class="icon-button" title="Refresh records" @click="handleRefresh" :disabled="busy">↻</button><button class="primary" @click="showPatientForm = true; selectedPatientId = null">＋ Add patient</button></div></header>
+      <div v-if="errorMessage" class="notice error global-notice" role="alert">{{ errorMessage }}</div>
+      <div v-if="successMessage" class="notice success global-notice" role="status">{{ successMessage }}</div>
+
+      <template v-if="selectedPatient">
+        <button class="back-link" @click="selectedPatientId = null">← Back to overview</button>
+        <div class="patient-detail-grid">
+          <section class="panel patient-card">
+            <div class="patient-avatar large">{{ selectedPatient.full_name.slice(0,1).toUpperCase() }}</div><h2>{{ selectedPatient.full_name }}</h2><p class="muted">{{ selectedPatient.phone || 'No phone number added' }}</p>
+            <div class="detail-divider"></div><div class="detail-label">PATIENT NOTES</div><p class="patient-notes">{{ selectedPatient.notes || 'No notes added.' }}</p>
+            <button class="primary full" @click="showVisitForm = !showVisitForm">＋ Record visit</button>
+          </section>
+          <section class="panel history-panel">
+            <div class="section-heading"><div><span class="eyebrow">CARE HISTORY</span><h2>Visits & treatment</h2></div><span class="count-pill">{{ selectedVisits.length }} {{ selectedVisits.length === 1 ? 'visit' : 'visits' }}</span></div>
+            <form v-if="showVisitForm" class="inline-form" @submit.prevent="handleCreateVisit">
+              <h3>Record a visit</h3><label for="treatment">Treatment name</label><input id="treatment" v-model="visitForm.treatment_name" placeholder="e.g. Dental cleaning" required maxlength="255">
+              <div class="form-grid"><div><label for="treatmentDate">Treatment date</label><input id="treatmentDate" v-model="visitForm.treatment_date" type="date" required></div><div><label for="nextDate">Next visit date <span class="optional">Optional</span></label><input id="nextDate" v-model="visitForm.next_visit_date" type="date"></div></div>
+              <label for="advice">Doctor's advice</label><textarea id="advice" v-model="visitForm.doctor_advice" rows="3" placeholder="Advice for the patient or next visit…"></textarea>
+              <p class="form-hint">The next-visit date is saved only. No reminder will be scheduled or sent.</p>
+              <div class="form-actions"><button class="secondary" type="button" @click="showVisitForm = false">Cancel</button><button class="primary" type="submit" :disabled="busy">{{ busy ? 'Saving…' : 'Save visit' }}</button></div>
+            </form>
+            <div v-if="!selectedVisits.length && !showVisitForm" class="empty-state"><span>☷</span><h3>No visits recorded yet</h3><p>Add the first treatment visit for this patient.</p><button class="secondary" @click="showVisitForm = true">Record first visit</button></div>
+            <div v-else class="visit-list"><article v-for="visit in selectedVisits" :key="visit.id" class="visit-entry"><div class="visit-marker"></div><div class="visit-content"><div class="visit-topline"><h3>{{ visit.treatment_name }}</h3><time>{{ formatDate(visit.treatment_date) }}</time></div><p v-if="visit.doctor_advice" class="advice">{{ visit.doctor_advice }}</p><div v-if="visit.next_visit_date" class="next-visit"><span>↗</span> Next visit advised: <strong>{{ formatDate(visit.next_visit_date) }}</strong></div><div v-else class="no-next-date">No next visit date recorded</div></div></article></div>
+          </section>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="stats-grid"><article class="stat-card"><span class="stat-icon mint">♙</span><span class="stat-label">TOTAL PATIENTS</span><strong>{{ patients.length }}</strong><small>Patients in this clinic</small></article><article class="stat-card"><span class="stat-icon lilac">▤</span><span class="stat-label">VISITS RECORDED</span><strong>{{ visits.length }}</strong><small>Treatment history saved</small></article><article class="stat-card"><span class="stat-icon peach">↗</span><span class="stat-label">UPCOMING VISITS</span><strong>{{ upcomingVisits.length }}</strong><small>Dates advised by doctor</small></article></div>
+        <div class="content-columns">
+          <section class="panel patient-list-panel">
+            <div class="section-heading"><div><span class="eyebrow">PATIENT DIRECTORY</span><h2>Patients</h2></div><button class="text-action" @click="showPatientForm = !showPatientForm">{{ showPatientForm ? 'Close' : '＋ Add patient' }}</button></div>
+            <form v-if="showPatientForm" class="inline-form" @submit.prevent="handleCreatePatient"><h3>New patient</h3><label for="patientName">Patient full name</label><input id="patientName" v-model="patientForm.full_name" placeholder="Enter patient's name" required maxlength="255"><label for="patientPhone">Phone number <span class="optional">Optional</span></label><input id="patientPhone" v-model="patientForm.phone" type="tel" placeholder="Contact number"><label for="patientNotes">Notes <span class="optional">Optional</span></label><textarea id="patientNotes" v-model="patientForm.notes" rows="2" placeholder="Basic notes only"></textarea><div class="form-actions"><button type="button" class="secondary" @click="showPatientForm = false">Cancel</button><button type="submit" class="primary" :disabled="busy">{{ busy ? 'Saving…' : 'Save patient' }}</button></div></form>
+            <div class="search-box"><span>⌕</span><input v-model="search" type="search" placeholder="Search by patient name or phone"></div>
+            <div v-if="!filteredPatients.length" class="empty-state"><span>♙</span><h3>{{ search ? 'No matching patients' : 'No patients yet' }}</h3><p>{{ search ? 'Try another name or phone number.' : 'Add a patient to start recording treatment visits.' }}</p><button v-if="!search" class="secondary" @click="showPatientForm = true">＋ Add first patient</button></div>
+            <button v-for="patient in filteredPatients" :key="patient.id" class="patient-row" @click="selectedPatientId = patient.id; showVisitForm = false"><span class="patient-avatar">{{ patient.full_name.slice(0,1).toUpperCase() }}</span><span class="patient-row-copy"><strong>{{ patient.full_name }}</strong><small>{{ patient.phone || 'No phone number' }}</small></span><span class="patient-row-meta"><strong>{{ visits.filter(v => v.patient_id === patient.id).length }}</strong><small>visits</small></span><span class="row-arrow">→</span></button>
+          </section>
+          <aside class="panel upcoming-panel"><div class="section-heading"><div><span class="eyebrow">FOLLOW-UP DATES</span><h2>Next visits</h2></div><span class="calendar-mark">▦</span></div><p class="muted small-copy">Dates recommended by the doctor. This is a date list only; reminders are not active.</p>
+            <div v-if="!upcomingVisits.length" class="empty-compact"><span>▦</span><p>No future visit dates recorded.</p></div>
+            <article v-for="visit in upcomingVisits" :key="visit.id" class="upcoming-row"><div class="date-block"><strong>{{ new Date(visit.next_visit_date + 'T00:00:00').getDate() }}</strong><small>{{ new Date(visit.next_visit_date + 'T00:00:00').toLocaleDateString(undefined,{month:'short'}) }}</small></div><div class="upcoming-copy"><strong>{{ patients.find(p => p.id === visit.patient_id)?.full_name || 'Patient' }}</strong><small>{{ visit.treatment_name }}</small><span>{{ formatDate(visit.next_visit_date) }}</span></div></article>
+          </aside>
+        </div>
+      </template>
+      <footer class="workspace-footer"><span>ClearFlow Dental</span><span>Patient records stay within your clinic workspace.</span></footer>
+    </section>
   </main>
 </template>
