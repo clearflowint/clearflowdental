@@ -36,7 +36,7 @@ export async function checkDirectusConnection(): Promise<boolean> {
 }
 
 export async function registerWithDirectus(email: string, password: string, ownerName: string): Promise<void> {
-  const parts = ownerName.trim().split(/\\s+/)
+  const parts = ownerName.trim().split(/\s+/)
   const response = await fetch(`${DIRECTUS_URL}/users/register`, {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -44,7 +44,7 @@ export async function registerWithDirectus(email: string, password: string, owne
       email: email.trim(),
       password,
       first_name: parts[0] || '',
-      last_name: parts.slice(1).join(' '),
+      last_name: parts.slice(1).join(' ') || 'Owner',
     }),
   })
   const result = (await response.json().catch(() => ({}))) as DirectusEnvelope<unknown>
