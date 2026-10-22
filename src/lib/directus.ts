@@ -35,6 +35,25 @@ export async function checkDirectusConnection(): Promise<boolean> {
   return (await response.text()).trim().toLowerCase() === 'pong'
 }
 
+export async function registerWithDirectus(email: string, password: string, ownerName: string): Promise<void> {
+  const parts = ownerName.trim().split(/\\s+/)
+  const response = await fetch(`${DIRECTUS_URL}/users/register`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: email.trim(),
+      password,
+      first_name: parts[0] || '',
+      last_name: parts.slice(1).join(' '),
+    }),
+  })
+  const result = (await response.json().catch(() => ({}))) as DirectusEnvelope<unknown>
+  if (!response.ok) {
+    const detail = result.errors?.map((error) => error.message).filter(Boolean).join('; ')
+    throw new Error(detail || 'Account creation failed. Check whether registration is enabled in Directus.')
+  }
+}
+
 export async function loginToDirectus(email: string, password: string): Promise<void> {
   const response = await fetch(`${DIRECTUS_URL}/auth/login`, {
     method: 'POST',
