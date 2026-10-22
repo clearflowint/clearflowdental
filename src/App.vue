@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import {
-  checkDirectusConnection, loginToDirectus, logoutFromDirectus,
+  checkDirectusConnection, loginToDirectus, registerWithDirectus, logoutFromDirectus,
   getCurrentUser, getMyClinic, createClinic, listPatients, createPatient,
   listVisits, createVisit,
   type Clinic, type Patient, type Visit,
@@ -12,6 +12,8 @@ const screen = ref<Screen>('login')
 const connectionState = ref<'checking' | 'connected' | 'unreachable'>('checking')
 const email = ref('')
 const password = ref('')
+const ownerName = ref('')
+const signupMode = ref(false)
 const isLoading = ref(false)
 const busy = ref(false)
 const errorMessage = ref('')
@@ -50,6 +52,32 @@ onMounted(async () => {
 function clearMessages() {
   errorMessage.value = ''
   successMessage.value = ''
+}
+
+async function handleSignUp() {
+  clearMessages()
+  isLoading.value = true
+  try {
+    await registerWithDirectus(email.value, password.value, ownerName.value)
+    await loginToDirectus(email.value.trim(), password.value)
+    const user = await getCurrentUser()
+    userId.value = user.id
+    clinic.value = await getMyClinic(user.id)
+    if (clinic.value) {
+      await refreshWorkspace()
+      screen.value = 'workspace'
+    } else {
+      screen.value = 'setup'
+    }
+    successMessage.value = 'Account created. Finish setting up your clinic.'
+  } catch (error) {
+    logoutFromDirectus()
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : 'Could not create account. If registration requires email verification, verify your email and then sign in.'
+  } finally {
+    isLoading.value = false
+  }
 }
 
 async function handleSignIn() {
@@ -189,13 +217,19 @@ function dateMonth(value: string | null) {
         <p>Keep patient details, treatment history and the next recommended visit together in one simple workspace.</p>
         <div class="intro-points"><span>✓ Patient records</span><span>✓ Treatment history</span><span>✓ Next-visit dates saved</span></div>
       </div>
-      <form class="panel auth-panel" @submit.prevent="handleSignIn">
-        <div class="panel-kicker">CLINIC WORKSPACE</div><h2>Welcome back</h2><p class="muted">Sign in to manage your clinic's patient visits.</p>
+      <form class="panel auth-panel" @submit.prevent="signupMode ? handleSignUp() : handleSignIn()">
+        <div class="panel-kicker">CLINIC WORKSPACE</div><h2>{{ signupMode ? 'Create your account' : 'Welcome back' }}</h2><p class="muted">{{ signupMode ? 'Start a new clinic workspace in a few steps.' : "Sign in to manage your clinic's patient visits." }}</p>
+        <template v-if="signupMode">
+          <label for="ownerName">Your name</label><input id="ownerName" v-model="ownerName" autocomplete="name" placeholder="Clinic owner name" required maxlength="100">
+          <label for="newClinicName">Clinic name</label><input id="newClinicName" v-model="clinicName" autocomplete="organization" placeholder="e.g. Green Dental Clinic" required maxlength="255">
+        </template>
         <label for="email">Email address</label><input id="email" v-model="email" type="email" autocomplete="username" placeholder="you@clinic.com" required>
-        <label for="password">Password</label><input id="password" v-model="password" type="password" autocomplete="current-password" placeholder="Your password" required>
-        <button class="primary full" type="submit" :disabled="isLoading || connectionState === 'unreachable'">{{ isLoading ? 'Signing in…' : 'Sign in' }} <span>→</span></button>
+        <label for="password">Password</label><input id="password" v-model="password" type="password" :autocomplete="signupMode ? 'new-password' : 'current-password'" :placeholder="signupMode ? 'Create a password' : 'Your password'" :minlength="signupMode ? 8 : undefined" required>
+        <button class="primary full" type="submit" :disabled="isLoading || connectionState === 'unreachable'">{{ isLoading ? (signupMode ? 'Creating account…' : 'Signing in…') : (signupMode ? 'Create account' : 'Sign in') }} <span>→</span></button>
         <p v-if="errorMessage" class="notice error" role="alert">{{ errorMessage }}</p>
-        <p class="privacy-note">Your clinic records should only be accessible to authorized clinic users.</p>
+        <p v-if="successMessage" class="notice success" role="status">{{ successMessage }}</p>
+        <p class="auth-switch">{{ signupMode ? 'Already have an account?' : 'New to ClearFlow Dental? ' }}<button type="button" class="text-action" @click="signupMode = !signupMode; clearMessages()">{{ signupMode ? 'Sign in' : 'Create account' }}</button></p>
+        <p class="privacy-note">Test application. Clinic access must be restricted by Directus permissions.</p>
       </form>
     </section>
     <footer class="footer"><span>ClearFlow Dental</span><span>Simple records. Thoughtful follow-up.</span></footer>
