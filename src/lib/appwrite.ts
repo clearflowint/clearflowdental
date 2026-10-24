@@ -11,7 +11,7 @@ const tables = new TablesDB(client)
 type AppwriteRow = { $id: string; [key: string]: unknown }
 type AppwriteList<T> = { rows: T[]; total: number }
 
-export type Clinic = { id: string; clinic_name: string; owner: string }
+export type Clinic = { id: string; clinic_name: string; owner_user_id: string }
 export type Patient = { id: string; clinic_id: string; owner_user_id: string; full_name: string; phone: string | null; notes: string | null }
 export type Visit = { id: string; clinic_id: string; owner_user_id: string; patient_id: string; treatment_name: string; treatment_date: string; doctor_advice: string | null; next_visit_date: string | null }
 
