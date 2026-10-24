@@ -61,8 +61,8 @@ async function handleSignUp() {
     await registerWithAppwrite(email.value, password.value, ownerName.value)
     await loginToAppwrite(email.value.trim(), password.value)
     const user = await getCurrentUser()
-    userId.value = user.id
-    clinic.value = await getMyClinic(user.id)
+    userId.value = user.$id
+    clinic.value = await getMyClinic(user.$id)
     if (clinic.value) {
       await refreshWorkspace()
       screen.value = 'workspace'
@@ -86,8 +86,8 @@ async function handleSignIn() {
   try {
     await loginToAppwrite(email.value.trim(), password.value)
     const user = await getCurrentUser()
-    userId.value = user.id
-    clinic.value = await getMyClinic(user.id)
+    userId.value = user.$id
+    clinic.value = await getMyClinic(user.$id)
     if (clinic.value) {
       await refreshWorkspace()
       screen.value = 'workspace'
