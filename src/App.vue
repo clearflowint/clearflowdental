@@ -1,15 +1,13 @@
-<script setup lang="ts">
+<script setup>
 import { computed, onMounted, ref } from 'vue'
 import {
   checkAppwriteConnection, loginToAppwrite, registerWithAppwrite, logoutFromAppwrite,
   getCurrentUser, getMyClinic, createClinic, listPatients, createPatient,
   listVisits, createVisit,
-  type Clinic, type Patient, type Visit,
 } from './lib/appwrite'
 
-type Screen = 'login' | 'setup' | 'workspace'
-const screen = ref<Screen>('login')
-const connectionState = ref<'checking' | 'connected' | 'unreachable'>('checking')
+const screen = ref('login')
+const connectionState = ref('checking')
 const email = ref('')
 const password = ref('')
 const ownerName = ref('')
@@ -19,11 +17,11 @@ const busy = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 const userId = ref('')
-const clinic = ref<Clinic | null>(null)
-const patients = ref<Patient[]>([])
-const visits = ref<Visit[]>([])
+const clinic = ref(null)
+const patients = ref([])
+const visits = ref([])
 const search = ref('')
-const selectedPatientId = ref<string | null>(null)
+const selectedPatientId = ref(null)
 const showPatientForm = ref(false)
 const showVisitForm = ref(false)
 const clinicName = ref('')
@@ -191,15 +189,15 @@ function signOut() {
   password.value = ''
   clearMessages()
 }
-function formatDate(value: string | null | undefined) {
+function formatDate(value) {
   if (!value) return 'Not set'
   const date = new Date(`${value.slice(0, 10)}T00:00:00`)
   return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
-function dateDay(value: string | null) {
+function dateDay(value) {
   return value ? new Date(`${value.slice(0, 10)}T00:00:00`).getDate() : '—'
 }
-function dateMonth(value: string | null) {
+function dateMonth(value) {
   return value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: 'short' }) : ''
 }
 </script>
