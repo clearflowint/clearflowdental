@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import {
-  checkDirectusConnection, loginToDirectus, registerWithDirectus, logoutFromDirectus,
+  checkAppwriteConnection, loginToAppwrite, registerWithAppwrite, logoutFromAppwrite,
   getCurrentUser, getMyClinic, createClinic, listPatients, createPatient,
   listVisits, createVisit,
   type Clinic, type Patient, type Visit,
-} from './lib/directus'
+} from './lib/appwrite'
 
 type Screen = 'login' | 'setup' | 'workspace'
 const screen = ref<Screen>('login')
@@ -23,7 +23,7 @@ const clinic = ref<Clinic | null>(null)
 const patients = ref<Patient[]>([])
 const visits = ref<Visit[]>([])
 const search = ref('')
-const selectedPatientId = ref<number | null>(null)
+const selectedPatientId = ref<string | null>(null)
 const showPatientForm = ref(false)
 const showVisitForm = ref(false)
 const clinicName = ref('')
@@ -43,7 +43,7 @@ const upcomingVisits = computed(() => visits.value.filter((visit) => visit.next_
 
 onMounted(async () => {
   try {
-    connectionState.value = (await checkDirectusConnection()) ? 'connected' : 'unreachable'
+    connectionState.value = (await checkAppwriteConnection()) ? 'connected' : 'unreachable'
   } catch {
     connectionState.value = 'unreachable'
   }
@@ -58,8 +58,8 @@ async function handleSignUp() {
   clearMessages()
   isLoading.value = true
   try {
-    await registerWithDirectus(email.value, password.value, ownerName.value)
-    await loginToDirectus(email.value.trim(), password.value)
+    await registerWithAppwrite(email.value, password.value, ownerName.value)
+    await loginToAppwrite(email.value.trim(), password.value)
     const user = await getCurrentUser()
     userId.value = user.id
     clinic.value = await getMyClinic(user.id)
@@ -71,7 +71,7 @@ async function handleSignUp() {
     }
     successMessage.value = 'Account created. Finish setting up your clinic.'
   } catch (error) {
-    logoutFromDirectus()
+    logoutFromAppwrite()
     errorMessage.value = error instanceof Error
       ? error.message
       : 'Could not create account. If registration requires email verification, verify your email and then sign in.'
@@ -84,7 +84,7 @@ async function handleSignIn() {
   clearMessages()
   isLoading.value = true
   try {
-    await loginToDirectus(email.value.trim(), password.value)
+    await loginToAppwrite(email.value.trim(), password.value)
     const user = await getCurrentUser()
     userId.value = user.id
     clinic.value = await getMyClinic(user.id)
@@ -97,7 +97,7 @@ async function handleSignIn() {
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Unable to sign in. Please try again.'
-    logoutFromDirectus()
+    logoutFromAppwrite()
   } finally {
     isLoading.value = false
   }
@@ -122,8 +122,8 @@ async function handleCreateClinic() {
 async function refreshWorkspace() {
   if (!clinic.value) return
   const [patientRows, visitRows] = await Promise.all([
-    listPatients(clinic.value.id),
-    listVisits(clinic.value.id),
+    listPatients(clinic.value.id, userId.value),
+    listVisits(clinic.value.id, userId.value),
   ])
   patients.value = patientRows
   visits.value = visitRows
@@ -137,7 +137,7 @@ async function handleCreatePatient() {
   clearMessages()
   busy.value = true
   try {
-    const patient = await createPatient(clinic.value.id, patientForm.value)
+    const patient = await createPatient(clinic.value.id, userId.value, patientForm.value)
     patients.value = [...patients.value, patient].sort((a, b) => a.full_name.localeCompare(b.full_name))
     selectedPatientId.value = patient.id
     patientForm.value = { full_name: '', phone: '', notes: '' }
@@ -155,7 +155,7 @@ async function handleCreateVisit() {
   clearMessages()
   busy.value = true
   try {
-    const visit = await createVisit(clinic.value.id, selectedPatient.value.id, visitForm.value)
+    const visit = await createVisit(clinic.value.id, userId.value, selectedPatient.value.id, visitForm.value)
     visits.value = [visit, ...visits.value]
     visitForm.value = { treatment_name: '', treatment_date: new Date().toISOString().slice(0, 10), doctor_advice: '', next_visit_date: '' }
     showVisitForm.value = false
@@ -181,7 +181,7 @@ async function handleRefresh() {
 }
 
 function signOut() {
-  logoutFromDirectus()
+  logoutFromAppwrite()
   screen.value = 'login'
   userId.value = ''
   clinic.value = null
@@ -229,7 +229,7 @@ function dateMonth(value: string | null) {
         <p v-if="errorMessage" class="notice error" role="alert">{{ errorMessage }}</p>
         <p v-if="successMessage" class="notice success" role="status">{{ successMessage }}</p>
         <p class="auth-switch">{{ signupMode ? 'Already have an account?' : 'New to ClearFlow Dental? ' }}<button type="button" class="text-action" @click="signupMode = !signupMode; clearMessages()">{{ signupMode ? 'Sign in' : 'Create account' }}</button></p>
-        <p class="privacy-note">Test application. Clinic access must be restricted by Directus permissions.</p>
+        <p class="privacy-note">Test application. Clinic access must be restricted by Appwrite row permissions.</p>
       </form>
     </section>
     <footer class="footer"><span>ClearFlow Dental</span><span>Simple records. Thoughtful follow-up.</span></footer>
