@@ -1,6 +1,6 @@
 import { Account, Client, ID, Permission, Query, Role, TablesDB } from 'appwrite'
 
-const endpoint = (import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://clearflowappwrite.duckdns.org/v1').replace(/\\/+$/, '')
+const endpoint = (import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://clearflowappwrite.duckdns.org/v1').replace(/\/+$/, '')
 const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '6adcea89003c9613425b'
 const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID || 'clearflow_dental'
 
