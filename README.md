@@ -1,21 +1,24 @@
 # ClearFlow Dental
 
-A minimal, mobile-first dental clinic workspace built with Vue 3, TypeScript, Vite, and the existing self-hosted Directus + PostgreSQL stack.
+A mobile-first dental clinic workspace built with Vue 3, TypeScript, Vite, and the self-hosted Appwrite backend.
 
 ## Current scope
 
-- Clinic workspace associated with the signed-in Directus user
+- Clinic workspace associated with the signed-in Appwrite user
 - Basic patient details: name, phone, optional notes
 - Patient visit history: treatment name/date, doctor advice, optional next-visit date
-- Simple list of upcoming advised visit dates (display only; no reminders are scheduled or sent)
+- Upcoming advised visit dates (display only; no reminders are scheduled or sent)
 - No payments, billing, WhatsApp, or AI in this phase
 
 ## Architecture
 
-- Frontend: Cloudflare Pages
-- API/auth/data access: existing Directus instance
-- Database: existing PostgreSQL managed by Directus
-- No additional backend server
+- Frontend: Cloudflare Pages (`https://clearflowdental.pages.dev`)
+- Authentication and data: Appwrite SDK
+- Appwrite endpoint: `https://clearflowappwrite.duckdns.org/v1`
+- Appwrite project: `6adcea89003c9613425b`
+- Appwrite database: `clearflow_dental`
+- Tables: `dental_clinics`, `dental_patients`, `dental_visits`
+- Tenant-owned rows use row-level permissions; each row grants access only to its owner user.
 
 ## Development
 
@@ -32,10 +35,14 @@ npm run build
 
 ## Environment
 
-`VITE_DIRECTUS_URL` is optional. If omitted, the app uses `https://clearflow-data.duckdns.org`.
+Set these Cloudflare Pages environment variables if you want to override defaults:
 
-For Cloudflare Pages, use build command `npm run build` and output directory `dist`.
+- `VITE_APPWRITE_ENDPOINT`
+- `VITE_APPWRITE_PROJECT_ID`
+- `VITE_APPWRITE_DATABASE_ID`
 
-## Important before real patient data
+Build command: `npm run build`; output directory: `dist`.
 
-Tenant ownership fields are included in the data model, but backend-enforced tenant permissions and authenticated end-to-end verification must be completed before storing real clinic/patient data. UI filters alone are not a security boundary.
+## Security test before real patient data
+
+This is a test application. Verify with two separate user accounts that one clinic cannot list or access the other clinic's rows before using real patient information. Row permissions are enforced by Appwrite; client-side filters are not the security boundary.
