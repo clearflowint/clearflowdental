@@ -251,6 +251,7 @@ function dateMonth(value) {
       <div class="nav-label">WORKSPACE</div>
       <button class="nav-item" :class="{ active: selectedPatientId === null }" @click="selectedPatientId = null"><span>▦</span> Overview</button>
       <button class="nav-item" :class="{ active: selectedPatientId !== null }" @click="selectedPatientId = patients[0]?.id ?? null"><span>♙</span> Patients <span class="nav-count">{{ patients.length }}</span></button>
+      <button class="nav-item mobile-signout" @click="signOut"><span>↗</span> Sign out</button>
       <div class="sidebar-bottom"><div class="user-chip"><span class="user-avatar">{{ email.slice(0,1).toUpperCase() || 'D' }}</span><span><strong>{{ email }}</strong><small>Signed in</small></span></div><button class="quiet-button" @click="signOut">Sign out ↗</button></div>
     </aside>
     <section class="main-area">
