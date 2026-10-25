@@ -223,7 +223,7 @@ function dateMonth(value) {
         </template>
         <label for="email">Email address</label><input id="email" v-model="email" type="email" autocomplete="username" placeholder="you@clinic.com" required>
         <label for="password">Password</label><input id="password" v-model="password" type="password" :autocomplete="signupMode ? 'new-password' : 'current-password'" :placeholder="signupMode ? 'Create a password' : 'Your password'" :minlength="signupMode ? 8 : undefined" required>
-        <button class="primary full" type="submit" :disabled="isLoading || connectionState === 'unreachable'">{{ isLoading ? (signupMode ? 'Creating account…' : 'Signing in…') : (signupMode ? 'Create account' : 'Sign in') }} <span>→</span></button>
+        <button class="primary full" type="submit" :disabled="isLoading">{{ isLoading ? (signupMode ? 'Creating account…' : 'Signing in…') : (signupMode ? 'Create account' : 'Sign in') }} <span>→</span></button>
         <p v-if="errorMessage" class="notice error" role="alert">{{ errorMessage }}</p>
         <p v-if="successMessage" class="notice success" role="status">{{ successMessage }}</p>
         <p class="auth-switch">{{ signupMode ? 'Already have an account?' : 'New to ClearFlow Dental? ' }}<button type="button" class="text-action" @click="signupMode = !signupMode; clearMessages()">{{ signupMode ? 'Sign in' : 'Create account' }}</button></p>
