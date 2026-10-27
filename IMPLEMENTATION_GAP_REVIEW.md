@@ -144,3 +144,9 @@ Run in a **non-production Appwrite project using synthetic data and two test acc
 6. Only after those safeguards are verified should a staged schema migration begin. Do not make schema changes by directly editing production tables first.
 
 **Conclusion:** The prototype is a thin slice for basic patient and visit entry. The research model is much broader. Its most important near-term risk is not missing clinical features; it is ensuring that tenant-linked reads and mutations are authorized by trusted backend logic and validated by two-tenant tests. No live data was accessed or modified in this review.
+
+
+## 6. Read the code gap against the cross-system domain comparison
+The source implementation is substantially narrower than the researched target. Use [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) to see which domain families are absent in the prototype and [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) for testable invariants; neither document is proof that the app passes those controls.
+
+The first engineering gate should be a sandbox test, not a feature expansion: verify listRows and row permissions with two synthetic accounts on the actual Appwrite version/configuration; attempt direct-ID reads and forged clinic/patient relationships; record request/status/results; then implement a trusted server-side authorization/relationship layer and add CI tests on a separate feature branch. Do not solve a list failure by granting table-wide READ unless access analysis proves that sharing every row is intended.
