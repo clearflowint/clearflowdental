@@ -47,7 +47,6 @@ jobs:
             --workspace "$WMILL_WORKSPACE" \
             --yes \
             --dry-run \
-            --keep-deleted \
             --skip-secrets \
             --skip-resources \
             --includes "f/dental/**"
