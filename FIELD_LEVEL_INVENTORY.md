@@ -188,11 +188,11 @@ The app preserved on `backup/before-project-notes-reset-2026-10-27` contains onl
 **Decision:** The inventory is a working field coverage register, not the final canonical schema. Preserve the whole justified domain model; make the interface simpler.
 
 
-## 12. Source-qualified field map companion
+## 14. Source-qualified field map companion
 For named vendor/source field families and exact source names that were documented in B17–B38 plus B37A, see [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md). That file provides explicit source → candidate concept → normalization → lifecycle/security → test mappings and labels the gaps where a full DDL/API extract was not verified. Together, the field-level inventory and source-field map provide a wider review surface, but not an assertion that every physical field in every vendor schema has been individually transcribed.
 
 
-## 14. Workforce, attendance, schedules and payroll (Batch 37A)
+## 15. Workforce, attendance, schedules and payroll (Batch 37A)
 
 | Candidate entity / field group | Source-observed concepts | ClearFlow candidate field inventory | Important distinctions / validation |
 |---|---|---|---|
@@ -209,5 +209,5 @@ For named vendor/source field families and exact source names that were document
 **Workforce scope decision:** Attendance, workforce scheduling and payroll are additional enterprise domains in the research inventory, not automatically MVP requirements. If deferred, keep the field groups and lifecycle distinctions traceable and mark a versioned product decision rather than silently dropping them.
 
 
-## 15. Cross-system comparison
+## 16. Cross-system comparison
 See [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) for a consolidated domain-by-domain comparison of DentalPin, Open Dental, OpenEMR EHI, ABDM/India official sources and the preserved ClearFlow prototype. Use this alongside the source maps rather than interpreting any source system as a universal target schema.
