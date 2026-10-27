@@ -38,7 +38,7 @@ jobs:
           test -n "$WMILL_WORKSPACE" || { echo "Missing GitHub Actions variable WMILL_WORKSPACE"; exit 1; }
 
           wmill folder add-missing -y
-          wmill generate-metadata f/dental/sync_smoke_test.py --strict-folder-boundaries
+          wmill generate-metadata f/dental --strict-folder-boundaries --yes
 
           # Dry run only: preview changes without modifying Windmill.
           wmill sync push \
