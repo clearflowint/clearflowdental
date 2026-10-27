@@ -37,6 +37,9 @@
 | B36 | Open Dental Chart/Perio/ProcedureLogs/TreatmentPlan/Recall/Images/Documents/Orthodontics/Lab cases; FHIR Observation; DICOM supplement | First-party API/database docs/manuals + interoperability standard supplement | Tooth numbering, typed periodontal measures/derived CAL, signed plan snapshot, recall separation, image metadata vs bytes/time, orthodontic timeline, lab sent/received/quality-check | Direct LabCases/Laboratories API extraction remains blocked/unverified; validate DICOM current edition/device coverage and clinical units/topology |
 | B37 | NDC M-2749 prescription notice; NDC M-2662 lab mechanics notice; Telangana Gazette 2022; DPDP schedule; NRCeS v6.5 stable vs v7 preview | Official notice/Gazette/profile documentation | New prescribed output fields; mechanic qualification/registration verification; facility registration as separate record; staged legal dates; stable-vs-preview pinning | Legal counsel to scope requirements for exact clinic/practice; current DPDP effective date/Rules applicability calendar needs owner review |
 
+
+| B38 | AERB dental X-ray FAQ/eLORA guide; CPCB/DGHS biomedical-waste guideline; government-hosted dental-clinic minimum-standards template; CBIC tax invoice rules | Official regulator FAQ/portal, dated official guideline, standards template, official rule page | Equipment registration distinct from facility registration; X-ray device category/safety; facility waste authorization and pickup proof; clinic checklist evidence; GST tax invoice vs bill of supply and serial/document snapshot | Current AERB requirements by device, current Telangana TSPCB/BMW applicability, legal status of national standards template, taxability/exemption and GST configuration for actual clinic remain to be reviewed |
+
 ## Cross-source evidence-confidence guide
 
 | Confidence | Use it for | Do not use it for |
@@ -74,3 +77,9 @@ A batch is not “complete” just because an addendum exists. For every source-
 - B37 includes current official NDC prescription and registered dental-mechanic notices, Telangana Clinical Establishments Rules, DPDP commencement/Rules/corrigendum and ABDM published-vs-preview profile comparison. It also links the official CDSCO Drugs Rules directory and July 2024 consolidated text; exact drug-class prescribing applicability remains a professional review item.
 
 DPDP Rules link correction: use the MeitY-hosted G.S.R. 846(E) PDF (https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf) and G.S.R. 892(E) corrigendum (https://egazette.gov.in/WriteReadData/2025/268455.pdf). The commencement notice G.S.R. 843(E) remains https://egazette.gov.in/WriteReadData/2025/267647.pdf.
+
+## Additional B38 evidence gaps
+- AERB source set includes a 2019 workflow guide; verify current eLORA steps and device-category obligations (intra-oral vs OPG/CBCT) with AERB before using fields as hard validation.
+- Biomedical-waste guideline cited is dated June 2018; validate current central rules/amendments and TSPCB authorization, waste-category, CBWTF and recordkeeping instructions for the target facility.
+- National dental-clinic minimum-standards template is a reference document; do not assume it is binding on all Telangana clinic types without the applicable order/category mapping.
+- CBIC Rule 46 identifies invoice particulars, but clinic-specific GST registration, exemptions/taxability, issue deadlines, e-invoice applicability and later notifications need a qualified tax review. Do not hard-code one dental-service tax rate.
