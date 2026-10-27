@@ -25,8 +25,9 @@ The text under 3.3.1 states that dental surgeons maintain relevant outpatient/in
 **Sources:**
 - Official India Code PDF, Digital Personal Data Protection Act, 2023: https://www.indiacode.nic.in/bitstream/123456789/22037/1/a2023-22.pdf
 - Official Gazette commencement notification G.S.R. 843(E), 13 November 2025: https://egazette.gov.in/WriteReadData/2025/267647.pdf
+- DPDP Rules corrigendum, G.S.R. 892(E), Gazette published 11 December 2025: https://egazette.gov.in/WriteReadData/2025/268455.pdf
 - PIB summary of DPDP Rules notification: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2190655&lang=2&reg=48
-- Official Gazette, DPDP Rules, 2025, G.S.R. 846(E): https://egazette.gov.in/WriteReadData/2025/267646.pdf
+- Official Gazette, DPDP Rules, 2025, G.S.R. 846(E): https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf
 
 The Act itself allows commencement on dates appointed by notification. The 13 November 2025 commencement notification stages provisions: some commence on publication, some after one year, and a larger group after eighteen months. Therefore, as of this research date, it is incorrect to describe every substantive DPDP Act duty as already in force merely because the Act and Rules have been notified.
 
@@ -76,6 +77,8 @@ The cited platform guidance states that AI/ML technology platforms are not allow
 | Signed artifact | Signature binds to an immutable content version | Any post-signature change creates an amendment/new version and invalidates no historical evidence | Required signature standard and evidentiary requirements by artifact |
 
 ### 4. Research quality and next verification
+
+**Source-link correction, 2026-10-27:** The original Rules link above now points to the verified MeitY-hosted G.S.R. 846(E) PDF; the corrigendum is separately linked as G.S.R. 892(E) at https://egazette.gov.in/WriteReadData/2025/268455.pdf. Read both together.
 - Primary-source URLs above are official government/regulator hosts where available; the Gazette and regulator text should be preferred over secondary summaries.
 - The DCI and telemedicine documents may have later amendments or scope limitations; perform current-status verification before converting them into compliance claims.
 - For DPDP, use the official Gazette commencement notification and Rules, not the shorthand claim that notification means all provisions are already operative.
