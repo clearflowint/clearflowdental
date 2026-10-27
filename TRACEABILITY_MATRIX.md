@@ -192,3 +192,10 @@ Mark a requirement **Complete / evidence-backed** only when all applicable condi
 Use these statuses precisely: `Observed-source`, `Candidate`, `Clinical review pending`, `Legal review pending`, `Runtime verification pending`, `Implementation pending`, `Evidence conflict`, `Not in MVP scope`. No item is considered completed simply because it exists in this matrix.
 
 **Next controlled phase:** close P0 security and regulator-driven field reviews, then create source-by-source detailed extract sheets for each remaining batch/source. Do not generate production migrations or label the schema final yet.
+
+
+## v0.2.1 — source-qualified field-map companion
+
+`SOURCE_FIELD_MAPS.md` now holds a more granular source-family layer for named DentalPin module records, Open Dental coverage/claims/procedures/plans/periodontal/medication/recall records, OpenEMR EHI patient/medication/order/result/observations/finance/audit/signature tables, and ABDM/India regulatory requirements. It maps observed field groups to candidate concepts and normalization tests. Its scope is exactly the field families documented in existing addenda; it does not claim every underlying vendor column is fully extracted where only API excerpts or partial schema documentation were reviewed.
+
+The DPDP Rules citation in B35/B37 was corrected to the verified MeitY-hosted G.S.R. 846(E) PDF; G.S.R. 892(E) corrigendum is separately linked. B37 now also indexes the official CDSCO Drugs Rules 1945 consolidated document dated 1 July 2024 as a source for later pharmacist/legal review, not as automatic prescribing permission.
