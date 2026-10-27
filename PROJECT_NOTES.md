@@ -1947,3 +1947,16 @@ Open Dental describes TreatmentPlan as tracking accepted, uncompleted, or denied
 - Canonical perio values must distinguish measured zero, missing/unrecorded, skipped tooth and vendor encoded missing values. Open Dental’s PerioMeasure API uses `-1`, >100 negative encoding and a bitfield for bleeding/suppuration/plaque/calculus; those are transport conventions, not ClearFlow domain values.
 - Document metadata and file bytes are different; photos/X-rays, tooth annotations, mounts, lab PDFs and EOB attachments require preserved object/hash/provenance and separate lifecycle.
 - For source imports, preserve source status/type/IDs and map through an adapter; do not let Open Dental's numeric definition IDs or US-specific enumerations become global ClearFlow enums.
+---
+
+## 25. Supplemental Open Dental clinical-history and recall research (27 October 2026)
+
+See `PROJECT_NOTES_ADDENDUM_B28.md` for exact source-linked field observations.
+
+### 25.1 Allergy and medication identity
+Open Dental distinguishes an allergy definition catalogue from the patient's allergy record; the catalogue exposes description/hidden flag, SNOMED type, medication link and UNII code, while a patient allergy includes reaction, active status and adverse-reaction date. Medication catalogue separates brand name from a generic reference; the patient medication statement separately stores patient, medication, free-text usage note, start/stop date and provider. Prescription stores different facts: exact drug/directions, quantity/refills, prescriber, pharmacy, eRx status, controlled flag, procedure link and days' supply.
+
+### 25.2 Longitudinal note and recall policy
+Open Dental's 1:1 PatientNote summary has family-financial, medical, service, complete medical-history, treatment and emergency contact fields; API updates replace fields, with append implemented as manual read-concatenate-write. ClearFlow must keep structured clinical histories and attributed note revisions as the source of truth, and avoid loss-prone append read-modify-write. RecallType stores default interval/time pattern/procedure links; each patient Recall stores due/date/status/type/priority/disable rules, while reminder counts/contact outcome are projections. Retain interval/policy version at the time a due date is computed.
+
+These fields strengthen the requirements for preserving unknown vs negative, current vs historical, catalogue vs patient fact, prescription vs medication statement and obligation vs communication delivery. See B28 addendum for test cases and source-quality limitations.
