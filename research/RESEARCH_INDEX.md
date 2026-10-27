@@ -3,6 +3,7 @@
 Updated 2026-10-27. This index points to the consolidated notebook and the continuing source-specific batches. Research is ongoing; no canonical schema should be frozen until the evidence matrix and jurisdiction review are complete.
 
 ## Core notebook
+- [CONVERSATION_DECISION_LOG.md](./CONVERSATION_DECISION_LOG.md) — append-only record of product discussions and decisions, including document-first medical scope, visit purpose vs treatments, patient identity, PWA/frontend choices, realtime collaboration and streaming AI requirements.
 - [PROJECT_NOTES.md](./PROJECT_NOTES.md) — consolidated project goals, domain coverage, architecture principles, core source observations, invariants and next research steps.
 - [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) — domain-by-domain comparison of DentalPin, Open Dental, OpenEMR, ABDM/India sources and the preserved ClearFlow prototype, including what each source contributes and where evidence is absent or partial.
 - [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) — v0.4 cumulative cross-batch requirements matrix with selected field-to-concept mappings, lifecycle/security tests, implementation evidence, India-specific requirements and workforce/payroll traceability.
