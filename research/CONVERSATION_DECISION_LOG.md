@@ -493,3 +493,10 @@ Recommended enterprise model:
 - Keep order/referral status, service status, result availability, report review and any downstream clinical decision separate. Do not infer that a service happened just because a request was sent, or that a result was clinically reviewed just because it was uploaded.
 
 This is a domain requirement derived from the owner's clarification and enterprise workflow patterns; the exact implementation is to be validated against selected dental systems and applicable clinical/legal requirements.
+
+
+## 20. Defer direct external diagnostic-centre integrations
+**Discussion date:** 2026-10-28  
+**Status:** Owner decision; applies to initial scope.
+
+For the initial ClearFlow Dental Clinic release, direct API/account/system integrations with external diagnostic centres and laboratories are out of scope. Support only the clinic's own referral documentation and manual receipt/upload of returned reports or images, with source metadata and patient/encounter links. Do not build automated result exchange or require external provider onboarding now. Keep the model extensible so integrations can be added later without redesigning core patient/document relationships.
