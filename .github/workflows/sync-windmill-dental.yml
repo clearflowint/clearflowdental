@@ -37,6 +37,11 @@ jobs:
           test -n "$WMILL_TOKEN" || { echo "Missing GitHub Actions secret WMILL_TOKEN"; exit 1; }
           test -n "$WMILL_WORKSPACE" || { echo "Missing GitHub Actions variable WMILL_WORKSPACE"; exit 1; }
 
+          # Register the remote workspace in this temporary runner's local Windmill CLI config.
+          # This does not create a remote workspace unless --create is explicitly supplied (it is not).
+          wmill workspace add "$WMILL_WORKSPACE" "$WMILL_WORKSPACE" "$WMILL_URL" --token "$WMILL_TOKEN"
+
+          # Generate folder metadata and preview only dental assets.
           wmill folder add-missing -y
           wmill generate-metadata f/dental --strict-folder-boundaries --yes
 
