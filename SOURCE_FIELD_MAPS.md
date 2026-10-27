@@ -1,6 +1,6 @@
 # ClearFlow Dental Clinic — Source-to-Concept Field Maps
-**Version:** 0.1 · **Updated:** 2026-10-27  
-**Linked documents:** FIELD_LEVEL_INVENTORY.md · TRACEABILITY_MATRIX.md · SOURCE_COVERAGE_REGISTER.md
+**Version:** 0.2 · **Updated:** 2026-10-27  
+**Linked documents:** FIELD_LEVEL_INVENTORY.md · TRACEABILITY_MATRIX.md · SOURCE_COVERAGE_REGISTER.md · IMPLEMENTATION_GAP_REVIEW.md · RESEARCH_COMPLETION_STATUS.md
 
 ## Purpose and scope limit
 This file extracts named fields and field groups explicitly recorded in B17–B38 addenda and maps them to candidate ClearFlow concepts. It is deliberately **source-qualified**: an upstream column name, enum, sentinel, unit or behavior is not automatically a universal requirement or a final ClearFlow column. A table family below is only as complete as the cited addendum/API/EHI dictionary reviewed. The original source addenda remain the evidence location for URLs and detailed notes.
