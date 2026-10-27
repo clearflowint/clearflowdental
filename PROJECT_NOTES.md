@@ -1620,3 +1620,9 @@ ClearFlow should separate appointment state from timestamped queue/room flow eve
 
 ### Batch 19 derived model additions
 Prescription lines/eRx reconciliation; clinical order/order lines/typed resource links/results/review/correction; immutable document object versions and hashes; versioned templates/rendered artifacts/signature authority/amendment; patient-flow events; field-level approval diffs. EHI table documentation confirms field inventory, not all runtime constraints—migrations, service code and tests remain needed. Research continues.
+
+## 23. Batch 25 addendum — clinical reference mappings and patient safety warnings
+
+See PROJECT_NOTES_ADDENDUM_B25.md for full source-derived findings from DentalPin patient clinical history and the medical-reference module. Highlights: allergy, medication, systemic disease and surgical history are repeatable soft-archived records; nullable blank form fields need explicit normalization; local plain-name reference lists are not authoritative terminology; interaction/contraindication warnings only use active patient entries with reference IDs; unstructured unmapped medications are excluded rather than guessed. ClearFlow must preserve such free-text facts and warn that automated matching coverage is incomplete, version and source every clinical rule, keep clinician review for safety-critical mapping, prevent cross-tenant reference links, and test reverse-order duplicate interactions under concurrency.
+
+Repository research index now includes PROJECT_NOTES_ADDENDUM_B17_B22.md, PROJECT_NOTES_ADDENDUM_B23_B24.md and PROJECT_NOTES_ADDENDUM_B25.md. These supplement this main notebook with the intervening source-level evidence; the full long-form working dossier remains in the workspace.
