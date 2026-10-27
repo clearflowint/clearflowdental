@@ -1,6 +1,6 @@
 # ClearFlow Dental Clinic — Research Completion Status
 **As of:** 2026-10-27  
-**Coverage:** Batches 17–38, with earlier research links retained by RESEARCH_INDEX.md  
+**Coverage:** Batches 17–38 plus Batch 37A, with earlier research links retained by RESEARCH_INDEX.md  
 **Purpose:** Honest finish-line ledger. This document distinguishes documentation/research tasks completed in this pass from work that cannot be considered complete without direct field extraction, legal/clinical owners, or runtime access/tests.
 
 ## 1. Completion summary
@@ -9,6 +9,7 @@
 - Preserved and indexed source-specific batches B17–B38 without replacing the earlier source research.
 - Expanded Batch 36 longitudinal dental evidence: odontogram and tooth numbering, periodontal exam measurements and calculated values, procedure target constraints, signed plan snapshots, recall vs appointment state, image payload/provenance, orthodontic visits, and lab workflow.
 - Added Batch 37 primary-source leads for NDC prescription particulars (M-2749, 23 October 2026), dental-mechanic qualification/registration (M-2662, 13 October 2026), Telangana Clinical Establishments Rules, DPDP staged commencement, CDSCO Drugs Rules, and ABDM FHIR profile version pinning.
+- Added Batch 37A workforce evidence for append-only attendance punches, clinic/professional schedule templates/overrides, availability vs free slots, and sensitive payroll profile/period lifecycle. Its Spanish/EU-oriented defaults are explicitly not India payroll rules.
 - Added Batch 38 source leads for AERB dental X-ray equipment registration/safety, biomedical waste, national dental-clinic standards template and CBIC GST invoice/bill-of-supply rules.
 - Created the field-level domain inventory, source-to-concept maps, source coverage register, traceability matrix v0.3, and read-only implementation gap review.
 - Inspected the preserved Vue/Appwrite application code and live Appwrite schema/settings metadata without reading patient rows or changing the database. Recorded the observed code/metadata gaps and sandbox test plan.
@@ -27,6 +28,7 @@
 | [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) | Source classes, per-batch evidence and gaps | Extended through B38 |
 | [IMPLEMENTATION_GAP_REVIEW.md](./IMPLEMENTATION_GAP_REVIEW.md) | Preserved Appwrite/Vue prototype facts, risks and safe tests | Read-only source/schema review; no live tenant attack test run |
 | [B35 — India legal gate](./PROJECT_NOTES_ADDENDUM_B35.md) | Initial India-specific retention/privacy/telemedicine/AI sources | Updated; counsel review remains pending |
+| [B37A — Workforce attendance and payroll](./PROJECT_NOTES_ADDENDUM_B37A.md) | Covers punch/shift/schedule/payroll distinctions; India employment/payroll policy pending.
 | [B36 — Dental longitudinal clinical data](./PROJECT_NOTES_ADDENDUM_B36.md) | Odontogram, periodontics, recall, imaging, orthodontics, lab cases | Expanded; clinical validation and direct lab API extraction pending |
 | [B37 — Dentist prescriptions, mechanics, DPDP, ABDM and drug source](./PROJECT_NOTES_ADDENDUM_B37.md) | Official-source operational/legal additions | Saved; applicability and rule mapping require professional review |
 | [B38 — X-ray, waste, facility standards and GST](./PROJECT_NOTES_ADDENDUM_B38.md) | Official-source operational research | Saved; current state/category/tax applicability requires review |
