@@ -519,3 +519,28 @@ Use established healthcare information-management patterns, including HL7 FHIR A
 The DPDP Act, 2023 and DPDP Rules, 2025 are relevant references, but commencement is phased. Maintain an effective-date/applicability register and obtain qualified Indian legal review for the actual launch date and clinic context; do not claim that every substantive provision is already in force.
 
 This is a recommended enterprise baseline, not legal advice, a final retention schedule, or a reason to add excessive approval buttons.
+
+
+## 22. Do not reopen standard enterprise integrity and security requirements
+**Discussion date:** 2026-10-28  
+**Status:** Owner direction; mandatory baseline for all future design and implementation.
+
+The owner clarified that tenant isolation, cross-tenant leak prevention, duplicate-safe operations, authorization on every mutation, concurrency/integrity controls and reliable background processing are standard enterprise requirements already discussed. They must not repeatedly be presented as new topics requiring owner decisions.
+
+Apply these as non-negotiable cross-cutting requirements across every module:
+- tenant-scoped reads and writes; validate tenant and parent relationships server-side on every operation;
+- least privilege and authorization revalidation, including revocation;
+- backend/database integrity constraints, transactional operations where supported, concurrency control and optimistic/version checks where appropriate;
+- idempotency and duplicate-safe submission/retry behavior;
+- durable, observable, retry-safe background jobs with explicit failure handling;
+- source/audit provenance and safe handling of stale derived data/indexes;
+- automated negative tests for cross-tenant access, forged relationships, concurrent mutations, duplicate requests, revocation and failure/retry cases;
+- verify the actual deployed service/SDK behavior and capture test evidence; do not treat a design statement or UI filter as proof of security.
+
+Discussion method:
+1. Treat these as architecture and engineering acceptance criteria by default.
+2. Track gaps as implementation, verification or remediation tasks, not open product questions.
+3. Ask the owner only if a real product/business/clinical/legal choice is needed or research identifies a material trade-off not settled by established practice.
+4. Do not claim a requirement is implemented or passed until code/configuration and test evidence confirm it.
+
+This entry records a working method and mandatory requirements; it does not claim that current implementation has passed these tests.
