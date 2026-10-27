@@ -368,3 +368,24 @@ Working interpretation:
 - Keep this as a data-model and UX principle to validate against the research and applicable clinical/legal obligations before finalizing schema and approval semantics.
 
 This direction supersedes any assumption that each imported-history section should automatically have its own approval button. It does not authorize automatic AI approval, erase source provenance, or remove mandatory legal/clinical signature requirements.
+
+
+## 14. Keep clinical JSON classification to 3–4 broad sections
+**Discussion date:** 2026-10-28  
+**Status:** Owner direction accepted as a simplicity requirement; final field contract still to be validated.
+
+The owner explicitly requests only 3–4 broad sections in the draft/approved clinical JSON, using core classification rather than splitting every line of a prescription or handwritten clinical document into individual structured fields.
+
+Recommended starting sections:
+1. **Current Visit** — concise encounter notes, findings and treatment context.
+2. **Medical & Dental History** — relevant past history, allergies and medication context.
+3. **External Records** — prior prescriptions, reports and documents from other providers, with basic source/date information and links to preserved originals.
+4. **Review & Status** — record-level draft/approved state, responsible clinician, timestamps and version information, where suitable for the JSON contract.
+
+Rules:
+- Keep original documents intact and linked; do not require line-by-line prescription extraction.
+- Any explicitly requested extraction should remain concise, source-linked, and draft until appropriately reviewed.
+- Use basic classification and provenance only where useful; unknown information stays unknown.
+- Do not add a new section or field taxonomy unless a demonstrated clinical, security, interoperability or regulatory need justifies it.
+- Review/approval should be consolidated at the appropriate record level where allowed; preserve necessary distinctions for separately regulated artifacts such as issued prescriptions and signed amendments.
+- This is a design direction, not a finalized JSON schema or legal/clinical approval.
