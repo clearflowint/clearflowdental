@@ -1921,3 +1921,29 @@ The 25.3.26 statement API describes a statement record displayed in the Account 
 6. Statement record never posts financial movement; account snapshots are computed evidence, not ledger truth.
 
 Source note: these Open Dental behaviors are found in published API documentation preserved in a third-party mirror. Treat as vendor-pattern evidence, not universal law or permission to copy source code.
+
+---
+
+## 24. Supplemental Open Dental official API schema evidence (27 October 2026)
+
+Detailed field and lifecycle evidence has been preserved in `PROJECT_NOTES_ADDENDUM_B27.md`.
+
+### 24.1 Payer enrollment, benefit rules and eligibility history
+Open Dental distinguishes insurance plan contract, subscriber enrollment (`InsSub`), person-specific coverage (`PatPlan`), benefit rule, and insurance verification. `InsSub` includes subscriber ID, effective/termination dates, benefits notes, release-of-information and assignment-of-benefits authorization; `PatPlan` has patient, subscription link, primary/secondary ordinal, covered-person relationship, pending state and patient ID override. Benefits include percent/amount/time period/quantity qualifier/coverage level/treatment area/tooth range and code/category scoping. `InsVerify` differentiates patient enrollment vs plan-benefit verification, with history retained separately. Do not reduce this to patient.insurance_provider.
+
+### 24.2 Claim processing and real receipts
+Claim header and claim line are separate. ClaimProc can model estimate, actual adjudication, adjustment, supplemental/capitation/history/other status; it carries procedure/claim/patient/provider, fee, estimates, actual insurance paid, deductible, allowed/percentage/copay overrides, writeoff, other-insurance paid, payer payment/batch link and finalization. ClaimPayment is the insurer check/remittance batch, with check amount/date/number/bank, carrier, clinic, deposit linkage, date issued, payment type/group and audit fields; EOB attachments belong to this batch. A final payment must reconcile to line-level payment amounts before closure.
+
+### 24.3 Patient ledger and communication distinctions
+Patient payments support FIFO application to outstanding charges, unearned/unallocated credit, procedure and payment-plan allocations and recurring-card/provider-processing metadata. Insurance claim payments are separate. Account adjustments are non-cash ledger events with required sign/type alignment. Statements store date-range, delivery mode, document link, balance/insurance estimates and sent/receipt/invoice flags; official docs explicitly state statement creation does not impact billing. Payment plan is a signed/dated financing arrangement, distinct from scheduled installment events and real receipts.
+
+### 24.4 Signed treatment plans and procedure snapshots
+Open Dental describes TreatmentPlan as tracking accepted, uncompleted, or denied treatment. Active/Inactive plans reference live procedures through attachment rows; Saved plans use copied procedure snapshots (`ProcTP`) that do not change when source procedure changes. Saved items include procedure/tooth/surface/code/description, item order/priority, fee, primary/secondary insurance estimates, patient amount, discounts, prognosis/diagnosis, provider, allowed fee, tax and clinic. Plan head stores status/type/notes, presenter/responsible party, document and both signature/time states. Therefore ClearFlow should retain current treatment/procedure state plus immutable accepted plan/price/signature evidence.
+
+### 24.5 Reusable schema rules
+- Keep schedule availability (practice/provider/blockout/employee), actual appointment, operatory assignment and actual arrival/seated/dismissed timestamps separate.
+- Preserve patient account guarantor/family scope separately from individual patient identity and individual estimated balance; aging/total balances are projections, not raw financial transactions.
+- Preserve claim/procedure/catalog code and fee schedule as different objects. Effective fees can vary by schedule, clinic and provider; store issue/performed snapshots.
+- Canonical perio values must distinguish measured zero, missing/unrecorded, skipped tooth and vendor encoded missing values. Open Dental’s PerioMeasure API uses `-1`, >100 negative encoding and a bitfield for bleeding/suppuration/plaque/calculus; those are transport conventions, not ClearFlow domain values.
+- Document metadata and file bytes are different; photos/X-rays, tooth annotations, mounts, lab PDFs and EOB attachments require preserved object/hash/provenance and separate lifecycle.
+- For source imports, preserve source status/type/IDs and map through an adapter; do not let Open Dental's numeric definition IDs or US-specific enumerations become global ClearFlow enums.
