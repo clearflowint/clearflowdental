@@ -21,10 +21,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install Windmill CLI
-        run: npm install --global windmill-cli@1.682.0
+        run: npm install --global windmill-cli@1.850.0
 
       - name: Validate configuration and preview dental sync
         env:
@@ -37,7 +37,7 @@ jobs:
           test -n "$WMILL_TOKEN" || { echo "Missing GitHub Actions secret WMILL_TOKEN"; exit 1; }
           test -n "$WMILL_WORKSPACE" || { echo "Missing GitHub Actions variable WMILL_WORKSPACE"; exit 1; }
 
-          wmill folder add-missing --yes
+          wmill folder add-missing -y
           wmill generate-metadata f/dental/sync_smoke_test.py --strict-folder-boundaries
 
           # Dry run only: preview changes without modifying Windmill.
