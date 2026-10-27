@@ -1515,3 +1515,25 @@ Source:
 10. Changing retention policy does not rewrite prior policy evidence; concurrent policy creations have one active row; different retention anchors are tested per category.
 11. Patient timeline/event journal duplicates are idempotent, append-only, tenant-scoped and do not include unredacted sensitive payload in LLM summaries.
 12. Privileged AI tools cannot rotate a public intake/webhook key, run irreversible erasure or change permissions without the policy-defined human approval path.
+
+---
+
+## 22. Supplemental source-research appendices (27 October 2026)
+
+The full continuing reference inventory and detailed source observations are also kept in repository addenda so none of the material is dropped between deep-dive sessions:
+- PROJECT_NOTES_ADDENDUM_B17_B22.md — AI command execution approval gap; tenant-composite FK concerns; row-idempotent import; OpenEMR prescription/order/report and clinical document lifecycles; DentalPin approval/tool registry/transaction patterns; authoritative payment versus gateway attempt/refund; invoice issue snapshots and credit note constraints; stock movement ledger; specialty periodontal/orthodontic/recall/media/imaging AI; legacy migration provenance.
+- PROJECT_NOTES_ADDENDUM_B23_B24.md — OpenEMR insurance and subscriber/effective dates, eligibility checks and benefit response lines, provider identifiers, claim/billing line and X12 processing fields, AR/EOB posting sessions, payment-processing/reversal audit; DentalPin on-demand reorder policy and supplier-specific prices; notification preferences/outbox/retry/delivery evidence and strict do-not-contact/per-purpose opt-outs; media taxonomy/owner registry, patient clinical context and appointment lock/timezone findings.
+
+### 22.1 Reconfirmed payer accounting model
+Keep plan/policy/subscriber, eligibility request/response, preauthorization, claim header/version, normalized claim lines, payer response/remittance batch, line-level payment/adjustment postings, actual receipt/allocation/refund, and bank/deposit reconciliation distinct. OpenEMR's AR activity exposes fee vs pay_amount vs adj_amount, payer type, posting batch, reason code and payer claim reference; AR session separately stores check/EOB reference, check date, deposit date and post-to date. A benefit verification is point-in-time evidence, not permanent coverage.
+
+### 22.2 Reconfirmed communication safety model
+Patient do_not_contact and per-purpose/channel opt-outs remain hard blocks even when manual or forced send is requested. Force-send only bypasses clinic auto-send/enable settings in the inspected DentalPin path. Notification queue row, provider request/attempt, provider sent/delivered/read evidence and patient reply are separate states. Enqueue dedupe needs a database uniqueness backstop; dispatcher uses locked, skip-locked claim of due outbox rows, retry limits and explicit failure/skip reasons.
+
+### 22.3 Reconfirmed AI execution and data-ingestion model
+An LLM-generated requiresApproval field is not authorization. Server policy must require a persistent approval tied to exact proposed payload/version, tenant/user/permissions, target IDs and current record version. Invoice/payment/stock side effects must be transactional/idempotent. Import rows need source hash/mapping/edited-value signoff, stable source identity, row-level outcome, restart-safe retry, reconciliation and explicit opening-balance semantics. A source system's model/table count is not evidence of completeness or integrity.
+
+### 22.4 Specialty-care model coverage
+Periodontal charting is a dated snapshot with tooth/site rows and immutable closed state; orthodontic treatment is a longitudinal case with repeated controls and next-due derived from latest control; recall is an outstanding care obligation with append-only contact attempts; clinical photo/X-ray objects require taxonomy, original/derivative metadata, capture time, same-patient pairing and scoped storage; AI imaging output remains a draft until clinician review. These should be represented separately from generic notes, appointments or message delivery.
+
+Research is ongoing. Keep the existing addenda and long-form workspace dossiers together with this main project notebook. Do not remove or merge away source evidence merely to simplify the UX.
