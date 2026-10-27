@@ -41,6 +41,9 @@
 | B37A | DentalPin staff attendance, schedules and payroll (source modules/docs/tests) | Service/source inspection + test evidence | Append-only attendance punches; weekly schedule templates and date-range overrides; availability windows vs actual free slots; role-restricted payroll profiles, periods, entries and immutability | Source module not an India payroll authority; Spanish/EU-oriented defaults are not Indian payroll rules; missing-punch, correction, DST, leave and actual payment integration tests required |
 | B38 | AERB dental X-ray FAQ/eLORA guide; CPCB/DGHS biomedical-waste guideline; government-hosted dental-clinic minimum-standards template; CBIC tax invoice rules | Official regulator FAQ/portal, dated official guideline, standards template, official rule page | Equipment registration distinct from facility registration; X-ray device category/safety; facility waste authorization and pickup proof; clinic checklist evidence; GST tax invoice vs bill of supply and serial/document snapshot | Current AERB requirements by device, current Telangana TSPCB/BMW applicability, legal status of national standards template, taxability/exemption and GST configuration for actual clinic remain to be reviewed |
 
+## Coverage register maintenance note
+Batch 37A is intentionally alphabetic because it was added as a companion domain between earlier B37 legal/regulatory research and B38 operational compliance research. It is a separate source batch, not a duplicate of B37.
+
 ## Cross-source evidence-confidence guide
 
 | Confidence | Use it for | Do not use it for |
