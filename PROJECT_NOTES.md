@@ -39,7 +39,7 @@ Operating principles:
 ## 3. Reference systems inspected
 
 ### Open Dental
-Official, versioned dental-practice data dictionary; primary established dental reference for treatment plans, procedure codes, payments, claims, recall, charting, scheduling, imaging, labs and operations. Confirm the documented version before finalizing a field inventory. Commercial/proprietary reference; do not assume code reuse rights.
+Official, versioned dental-practice data dictionary; primary established dental reference for treatment plans, procedure codes, payments, claims, recall, charting, scheduling, imaging, labs and operations. Confirm the documented version before finalizing a field inventory. The checked-in source repository LICENSE is GNU GPL version 2; this corrects the earlier shorthand that described the source as proprietary. The terms of the official documentation/API materials are a separate question. Do not assume source-code or documentation reuse rights without reviewing the applicable terms.
 - Main data dictionary: https://www.opendental.com/OpenDentalDocumentation26-2.html
 - Treatment plans: https://www.opendental.com/site/apitreatplans.html
 - Payments: https://www.opendental.com/site/apipayments.html
@@ -857,3 +857,141 @@ Add to the earlier test catalogue:
 - Two appointment edits with the same expected version: one succeeds, the other returns a deterministic conflict; two overlapping new bookings for the same clinician/operatory must not both commit.
 - Directly insert an appointment in tenant A linked to patient/staff/invoice of tenant B through DB/import paths; the tenant-equality protection must reject it.
 - Audit database/outbox unavailable during a financial posting: the defined policy executes (rollback or durable pending audit) without silent evidence loss.
+
+
+---
+
+## 18. Batch follow-up: ERA source payload, claim-line semantics, retry safety and chart-to-claim atomicity (27 October 2026)
+
+### 18.1 OpenEMR raw X12 835 parser and posting details
+
+Source code examined: `src/Billing/ParseERA.php`, `src/Billing/SLEOB.php`, `src/Billing/InvoiceSummary.php` and the corresponding `interface/billing/sl_eob_process.php` flow.
+
+The parser retains a much richer remittance context than the final posted totals:
+- X12 interchange/group/transaction control identifiers: ISA sender/receiver/control number, GS date/time/control, ST transaction control and segment count.
+- Payment/check header: BPR check/settlement amount, payment/check date, TRN check number and payer tax identifier; currency can also be present.
+- Payer/payee identity and address details, subscriber identity/member ID, patient names, provider identity/member ID, payer claim ID, our claim identifier, claim date, date of service, payer insurance and corrected/crossover flags.
+- Claim status, claim charge/approved payment/patient responsibility totals, remarks/comments and one or more service lines.
+- Service lines include procedure/code/modifier, charge, paid amount, adjustment list; each adjustment carries group code, reason code and amount.
+- Claim-level status/adjustments can exist without a service-line payment. The UI stores denial reason codes on a new claim version and avoids recording the same denial again for the same latest claim version/payer/payer level/reasons.
+- The payer's CLP07 claim-control number is persisted on each AR activity row that is posted, including cases where the payer paid nothing, so later reversals can locate the affected payer/claim level.
+
+Important parser caution: the code contains an optional `force_claim_balancing` mode which can add an artificial “Claim” service row and a balancing adjustment when service payments/adjustments do not sum to claim-level totals. This is an adapter-layer reconciliation technique for imperfect payer data, not a business fact that should be fabricated silently. ClearFlow should retain the original interchange/response, source-reported figures, normalized service lines, reconciliation difference, adjustment policy/version, actor/system, warning and review state. If a deterministic importer applies a balancing rule, the generated adjustment must be identifiable as system-derived, link back to the raw source, and not masquerade as a payer-reported service line.
+
+The `InvoiceSummary` code derives totals from active billing service charges, product/drug sales and non-deleted AR activity; payment and adjustment amounts reduce the computed balance. This supports the design principle that a summary balance should be derived from underlying charges and payment/adjustment rows rather than be the sole monetary record.
+
+Sources:
+- https://github.com/openemr/openemr/blob/master/src/Billing/ParseERA.php
+- https://github.com/openemr/openemr/blob/master/src/Billing/SLEOB.php
+- https://github.com/openemr/openemr/blob/master/src/Billing/InvoiceSummary.php
+- https://github.com/openemr/openemr/blob/master/interface/billing/sl_eob_process.php
+
+### 18.2 LibreDental claim/payment schema and service workflow
+
+Claim line fields in `internal/domain/billing.go`:
+- stable line ID; optional pricing-source details;
+- optional tooth-condition link, tooth number and surfaces;
+- ADA/CDT code, description and fee;
+- insurance-allowed amount and patient-portion amount.
+
+Claim header fields include claim ID, patient/provider/optional appointment, carrier, policy/group/payer IDs, service date, status, notes, nested line items and create/update timestamps. The payment object has ID, patient, optional claim, amount in integer minor units, method, date, notes and created time. Its patient balance service computes total billed from claim-line fees minus total paid; it does not appear to implement a full adjustment/refund/unapplied-credit/claim-remittance subledger. The claim line representation is stored as JSON in SQLite, which is simple but weak for relational query constraints, per-line adjudication history, partial correction and claims reconciliation.
+
+The payment method vocabulary includes `write_off` alongside actual payment methods. In ClearFlow, write-offs, contractual adjustments and denial adjustments should be accounting adjustments/reconciliation records—not fake cash receipts or payment methods—so that cash collection totals remain correct.
+
+A deterministic patient control number (PCN) is calculated from the claim ID using SHA-256 then Base32 encoding to produce a short uppercase alphanumeric identifier suitable for payer X12 control-number constraints. This is a useful example of separating a stable internal ID from an external-format identifier. ClearFlow should persist the external PCN/crosswalk and its generation/version when actual submitted documents need to reproduce the value, even if the derivation remains deterministic.
+
+LibreDental's submission path:
+- allows only draft or rejected claim submission;
+- builds claim submission from stored claim, patient, practice and rendering-provider data;
+- checks the provider supports the practice country;
+- uses the provider config through a secrets abstraction and a 30-second request timeout;
+- audits failed and successful transmission attempts because a failed network response may still mean protected data was sent;
+- updates claim status after the external provider returns success.
+
+There is an important partial-failure window: external submission can succeed, then re-fetching or persisting the local new status can fail. The service reports that state, but no separate durable submission-attempt ledger is obvious in the reviewed `Claim` structure. ClearFlow should create a persistent claim-submission attempt *before* network I/O, record request/correlation/idempotency/external IDs and payload hash, then transition it on response or reconcile an unknown outcome. An external API timeout must not be treated as proof of non-submission; retries need provider idempotency or status lookup.
+
+Claim-from-chart workflow:
+- checks the patient's current chart and existing claims to avoid billing a tooth condition already represented on a claim;
+- skips nonexistent, already billed or ineligible-state conditions; deduplicates repeated condition IDs in the same request;
+- creates claim lines with tooth/surface, procedure code, description, fee and optional pricing-source snapshot;
+- persists the claim before marking planned tooth conditions completed;
+- if a later condition update fails, it manually rolls back already changed conditions and deletes the claim.
+
+This is more thoughtful than an unguarded write, but a process crash between claim creation, condition updates and compensating rollback can still leave a partial state; a process-local mutex also doesn't coordinate another process/client. ClearFlow should use one database transaction for the claim+condition state changes, with row locks or optimistic version conditions and idempotency key. Where true cross-system operations cannot share a transaction, use an outbox/saga with resumable compensations and a reconciliation queue. A local mutex is a performance aid, not data integrity.
+
+Additional risks observed in this reference:
+- Some claim audit logging is written after the claim creation; if the service returns an error because audit failed after the write committed, the caller may retry and generate another claim if it used a generated ID. Use transactional audit/outbox, stable request ID and idempotency.
+- The claim/payment structures lack complete line-level claim submission history, remittance adjudication, refund reason/reference/state and reversal history, based on the model/service files reviewed. This is a limitation of the inspected implementation, not a claim that no other module can ever supply those records.
+- Chart states are mutated to completed when a claim is generated in this workflow. ClearFlow should distinguish “billed”, “planned”, and “clinically performed”; a claim or invoice may be generated before treatment is complete, and billing a service is not evidence that it was actually performed. Define each transition and link it to the correct clinical event.
+- Date generation uses runtime `time.Now()` for the service date; multi-timezone SaaS requires the clinic business timezone or explicit service-date input.
+
+Sources:
+- https://github.com/Cojekt/LibreDental/blob/main/internal/domain/billing.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/services/billing_service.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/schema/billing.sql
+
+### 18.3 ClearFlow payer-reconciliation model — candidate entity relationships
+
+Based on the OpenEMR remittance workflow and LibreDental claim model, compare the following separate records in the canonical design:
+
+`Claim`
+→ `ClaimVersion` / `ClaimSubmission`
+→ `ClaimServiceLine`
+→ `ClaimSubmissionAttempt`
+→ `PayerResponse` / `ClaimStatusHistory`
+→ `Remittance`
+→ `RemittanceClaim`
+→ `RemittanceServiceLine`
+→ `RemittanceAdjustment` / `DenialCode`
+→ `PaymentReceipt` + `PaymentAllocation`
+→ `Reversal` / `Correction` / `Appeal`.
+
+This should not become one huge row/table with a status and JSON blob. Some raw payload JSON/XML is justified for interchange fidelity, but normalized, frequently queried items need relational rows. Use source code system and raw code, description/version, code group and effective policy; preserve any payer interpretation instead of translating only to one free-text note. Keep payer-paid amount distinct from receipt amount and bank-cleared amount.
+
+### 18.4 Reproducible remittance arithmetic and reconciliation conditions
+
+For each payer claim/service line, preserve enough information to recompute the reconciliation state:
+- original billed fee and units/modifiers;
+- payer's allowed amount;
+- payer-paid amount;
+- patient-responsibility amount and subtype;
+- adjustment code group/reason/amount;
+- contractual/other adjustment amount;
+- payer-claim status (including denied/zero-pay/reversed/corrected);
+- allocated actual receipt/session and reversals;
+- original source payload and parser/mapping version.
+
+The system should detect rather than hide:
+- claim-level charge/paid/responsibility that disagrees with service-line totals;
+- paid amount exceeds submitted/allowed amount without a recognized adjustment/correction;
+- duplicate check/control number or repeated claim line;
+- a reversal without a matching previous claim/payment/claim version;
+- mismatch between payer payment total and bank deposit/processor settlement;
+- line items that cannot be matched to a submitted claim because the payer rewrote the control number;
+- unknown or ambiguous provider/payer identity.
+
+Use deterministic balancing rules only when documented, versioned, and disclosed. Do not overwrite source-reported figures with computed values; preserve both original and reconciled outcomes with actor and time.
+
+### 18.5 Open Dental research boundary and next source acquisition attempt
+
+The Open Dental GitHub repository `OpenDental/opendental` contains a GPL-2.0 license and README, but the repository root does not include the complete database schema as a directly inspectable SQL file; its README says initial table creation comes from the trial installer and points to separate programming/data-dictionary resources. Therefore, the canonical field-level Open Dental pass must rely on versioned official table/API documentation or a legally obtained schema export, not an invented dump or guesses from UI names. This is an explicit source-coverage limitation.
+
+The next Open Dental batch should request or inspect the official versioned schema/reference for:
+- `Patient`, `PatPlan`/subscriber and plan benefit history;
+- `Appointment`, `Schedule`, `Operatory`, blockouts and recall;
+- `ProcedureLog`, `ProcTP`, `TreatPlan`, `TreatPlanAttach`;
+- `Claim`, `ClaimProc`, payment/payment split and adjustment records;
+- `Document`, images, signatures/consent, labs and supply history.
+Do not guess column names/types or mark these domains complete until backed by the actual current version document.
+
+### 18.6 New acceptance tests implied by this batch
+
+- Ingest the same ERA twice; ensure no duplicate session, payment activity, adjustment, or denial version.
+- Ingest a payer reversal, then corrected payment; reverse the order and verify equivalent final balances/state.
+- Verify a 835 header total that conflicts with service-line totals raises a reconciliation exception and stores the source; if a configured rule synthesizes a balancing line, mark it as system-derived and versioned.
+- Verify secondary-claim generation can read primary-payer adjustment codes from structured remittance rows rather than parsing only memo text.
+- Simulate external claim submission timeout after the remote server accepted the claim; mark outcome unknown and reconcile without submitting a duplicate.
+- Fail a local claim status update after remote submit success; claim attempt and external ID must remain durable and visible.
+- Fail chart condition mutation after claim creation and crash the service; transaction rollback must leave no orphan claim and no partial chart state.
+- Simulate audit persistence failure after a claim/payment create; no ambiguous “failed” response should be returned after a committed write unless the outcome includes a stable idempotency key and recoverable result.
+- Billed status, completed clinical treatment, invoice issuance, payer submission and payment receipt remain separate facts; test that none incorrectly implies another.
