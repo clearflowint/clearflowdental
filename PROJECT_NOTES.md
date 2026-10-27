@@ -2044,3 +2044,14 @@ The preserved application code remains on `backup/before-project-notes-reset-202
 The research pack now has these linked layers: source-specific evidence addenda B17–B37; consolidated project notebook; source coverage register; source-to-concept field maps; field-level domain inventory; traceability matrix v0.2; and read-only implementation gap review. Recent regulatory links were corrected to the MeitY-hosted DPDP Rules PDF and separately linked Gazette corrigendum. The latest current source directory checks confirm the CDSCO Drugs Rules page lists the 1 July 2024 consolidation, and the NRCeS FHIR guide identifies v6.5.0 as its current published version. See B37 for URL/version details.
 
 **Research-phase completion boundary:** the structured comparison, traceability scaffolding and observed-prototype gap documentation are now saved. The task is not complete at the level of an exhaustive physical-column inventory, legal sign-off, clinical validation, live cross-tenant attack tests, production schema, or deployment. Do not describe those unverified layers as finished.
+
+
+## 34. B38 and research completion status (2026-10-27)
+
+- `PROJECT_NOTES_ADDENDUM_B38.md` adds official-source research for AERB dental X-ray registration/safety and eLORA, CPCB/DGHS-hosted biomedical waste guidance and TSPCB current-process review, the government-hosted national dental-clinic minimum-standards template, and CBIC tax invoice/bill-of-supply particulars. Each is labelled with source status and category-specific review gates.
+- `SOURCE_FIELD_MAPS.md` and `FIELD_LEVEL_INVENTORY.md` now cover B38 candidate groups for radiation equipment, waste authorization and pickup, facility standards evidence, and tax documents.
+- `TRACEABILITY_MATRIX.md` now includes the B38 P0/P1 traceability rows and explicit closure gates.
+- `SOURCE_COVERAGE_REGISTER.md` tracks B17–B38 evidence classes and gaps.
+- `RESEARCH_COMPLETION_STATUS.md` defines exactly what has been completed in the documentation/research pass and what remains pending: exhaustive source DDL extraction, dental clinical validation, counsel/tax/radiation/waste applicability reviews, real two-tenant Appwrite runtime tests, implementation tests, and deployment validation.
+
+**Completion boundary:** The research pack is assembled and navigable through Batch 38; it is not an exhaustive copy of every physical field in every vendor system, final canonical schema, legal sign-off, clinical approval, runtime security proof, or production-readiness certification. The repository `main` remains documentation-only and the application remains on the preserved backup branch. No live data or permissions were changed.
