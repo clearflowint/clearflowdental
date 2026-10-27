@@ -207,3 +207,7 @@ For named vendor/source field families and exact source names that were document
 | Payroll payment/settlement | Source reference has no bank payment execution or complete statutory calculation (B37A) | payment instruction, banking/provider reference, initiated/confirmed/failed status, actual paid time, reconciliation and idempotency key | Do not infer salary payment from payroll entry or period state. Indian labour/statutory payroll rules require professional review |
 
 **Workforce scope decision:** Attendance, workforce scheduling and payroll are additional enterprise domains in the research inventory, not automatically MVP requirements. If deferred, keep the field groups and lifecycle distinctions traceable and mark a versioned product decision rather than silently dropping them.
+
+
+## 15. Cross-system comparison
+See [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) for a consolidated domain-by-domain comparison of DentalPin, Open Dental, OpenEMR EHI, ABDM/India official sources and the preserved ClearFlow prototype. Use this alongside the source maps rather than interpreting any source system as a universal target schema.
