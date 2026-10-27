@@ -1702,3 +1702,36 @@ Sources: apiappointments.html, apipatients.html, apiinssubs.html, apirecalls.htm
 
 ### Batch 21 consequences
 A clinical procedure's state and editability depend on completion and relations to claims/payments/appointments/orthodontic cases. Treatment plan acceptance needs historical snapshots. Claim envelope, line adjudication, remittance/payment and receipt allocation are distinct. Guarantor/family financial relationship differs from insurance subscriber. Appointment state differs from confirmation and real flow events. Recall workflow differs from message delivery.
+
+
+---
+
+## Batch 22 — Open Dental payments/splits, payment plans, procedure codes, insurance plan and document metadata (2026-10-27; third-party docs mirror)
+
+Sources in third-party mirror: https://github.com/rbarfinezhadfeli0/open_dental/tree/25d68236cda608bd699296dfaeed9caee2bb9372/docs/www.opendental.com/site (apipayments.html, apipaysplits.html, apipayplans.html, apiprocedurecodes.html, apiinsplans.html, apipatplans.html, apiinssubs.html, apidocuments.html, apireferrals.html). Verify current official vendor documentation before schema lock. Open Dental repository LICENSE states GPL v2; research concepts only, no code reuse assumed.
+
+### Payment and allocation
+- Payment header includes patient, amount, type/date, check number/bank branch, note, clinic, entry date, deposit, receipt, recurring-card marker, creator/edit timestamp, source, processor state, recurring-charge date and card completion state.
+- PaySplit is a separate allocation: amount, patient/payment/provider/plan, date, procedure, unearned type, clinic, adjustment, pay-plan charge and debit type. API can query splits by patient, payment or procedure. Payment may allocate to procedure(s) or be a prepayment/on-account balance.
+ClearFlow should model gross receipt separately from allocations/unearned balance/reallocation history; reconcile gross amount = allocations + unallocated amount. Provider attribution and unearned state can affect editability. Processor attempt state is not cash-ledger state.
+
+### Dynamic payment plan
+Fields include patient/guarantor, agreement date, APR, plan/insurance references, completed amount, schedule/frequency/payment count/installment amount/down payment/start/interest-start dates, closed/locked state, category and dynamic plan option. Older patient payment plans were deprecated/renamed separately from dynamic plans. Do not conflate patient financing with prepayment, insurer payment, estimate or gateway checkout. Preserve contract and terms snapshot; model installments, interest, delinquency and payment history separately.
+
+### Procedure code catalogue
+Fields include code/category/description/abbreviation, time pattern, treatment area (None/Surf/Tooth/Mouth/Quad/Sextant/Arch/ToothRange), insurance-billing flag, prosthesis/hygiene/tax/radiology/lab flags, alternate/medical code, paint visualization type, layperson term, base units, substitution rules, NDC/revenue/provider defaults and Canadian code/time fields.
+ClearFlow must separate stable clinical concept from jurisdiction/versioned code mapping; preserve the billed/performed code and description snapshot. Catalogue affects clinical visualization, valid tooth scope, appointment duration, claim coding and billing—not just a label/price. Vendor-specific fields should be optional adapters/extensions.
+
+### Insurance plan / subscriber / patient coverage relation
+- InsPlan: group name/number, notes, fee schedule, plan type, claim form, UCR, copay fee schedule, employer/carrier, medical flag, filing code/subtype, code substitution, hidden state, renewal month, COB rule, billing type, exclusion fee rule, manual fee schedule and benefit/max-related settings.
+- InsSub links plan to subscriber with effective/termination dates, subscriber ID, benefit notes, release-information/assignment-of-benefits permission and notes.
+- PatPlan links covered patient to subscriber plan with primary/secondary ordinal, pending state, relationship and audit times. The documented model treats membership row as coverage; effective dates must be preserved.
+ClearFlow normalizes payer/plan/subscriber/member/coverage. Plan-level fee and COB configuration are different from person coverage, and both change over time. Snapshots on eligibility/preauth/claim reflect what applied at that date.
+
+### Documents and referrals
+- Document API metadata includes description/date/category/patient/filename/image type/tooth references/provider/print heading. Ingestion may be patient-folder scan, URL, API upload or SFTP; metadata GET can be distinct from binary download. Mounts/image groupings can differ from document rows.
+- ClearFlow separates logical document, storage object/version/hash, image study/mount, tooth association, access log and attachment provenance; incomplete binary uploads must be staged/retried, not shown as a working image.
+- Referral contact may be person/business, specialty, address/contact, tax/business ID type, preferred/hidden and physician flags. Referral source/contact is not the referral transaction; actual referral needs patient/purpose/state/dates/attachments/response.
+  
+### Batch 22 requirements
+Distinct gross receipts, allocations, on-account/unearned credits and reallocation; financing agreements and installment history; catalogue concepts with code-system/version/treatment area; payer plan vs subscriber vs covered-person relation; documents vs binary/mount/attachment; referral directory vs referral order/response. Third-party documentation mirror warning remains.
