@@ -579,3 +579,183 @@ The note types distinguish administrative, diagnosis, treatment, treatment-plan,
 5. Quotes and treatment plans should be versioned; accepted commercial terms and signature evidence must survive later catalog changes.
 6. Clinic-configurable defaults need explicit policy provenance and snapshots where a past decision must be reproduced.
 7. Polymorphic ownership weakens FK integrity; choose it only with tenant-scoped service validation, tests and a documented trade-off.
+
+
+---
+
+## 16. Batch follow-up: OpenEMR payment processing, insurance, document signatures, orders/specimens and operational evidence (27 October 2026)
+
+This batch records additional exact table semantics from OpenEMR's published EHI table documentation plus implementation-level findings from DentalERP and LibreDental. It adds candidates to the canonical entity map; it does not automatically adopt legacy source-system shapes as ClearFlow rules.
+
+### 16.1 OpenEMR payment, processor and accounts-receivable detail
+
+Additional tables/fields inspected:
+
+- `payments` is a patient/encounter-associated payment record with timestamp, user, method/source, two amount fields and two posted fields. Its older generic shape should be treated as a source-system representation, not directly as the ClearFlow payment ledger.
+- `payment_processing_audit` is a gateway-operation/audit record: UUID, service, patient, success, action name, amount, ticket, transaction ID, audit payload, timestamp, mapping UUID/transaction, reversal flag, reversal action/transaction/payload/time. This illustrates why gateway transaction attempts and their reversals need a durable separate record, not just fields on a final receipt.
+- `payment_gateway_details` stores provider service/login/transaction-key/MD5-like configuration fields. This legacy layout is not a recommended secrets design. ClearFlow should store encrypted credentials or a secret-manager reference, rotate credentials independently, separate sandbox/production, redact credentials from logs and have the application reference the configuration by ID.
+- `fee_schedule` has insurance company, plan, code, modifier, type, fee and effective date. Candidate canonical model needs scope, country/code system, effective interval, currency, version, provider/network/plan context and conflict-resolution precedence; never assume an insurer's fee is a universal procedure fee.
+- `insurance_numbers` links a provider and payer to provider number, rendering-provider number, group number and identifier types. This is distinct from the provider's personal professional license/NPI and from the payer's own clearinghouse identifiers.
+- `insurance_companies` holds payer name, attention contact, CMS IDs, insurer type code, X12 receiver and partner IDs, alternate IDs, eligibility settings and active/inactive state. These are payer integration identifiers, not just payer display name.
+- `eligibility_verification` is a narrow trace with response ID, insurance record, check datetime, copay, deductible, deductible-met and creation date. That is insufficient as a full modern transaction record, so ClearFlow should preserve request/response/correlation data and an explicit staleness/failure state around the normalized benefits.
+- `claims` supports a version number, payer and payer type, billing status, billing/process timestamps and files, target and submitted claim-form payload. It is a claim header/tracking record, not the service-line adjudication ledger.
+- `billing` represents charge/claim-coded service lines with patient, provider, user, group, authorized/billed/active, payer, claim process status, modifiers, units, fee, justification, processing fields, revenue code, NDC and external ID.
+- `ar_session` is an overall receipt/posting session. It carries payer/user, open/closed status, check/EOB reference, check/deposit dates, payment total, global amount, payment type/method/description and posting date.
+- `ar_activity` carries finer charge-level posting information: encounter/patient, sequence, code system/code/modifier, fee, payer, post date/time/user, session, pay amount, adjustment amount, memo/follow-up status/reason, account code, void/deleted timestamp and payer claim number.
+
+**Canonical implication:** separate charge, claim/version, claim service line, payer adjudication/remittance line, receipt/session, receipt allocation/posting, adjustment/write-off, bank/deposit settlement and reversal. The difference between the fee/amount requested and payer amount actually received must be explainable through allowed amount, deductible/coinsurance, contractual adjustment, denial, patient responsibility, write-off and collection. Preserve the payer's claim/remittance identifiers and original response payload where appropriate. A payment session or a payment processing attempt must not automatically imply that a service-line receivable was settled.
+
+Source links:
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/payments.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/payment_processing_audit.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/payment_gateway_details.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/fee_schedule.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/insurance_numbers.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/insurance_companies.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/eligibility_verification.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/claims.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/billing.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/ar_session.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/ar_activity.html
+
+### 16.2 OpenEMR order → specimen → result is a richer workflow than one “lab order”
+
+Additional entities inspected:
+
+- `procedure_specimen`: FHIR-style UUID, order/code sequence, specimen barcode/internal ID, accession ID, specimen type code/display, collection method code/display, anatomical/location code/display, collected instant or low/high collection interval, volume value/unit, condition code/display, comments, created/updated actors/times and deleted flag.
+- `procedure_order_relationships`: ServiceRequest/order ID plus resource type/UUID (e.g. Observation or Condition), relationship kind, created time/actor. This supports linking an order to the clinical context that justified it.
+- `procedure_order_code`: one ordered procedure/code row per order sequence; original-line versus post-send-added line; code/name/type, diagnoses, do-not-send flag, title, transport, end date and reason/status/date window.
+- `procedure_questions`: lab-specific question catalog by laboratory + procedure, question code/sequence/text, required flag, max length, field type, choices/options, tips and active state.
+- `procedure_answers`: response sequence for each order/procedure/question and answer; supports multiple-choice answer rows instead of packing every answer into a single note.
+- `procedure_report`: report envelope tied to order/code sequence, source, specimen number, collection/report dates with timezone offsets, report status, review status and lab notes.
+- `procedure_result`: result data type (numeric/string/formatted/external/long text), result code/text, date/end date, facility, unit, result value, reference range, abnormal indicator, comments, source document and result status (preliminary/cannot be done/final/corrected/incomplete etc.).
+- `procedure_providers`: lab/organization name, NPI, interface sender/receiver application/facility identifiers, debug/production mode, bidirectional/results-only mode, lab ID, protocol, remote host, credentials/path config, director, active flag and type. ClearFlow should not store remote login secrets as ordinary readable fields; use secret manager reference, endpoint metadata and deployment-environment separation.
+- `external_procedures` and `external_encounters` are additional source concepts for importing/retaining outside procedures and encounters with their original IDs, dates, provider/facility and diagnosis context.
+
+**Canonical implication:** define a generalized clinical service order with typed order lines; external organization endpoint; order transmission/acknowledgement attempts; order-specific questions and answers; specimens; reports; individual results/observations; corrected/superseding result history; review/acknowledgement; supporting clinical resource links; document attachments; external IDs/correlation keys. Laboratory manufacturing cases (crowns/aligners) remain a different domain from lab/test specimens and diagnostic results, even if both have a provider and status.
+
+Source links:
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_specimen.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_order_relationships.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_order_code.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_questions.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_answers.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_report.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_result.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_providers.html
+
+### 16.3 OpenEMR document provenance, retention, signatures and consent-like evidence
+
+Additional source fields:
+- `documents`: UUID; storage type (file URL/blob/web URL); byte size; creation date/expiry; original URL and thumbnail; MIME type/pages; owner; revision timestamp; foreign ID; logical document date; content hash; category/list ID; display name; storage method; import parsing state; encounter ID/check flag; patient-upload/approval audit link; documentation-of target; encryption indicator; metadata/document data (including DICOM action history in one use); deleted flag; foreign-reference ID/table.
+- `clinical_notes_documents`: clinical-note ↔ patient-document link with creation time/actor.
+- `clinical_notes_procedure_results`: clinical-note ↔ lab/result link with creation time/actor.
+- `document_templates`: patient/provider/encounter assignment, profile/category/location, name/status, sent/end dates, size, template content and MIME type.
+- `documents_legal_categories`: category/subcategory hierarchy.
+- `documents_legal_master`: master template, category/subcategory, file, facility/provider scope, signature box coordinates, filename, effective date/version, content and configuration flags for saved signature/review/upload source.
+- `documents_legal_detail`: patient/facility/provider/encounter, master template, signature state/time, file path/name, signing person/sequence, saved content/PDF form data, denial reason, move state and patient comments.
+- `onsite_documents`: patient/provider/facility/encounter, document type, patient signature status/time, staff authorization signature time, accept/deny/review state and reason, signer, signature payload, full document binary, path/name and template data.
+- `onsite_signatures`: patient portal signature status/type/author/time, patient/encounter, staff/patient actor, authorization/activity, signatory, signature image/data, hash and IP.
+- `immunizations` with per-immunization `immunization_observation` are another example of a clinical event carrying administered time, drug/code/manufacturer/lot, provider, dose/unit, expiry, route/site, source, refusal/completion status, reason and encounter. Not a central dental requirement by default, but demonstrates how discrete clinical administrations deserve structured provenance.
+
+**Canonical implication:** distinguish document file bytes/object from a document’s clinical/legal purpose, its assignment, template version, filled content, signer evidence, status/review/denial, and the clinical object(s) it documents. For a signed/issued artifact retain the exact bytes and checksum, signer identity/authority, timestamps, source template/version and amendment/supersession chain. A content link alone is not proof of consent. Consent should be its own purpose-specific model, with legal basis, notice version, scope, signer/representative authority, evidence, decision, channel, valid period, withdrawal and history. Document categories do not automatically prove the purpose or valid state of consent.
+
+Source links:
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/documents.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/clinical_notes_documents.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/clinical_notes_procedure_results.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/document_templates.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/documents_legal_categories.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/documents_legal_master.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/documents_legal_detail.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/onsite_documents.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/onsite_signatures.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/immunizations.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/immunization_observation.html
+
+### 16.4 DentalERP implementation evidence: identity, booking, gateway verification and data import
+
+These findings are based on actual route/service source rather than README features.
+
+**Authentication and tenant context**
+- Global Next.js middleware allows API routes through so they can use bearer-token authentication. It is therefore essential that each API handler consistently invokes the authentication helper and does not trust a caller-supplied hospital ID.
+- `getAuthenticatedHospital()` reads a NextAuth session first, then accepts a mobile JWT bearer token signed with `NEXTAUTH_SECRET`, returning user, role and hospitalId claims. The combined helper rejects missing user/hospital and can enforce role allowlists.
+- This is a consistent context helper pattern, but the project needs to test token expiration, revocation, disabled-user/tenant changes after JWT issuance, role changes after token issuance and whether a stale mobile token retains old role/hospital privileges. JWT validation of signature/expiry alone does not prove current membership remains active.
+- The API route source generally scopes queries by authenticated `hospitalId`. Appointment create explicitly verifies the patient and doctor/staff belong to that hospital, which is a better cross-tenant pattern than relying only on global middleware. This does not by itself prove every route and every foreign key is correctly scoped.
+
+**Appointment create**
+- Requires patient, doctor, scheduled date/time; validates HH:MM time and duration 5–480 minutes; refuses past date; verifies patient and doctor belong to hospital.
+- Conflict check queries same hospital, doctor, exact scheduled date, exact scheduledTime, and excludes CANCELLED/NO_SHOW/RESCHEDULED. It does not use appointment duration to detect interval overlap in the reviewed predicate. Thus 10:00–10:30 and 10:15–10:45 would not necessarily be blocked by that check. Confirm whether any other route/database constraint covers it; do not assume.
+- Appointment number uses a read-last-number + increment approach, while schema does have unique (hospitalId, appointmentNo). The unique index is a backstop but concurrent creators can still race and one can error unless sequence allocation/conflict retry is handled.
+- Time code combines date and time using the server runtime's timezone; ClearFlow should use clinic IANA timezone, explicit local-wall-clock parse and DST rules. Keep date and time fields as input concepts if needed, but compute consistent UTC instants and never let server/device timezone silently decide the booking.
+- For virtual visits, appointment is persisted before video room creation; a video-creation failure is logged and appointment still returns created. This is a useful pattern only if a retryable task/status is also durable; otherwise the appointment may be missing the video link indefinitely. ClearFlow can make follow-on integrations eventual with an outbox/job and visible retry state.
+
+**Gateway payment verification**
+- The route loads an invoice within the authenticated hospital, verifies with gateway, then creates a COMPLETED payment and updates invoice paid/balance/status in a transaction.
+- `Payment` schema indexes gatewayOrderId but the reviewed Prisma schema's gatewayOrderId and gatewayPaymentId are not declared unique. The route has no prior payment lookup by unique provider payment ID/order ID before creating a new receipt; repeat invocation after the same successful gateway verification is a candidate duplicate-posting risk. The database should impose provider-scoped uniqueness/idempotency and the route should safely return the existing result on retry.
+- Invoice paid/balance is updated by read-modify-write arithmetic. Concurrent successful callbacks can read the same old paid amount and race/lost-update unless row-locking/version checks/atomic update and unique callback idempotency are applied. A transaction around two writes does not by itself serialize all concurrent invocations.
+- Payment number is also generated by scanning the latest value and incrementing; uniqueness constraint avoids duplicate identities but needs collision retry or a sequence service.
+- The ClearFlow invariant is: payment provider event/attempt -> verify amount/currency/merchant/order against persisted checkout intent -> idempotent receipt -> allocation -> reconciliation; only the authoritative amount returned by provider can settle funds. Payment-attempt, receipt, allocation, refund and settlement remain separate. Do not update a summary balance as the only monetary evidence.
+
+**Data import**
+- The admin-only import flow loads a tenant-scoped job, stamps signoff and IMPORTING state, reparses the source file, maps/coerces fields, processes transformed rows by entity type, stores row errors/results and creates audit event.
+- The import flow's visible top-level code processes entities and updates success/failure counts, but operations appear to be row/service writes with an outer failure handler rather than one all-or-nothing transaction. Partial import can be a legitimate product decision, but it must be explicit: every row needs an idempotency key/source row, outcomes must be durable, retries should skip successes, accepted edits/mapping version must be stored, and rollback/compensation/reconciliation should exist.
+- Import job is not merely a file path and count. It needs original file/hash, uploader/tenant, exact mapping and template/schema version, validation preview, duplicate candidates, per-row errors, operator sign-off, commit results and retry status.
+
+Source links:
+- https://github.com/abinauv/dental-erp/blob/main/lib/api-helpers.ts
+- https://github.com/abinauv/dental-erp/blob/main/app/api/appointments/route.ts
+- https://github.com/abinauv/dental-erp/blob/main/app/api/payments/verify/route.ts
+- https://github.com/abinauv/dental-erp/blob/main/app/api/data-import/commit/route.ts
+- https://github.com/abinauv/dental-erp/blob/main/prisma/schema.prisma
+- https://github.com/abinauv/dental-erp/blob/main/tests/api/payment-verify-link.test.ts
+
+### 16.5 LibreDental: state validation and audit requirements
+
+LibreDental's `AppointmentService` validates that start/end are present and end is later than start, and validates the status vocabulary. It intentionally permits editing a legacy appointment whose status is unrecognized if the status itself is left unchanged; this is useful migration compatibility but should be isolated from new status assignment. Its state set includes scheduled, confirmed, arrived, in_chair, complete, cancelled and no_show. However, the reviewed `AppointmentService` itself does not check slot overlaps; that must be sought in the storage/repository/DB layer before drawing a final overall conclusion.
+
+LibreDental's audit design has a separate audit database/schema, session authentication and audit service. It logs reads and writes with actor, patient ID, resource/action, resource ID where available and timestamp. Audit-write failure for some appointment creates/updates is logged as a warning rather than rolling back the clinical write, which is an important trade-off to document: an application that cannot record audit may still proceed. For ClearFlow, define operation-by-operation whether audit failure aborts, queues/retries through an outbox, or triggers a high-priority alert; don't silently lose audit evidence.
+
+Its project guidelines explicitly emphasize not weakening audit, money as integer cents, and migration/backwards compatibility. This reinforces that schema migration is not only DDL: it needs semantic versioning, backfills, compatibility windows, row-level error handling, and tests against existing data.
+
+Source links:
+- https://github.com/Cojekt/LibreDental/blob/main/internal/services/appointment_service.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/services/appointment_service_test.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/services/audit_service.go
+- https://github.com/Cojekt/LibreDental/blob/main/AGENTS.md
+
+### 16.6 Open Dental source-license correction
+
+The checked-in source repository `OpenDental/opendental` includes GNU GPL version 2 in its LICENSE file. This corrects the earlier shorthand in this notebook that called the source proprietary. The repository README says the database tables are initially installed by the trial installer and points to official programming resources for database documentation. Treat separately:
+- official documentation/table concepts used as domain research;
+- source-code reuse and derivative-work distribution obligations under the applicable GPL license;
+- the specific terms of the official documentation/API materials.
+
+Do not reuse source code just because it is visible on GitHub, and do not describe the source repo as proprietary when the checked-in LICENSE is GPL-2.0. Legal review is needed before any code reuse or copying protected documentation content.
+
+Source:
+- https://github.com/OpenDental/opendental/blob/main/LICENSE
+- https://github.com/OpenDental/opendental/blob/main/README.md
+- https://www.opendental.com/OpenDentalDocumentation26-2.html
+
+### 16.7 ClearFlow acceptance tests implied by this batch
+
+Add explicit tests for:
+1. Concurrent appointment requests for the same provider/operatory where time intervals overlap but start times differ.
+2. Concurrent unique human-readable number allocation (patient, appointment, invoice, payment, claim) across one tenant, across midnight/year boundaries and at clinic timezone/DST boundaries.
+3. Repeated gateway verify/webhook for the same provider transaction, duplicate callback with conflicting amount/currency, and two concurrent callbacks racing to settle one checkout.
+4. Invoice settlement concurrency: two different payments applied simultaneously cannot lose an update or exceed the invoice's collectable balance except where legitimate overpayment credit rules explicitly allow it.
+5. Partial import: fail midway, retry same job, re-run same row, modify mapping after sign-off, accept some rows and reject others, duplicate match and rollback/compensation.
+6. Tenant consistency: create a record in tenant A referring to patient/provider/appointment/payer/resource in tenant B, through APIs and database paths; it must fail, including imported and background-job paths.
+7. Audit sink unavailable during a sensitive clinical/financial write: verify the defined fail-closed or outbox-retry behavior and prove no silent loss.
+8. Expired/revoked mobile JWT after a staff role, tenant membership or user active state changes.
+9. Repeat lab transmission / repeated result payload, result correction and result-review acknowledgment are idempotent and retain source evidence.
+10. Document template update does not change prior signed/completed documents; withdrawn consent/proxy access no longer authorizes new disclosure or writes while past audit remains.
+
+### 16.8 Questions left open after this batch
+
+- Does LibreDental repository/storage DB layer enforce overlap/tenant consistency beyond the service code inspected? Inspect `appointment_repository.go` and DB indexes/constraints next.
+- Which OpenEMR billing rules are applied by legacy tables versus current service code and claims API? Need inspect posting/reversal service call paths and tests before canonicalizing exact states.
+- Do OpenEMR and DentalERP store actual insurer EOB/remittance service lines elsewhere in schema? Inspect table inventory and workflows further.
+- Open Dental's official full schema/docs need a versioned field extraction and feature-by-feature trace, not a guessed schema dump.
+- Need official current Indian legal source review for GST, consent, retention, provider credentials and exchange standards before defining statutory business rules.
