@@ -6,7 +6,7 @@
 
 ## Executive conclusion
 
-The preserved application is a **small, useful prototype**, not an implementation of the B17–B37 research model and not ready for real patient information until the highest-priority controls are verified. It currently supports owner account/clinic setup, basic patient details and visit history with an advised next-visit date. The README explicitly says there are no payments, billing, WhatsApp or AI in this phase and calls out testing two user accounts before real data.
+The preserved application is a **small, useful prototype**, not an implementation of the B17–B38 plus B37A research model and not ready for real patient information until the highest-priority controls are verified. It currently supports owner account/clinic setup, basic patient details and visit history with an advised next-visit date. The README explicitly says there are no payments, billing, WhatsApp or AI in this phase and calls out testing two user accounts before real data.
 
 This review does not replace the application or change backend permissions. It translates the observed state into a verification backlog. Findings marked “unverified runtime condition” must be tested in a safe non-production environment before being described as a proven exploit or corrected by changing permissions.
 
