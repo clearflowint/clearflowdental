@@ -70,6 +70,7 @@ A batch is not “complete” just because an addendum exists. For every source-
 
 
 ## Post-register update (same review date)
-B37 includes current official NDC prescription and registered dental-mechanic notices, Telangana Clinical Establishments Rules, DPDP commencement/Rules/corrigendum and ABDM published-vs-preview profile comparison. It also links the official CDSCO Drugs Rules directory and July 2024 consolidated text; exact drug-class prescribing applicability remains a professional review item.
+- [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) adds source-qualified maps for named field families in the source addenda. Use it together with FIELD_LEVEL_INVENTORY.md; neither claims exhaustive extraction of every physical vendor column.
+- B37 includes current official NDC prescription and registered dental-mechanic notices, Telangana Clinical Establishments Rules, DPDP commencement/Rules/corrigendum and ABDM published-vs-preview profile comparison. It also links the official CDSCO Drugs Rules directory and July 2024 consolidated text; exact drug-class prescribing applicability remains a professional review item.
 
 DPDP Rules link correction: use the MeitY-hosted G.S.R. 846(E) PDF (https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf) and G.S.R. 892(E) corrigendum (https://egazette.gov.in/WriteReadData/2025/268455.pdf). The commencement notice G.S.R. 843(E) remains https://egazette.gov.in/WriteReadData/2025/267647.pdf.
