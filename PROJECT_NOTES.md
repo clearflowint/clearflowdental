@@ -1626,3 +1626,48 @@ Prescription lines/eRx reconciliation; clinical order/order lines/typed resource
 See PROJECT_NOTES_ADDENDUM_B25.md for full source-derived findings from DentalPin patient clinical history and the medical-reference module. Highlights: allergy, medication, systemic disease and surgical history are repeatable soft-archived records; nullable blank form fields need explicit normalization; local plain-name reference lists are not authoritative terminology; interaction/contraindication warnings only use active patient entries with reference IDs; unstructured unmapped medications are excluded rather than guessed. ClearFlow must preserve such free-text facts and warn that automated matching coverage is incomplete, version and source every clinical rule, keep clinician review for safety-critical mapping, prevent cross-tenant reference links, and test reverse-order duplicate interactions under concurrency.
 
 Repository research index now includes PROJECT_NOTES_ADDENDUM_B17_B22.md, PROJECT_NOTES_ADDENDUM_B23_B24.md and PROJECT_NOTES_ADDENDUM_B25.md. These supplement this main notebook with the intervening source-level evidence; the full long-form working dossier remains in the workspace.
+
+---
+
+## Batch 20 — Runtime/service cross-check, event transactions and AI tool boundary (2026-10-27)
+
+### OpenEMR current schema metadata
+Source: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/schemaspy/schemas/openemr.meta.xml
+- Procedure order status is sourced from a controlled option list: pending, routed, complete, canceled. Order, report and result status remain separate.
+- Prescriptions link patient default pharmacy and use drug ID/RxNorm plus free-text instruction fields and external eRx source/upload status.
+- Documents support a polymorphic foreign-reference table + ID and logical capture/document date distinct from storage creation/revision date.
+Schema metadata confirms field/FK descriptions; it is not proof of every runtime transition.
+
+### DentalPin structured clinical history
+Source: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patients_clinical/models.py
+- MedicalContext 1:1 patient records pregnancy/lactation/week, anticoagulant medication and INR/date, smoking/frequency, alcohol, bruxism and anesthesia reactions/details.
+- Allergy is N:1 with name/type/severity/reaction/notes/reference ID and active/archive state. Medication stores name/dosage/frequency/start/notes/reference/state. SystemicDisease includes name/type/diagnosis date/controlled/critical/medications/notes/reference/state. SurgicalHistory stores procedure/date/complications/notes/reference/state.
+- EmergencyContact and LegalGuardian have separate 1:1 rows; guardian includes identity/document/contact/address/notes. For ClearFlow, review whether enterprise needs multiple guardians/contacts, multiple scopes of authority, validity, support evidence, and separate “may make medical decisions” vs “may receive information”.
+- Optional medical reference module IDs are plain UUIDs to preserve modular install/uninstall independence. This is a deliberate optional-module tradeoff; do not copy it to critical core relationships without an explicit integrity design.
+
+### DentalPin lab orders
+Sources: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/lab_orders/models.py ; backend/app/modules/lab_orders/CLAUDE.md ; tests under backend/tests/modules/lab_orders.
+- Current LabOrder contains clinic/patient/lab contact, work type, tooth reference, impression type, antagonist information, shade, status, sent/expected/received dates, notes and creator. Clinic-scoped; no hard delete, cancellation is a workflow state, status changes emit events.
+- It is a useful spine, not a complete enterprise dental prosthetic workflow. Research whether to add work-spec lines, tooth/role mapping, materials/manufacturer, shade system/lighting, scan/impression assets, opposing/occlusion, implant system/abutment, CAD/design assets, estimate/cost, shipping, try-in, QC, rework/remake reason, delivery/seated dates and warranty. These are candidates for dental-lab validation, not assumed requirements.
+- Decide whether labs/suppliers/service vendors share a normalized organization + roles/capabilities or different entities, based on payment/accounting and compliance needs.
+
+### Recall event transaction boundary
+Source: https://github.com/dentalpin/dentalpin/blob/main/backend/tests/modules/recalls/test_auto_link_on_schedule.py
+- A previous appointment-scheduled event handler opened its own DB session and could not see an appointment that was only flushed in the publisher's transaction. FK insert failed; the bus swallowed the error and the recall was silently not linked. Fix uses transactional handling.
+- Essential internal side effects should run transactionally on the publisher session (handler failure aborts) or use a transactional outbox after commit. Fire-and-forget event handlers that swallow errors are unsafe for bookkeeping (invoice/payment bridge, recall links, inventory consumption, patient timeline).
+- External/async effects need durable outbox jobs, unique event/idempotency keys, retries/dead-letter/reconciliation. Do not say “published” means downstream completed. Ambiguous recall matches remain unresolved, not randomly selected.
+
+### DentalPin AI tool registry
+Sources: https://github.com/dentalpin/dentalpin/blob/main/backend/app/core/agents/tools/registry.py ; backend/tests/test_agents_allowed_tools.py ; backend/tests/test_agents_approval.py
+- The tool registry is a single invocation chokepoint: tool exists → allowed-tool subset → guardrails/rate limit/block/approval → RBAC → typed Pydantic parameter validation → execute → audit regardless of success/failure. Empty allowed-tools list means none; null means no subset restriction.
+- A supervised write that needs review inserts an approval queue request and returns pending-approval without executing it. Tests cover allow-list refusal, approval queue and cross-clinic request access. This is preferable to a model-generated requiresApproval flag.
+- The inspected approval decision helper selects a pending row and updates it, without visible row lock or compare-and-set; sequential double-decision tests do not prove concurrency safety. ClearFlow must atomically claim approval (conditional update or row lock), authorize reviewer, bind to exact immutable action argument hash + target version and test concurrent approve/reject.
+- Typed IDs and dates in tool argument schema improve model output and fail fast at the operation boundary. Do not allow arbitrary tool names, untargeted free-form write parameters or hidden side-effect arguments.
+
+### DentalPin media ownership validation
+Sources: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/media/service.py ; backend/app/modules/media/attachment_registry.py
+- Attachment service resolves polymorphic owner under clinic scope and verifies resolved owner patient ID equals document.patient_id; duplicate identical links are idempotent.
+- Owner polymorphism has no ordinary owner FK, so its registry is a critical security/integrity boundary. ClearFlow should use typed junction tables or a strict registry with tenant/patient ownership validation, registration tests and orphan scans.
+
+### Batch 20 requirements
+Structured medical history should preserve source/validity/review; lab workflow needs validated scope; must-use transactional event handling for internal invariant side effects and outbox for remote work; agent operations must be typed and controlled at a server chokepoint; approvals need atomic single-winner resolution + immutable proposal/target binding; polymorphic attachments must verify owner/patient/tenant. Batch status: runtime/service cross-check complete for this slice; research remains ongoing.
