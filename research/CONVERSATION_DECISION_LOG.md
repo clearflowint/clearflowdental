@@ -289,3 +289,31 @@ Working method:
 - Bring the owner only material unresolved choices that depend on ClearFlow's product policy, target workflow, clinical governance, legal requirements, or commercial scope.
 
 This is a decision about the modeling approach, not approval of a final physical schema. Research mapping and clinical/legal validation remain required before production claims.
+
+
+## 11. Recommended clinical artifact lifecycle baseline
+**Discussion date:** 2026-10-28  
+**Status:** Recommended enterprise baseline derived for research mapping; not a frozen schema or legal/clinical sign-off.
+
+The next database-design topic is the lifecycle of clinical records and artifacts. Apply established healthcare record-management patterns and map them against the existing source research before implementation.
+
+### Core modeling rules
+- Give each clinical artifact a stable identity and explicit type, patient/encounter links where applicable, tenant scope, source/provenance, author or responsible actor, timestamps, lifecycle state, and version/correction relationships as appropriate.
+- Keep original captured documents distinct from extracted drafts and approved clinical interpretations. Capture is not approval, and extraction is not a clinical decision.
+- Store an original file once when practical and link derived drafts/approved records to it; avoid needless duplicate file copies. Preserve the content and provenance of approved/finalized versions.
+- Model each artifact's lifecycle explicitly. Do not use one universal status enum for fundamentally different types.
+- A correction to a finalized clinical record should create a traceable amendment/correction relationship or new version; it must not silently overwrite history. Legal retention, correction and deletion behavior must be validated for the applicable jurisdiction and record type.
+- Prescriptions and other regulated clinical artifacts need a distinct draft-to-authorized/issued lifecycle, with signer identity/authority and appropriate cancellation/discontinuation history. Merely saving or uploading a prescription is not equivalent to issuing one.
+- Audit history should record relevant actor, action, time, target, source/reason where required, and outcome. Protect it against ordinary user alteration and scope reads by authorization.
+- Enforce every lifecycle transition in trusted backend logic. Validate current state, tenant/parent relationships, actor authority, and idempotency; handle concurrency so that two simultaneous operations cannot produce invalid state.
+- AI may prepare draft extraction or summaries when explicitly requested, but must not approve clinical meaning, sign, issue prescriptions, or overwrite authoritative records. Authorized human review/approval remains a distinct operation.
+
+### Illustrative lifecycle patterns (to be mapped to source standards and local requirements)
+- Original uploaded document: captured and retained; restrictions, supersession, and disposal follow approved retention/access policy.
+- AI-extracted content: draft → reviewed → approved or rejected.
+- Clinical note: draft → signed/finalized → amended through a traceable correction.
+- Prescription: draft → authorized/issued by an appropriately qualified professional → cancelled/discontinued when applicable.
+- Treatment plan: proposed → accepted/declined → revised as care progresses.
+- Audit history: append-oriented event history with controlled access and integrity protections.
+
+These are conceptual patterns, not a commitment to these exact status names or a single shared state machine. Exact transitions, signatures, retention and deletion rules must be mapped to selected healthcare standards, applicable Indian/Telangana requirements, and qualified clinical/legal review. This does not close the existing legal, clinical or runtime-security gates.
