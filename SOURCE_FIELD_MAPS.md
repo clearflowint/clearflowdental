@@ -215,3 +215,7 @@ Status labels: **Observed** = explicitly named in the reviewed source; **Candida
 - Payroll profile and salary values are highly restricted. Do not expose them to general conversational/agent tools, logs, or ordinary clinical staff roles by default.
 - Attendance events do not prove approved hours; approved hours do not prove payroll calculation; payroll closed/paid status does not prove bank settlement absent a payment reference/confirmation.
 - Source-specific country, currency, identifiers and payroll assumptions must be moved behind a country-specific adapter and approved ruleset.
+
+
+## 10. Cross-system comparison companion
+[CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) summarizes domain coverage and lifecycle differences by source family, including the prototype gap. This source-to-concept map is intentionally more granular for named fields, while the comparison doc helps expose missing domains and differing state semantics. Both remain evidence and requirements documents, not schema DDL.
