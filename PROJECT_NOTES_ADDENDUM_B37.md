@@ -143,7 +143,27 @@ The current published v6.5.0 page identifies package ndhm.in#6.5.0 based on FHIR
 - Callback states distinguish request accepted/queued from final exchange success/failed/rejected.
 - Historical sent bundle remains attached to the original profile and mapping version after a future upgrade.
 
-## 7. Traceability additions
+## 7. Current CDSCO Drugs Rules source and medication-regulation boundary
+
+**Official source directory:** CDSCO, Drugs Rules, 1945: https://www.cdsco.gov.in/opencms/en/Acts-and-rules/Drugs-Rules/  
+**Consolidated source listing:** “The Drugs Rules 1945 dated 01-07-2024” (consolidation stated as amended vide G.S.R. 360(E) dated 1 July 2024): https://cdsco.gov.in/opencms/resources/UploadCDSCOWeb/2022/drug_rules/Drugs%20Rules%201945_2024%2009.pdf
+
+The CDSCO source directory currently lists the July 2024 consolidation. This source is a starting point for prescription/dispensing workflow design, not a definitive determination of what every dentist may prescribe or which exact rule applies to a given medicine. Drug schedules, restricted/controlled categories, dentist professional scope, state enforcement, dispensing location and later amendments must be researched against the applicable current Gazette notifications and reviewed by counsel/pharmacy expertise.
+
+**Candidate requirements:**
+- The medication catalog and prescription validator should support schedule/classification source, applicable jurisdiction, current rule/version, active date and dispensing constraints without pretending an unreviewed catalog code determines legal prescribing authority.
+- At issue time, validate the particular prescriber’s professional authorization plus the medication-specific rules that have been reviewed and configured for the product’s jurisdiction. Preserve the exact rule/version applied and the reason for a block or authorized exception.
+- Keep prescribing, pharmacy dispensing/fill, in-clinic administration, stock consumption and adherence as separate records. An available inventory item or autocomplete result never establishes permission to prescribe it.
+
+**Minimum acceptance tests:**
+- An unmapped or unreviewed drug schedule remains flagged for human review; absence of a mapped schedule is not permission.
+- Effective-dated drug rule changes do not rewrite historical issued prescription content.
+- Prescriber eligibility and medication schedule checks are server-side and cannot be bypassed by changing the browser payload.
+- Drug catalog ingestion preserves official source/version, identifier and update date; uncertain mappings enter a review queue.
+
+**Evidence status:** Official current CDSCO directory and July 2024 consolidated document confirmed; exact rule-by-drug and dentist-scope mapping remains legal/pharmacy review pending.
+
+## 8. Traceability additions
 
 | Requirement ID | Source | Candidate field/data group | Lifecycle/security condition | Priority | Status |
 |---|---|---|---|---|---|
@@ -153,7 +173,7 @@ The current published v6.5.0 page identifies package ndhm.in#6.5.0 based on FHIR
 | PRIV-IN-01 | DPDP Act commencement notification + Rules/corrigendum | Obligation/provision, source version, actor scope, effective date, exception, owner/evidence/review | Stage effective dates; retention/erasure checks with legal hold | P0 | Official notification observed; legal mapping pending |
 | ABDM-VER-01 | NRCeS FHIR v6.5.0 stable / v7.0.0 preview | Package/profile version, mapping version, validator version, bundle hash, export/acknowledgement state | Pin stable package; preview tested separately | P1 | Official published/preview status observed |
 
-## 8. Open decisions and next action
+## 9. Open decisions and next action
 1. Obtain legal review of NDC prescription notice against the clinic's intended prescribing workflow and signature method.
 2. Specify lab mechanic credential verification, renewal monitoring and responsible actor; determine how a lab organization proves the individuals fabricating each regulated product.
 3. Confirm Telangana clinic establishment category and registration/standards for each target deployment.
