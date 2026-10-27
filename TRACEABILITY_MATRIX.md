@@ -1,7 +1,7 @@
 # ClearFlow Dental Clinic — Requirement-to-Evidence Traceability Matrix
-**Version:** 0.3 — cumulative cross-batch traceability matrix  
+**Version:** 0.4 — cumulative cross-batch traceability matrix  
 **Prepared:** 2026-10-27  
-**Scope:** Research batches B17–B38; dental SaaS on a tenant-isolated backend; India/Telangana applicability remains a separate review.  
+**Scope:** Research batches B17–B38 plus B37A; dental SaaS on a tenant-isolated backend; India/Telangana applicability remains a separate review.  
 **Status:** Working matrix, not a frozen schema or a legal/clinical compliance opinion.
 
 ## Purpose and reading rules
@@ -235,3 +235,19 @@ The phrase **“research pack assembled”** means the evidence and field groups
 7. Named owner and decision status for every unresolved item; “not in MVP” remains a documented decision instead of silent omission.
 
 No production schema migration, database permission change or application write is included in this research update.
+
+
+# Traceability Matrix v0.4 — workforce and attendance domain (B37A)
+
+| Requirement ID / priority | Source observation | Candidate invariant | Minimum acceptance test | Status |
+|---|---|---|---|---|
+| STAFF-001 / P0 | DentalPin attendance event is an append-only in/out punch with subject, actor, timestamp/note; source tests cover membership, roles, duplicate same-kind punches, future/backdated punches and overnight pairing | Attendance event records use server-attributed subject/actor, authorized clinic membership, clinic timezone and append-only correction trail. Browser-supplied identity is never trusted | Test invalid role, future punch, repeated in/out, manager correction, missing pair, duplicate retry and overnight shift; correction leaves original visible | Source behavior observed; ClearFlow implementation pending |
+| STAFF-002 / P1 | Schedules model clinic weekly template, professional weekly template, date-range clinic/professional overrides and a Shift row constrained to exactly one parent | Planned work schedule, appointments, approved attendance and actual free-slot projection are distinct entities. Every override has reason/effective period; source parent constraint mapped explicitly | Closed/unavailable override blocks slots; shift with zero or multiple parents fails; overlapping appointment intervals cannot yield false free slot | Candidate; full source physical column extraction pending |
+| STAFF-003 / P1 | Availability resolver produces windows, then appointment subtraction yields contiguous free slots; an open window isn't a bookable free slot | Availability checks provider, clinic, resource/cabinet, equipment capacity, actual appointment intervals and approved exceptions | Seed an open schedule with a conflicting appointment; no overlapping free slot is returned; concurrent booking follows conflict policy | Candidate; implementation pending |
+| PAY-001 / P0 when payroll enabled | PayrollProfile has monthly/hourly, amount/currency, encrypted bank/tax fields, active state and country; source exposes masked responses and excludes agent tools; entry/period states are controlled | Payroll/bank/tax fields are restricted to specifically authorized payroll roles, masked in responses, excluded from general AI tools/logs and encrypted under reviewed key policy | Receptionist/clinician/agent cannot retrieve raw payroll fields; masking verified; permissions revocation takes effect for next request | Source behavior observed in comparator; implementation pending |
+| PAY-002 / P0 when payroll enabled | PayrollPeriod unique by clinic + YYYY-MM; PayrollEntry unique per staff/period; net validated as gross minus deductions; draft→closed→paid with closed/paid read-only | Period/user uniqueness and arithmetic validated server-side; snapshot formula/rule version and components; closed/paid records not silently modified; correction via approved amendment | Concurrent duplicate period/entry insert has one winner; net mismatch rejected; closed period edit denied; correction links old and new version | Candidate; no payroll feature in current prototype |
+| PAY-003 / P1 when payroll enabled | Comparator lacks statutory tax calculation, attendance-to-pay computation and bank payment execution; defaults are Spain/EU-oriented | Payroll calculation, timecard approval, local statutory rules and actual bank settlement are separate versioned workflows | Payroll net is traceable to approved inputs/rule version; “paid” display requires defined payment evidence; unknown jurisdiction/rule blocks compliance claim | Indian labour/payroll legal review pending |
+| STAFF-003A / P1 | Source punches use clinic-local time interpretation and pair across overnight shifts | Preserve UTC/timezone-aware instants and clinic-local business dates without using UTC date as the sole workday | Simulate overnight punch, timezone offset, ambiguous/nonexistent local time where relevant and daylight-saving/timezone-rule update; expected pairing is deterministic | Clinic timezone policy pending |
+
+## Workforce applicability decision
+Attendance, schedule overrides, and payroll are in the enterprise research inventory, but are not confirmed MVP requirements. If deferred, the owner must record the scope decision and version; do not treat “not in the first release” as evidence the domain is unnecessary or omit its lifecycle/privacy boundaries from later design.
