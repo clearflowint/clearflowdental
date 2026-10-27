@@ -544,3 +544,21 @@ Discussion method:
 4. Do not claim a requirement is implemented or passed until code/configuration and test evidence confirm it.
 
 This entry records a working method and mandatory requirements; it does not claim that current implementation has passed these tests.
+
+
+## 23. Owner is relying on established enterprise practice for technical decisions
+**Discussion date:** 2026-10-28  
+**Status:** Agreed working approach for the project.
+
+The owner explained that ClearFlow Dental Clinic is their first AI-enabled project and they do not have specialist knowledge in database/AI architecture. The assistant should therefore take responsibility for deriving ordinary technical choices from established enterprise and healthcare practices, rather than repeatedly asking the owner to decide technical details.
+
+Working rules:
+- Default to established, well-supported enterprise patterns and relevant healthcare standards, then adapt only where ClearFlow's researched needs justify it.
+- Keep the model and UX as simple as possible while preserving clinical meaning, security, traceability and future extensibility.
+- Treat standard controls (tenant isolation, authorization, integrity, idempotency, auditability, safe retries and test evidence) as mandatory baseline requirements, not recurring discussion topics.
+- Distinguish confirmed owner requirements, assistant-recommended defaults, unresolved product/clinical/legal decisions, and implementation facts supported by tests.
+- Present a recommendation in plain language and explain material trade-offs briefly. Ask the owner only when a real product vision, business, clinical-governance, legal, or cost/operational choice cannot be responsibly inferred.
+- Do not build every future module or integration just because enterprise systems can support it. Keep future extensibility without premature implementation.
+- Once research consolidation is sufficient, produce a traceable canonical schema proposal and validation plan rather than extending discussion indefinitely. Do not claim clinical/legal approval or runtime readiness without evidence.
+
+This entry sets the collaboration method; it does not freeze a physical schema or claim the implementation is complete.
