@@ -67,3 +67,9 @@
 A batch is not “complete” just because an addendum exists. For every source-specific field intended to influence implementation, record the source/version, exact field or behavior, evidence class, source scope, raw-to-normalized mapping, missingness/unit/time semantics, lifecycle events, tenant and authority checks, tests, clinical/legal review owner, and decision status. Unused, uncertain or non-MVP fields can remain explicitly deferred; they must not be silently dropped or misrepresented.
 
 **Conclusion:** The source coverage is sufficiently organized to continue model reconciliation, but it is not an assertion of exhaustive physical-column coverage, compliance or production readiness.
+
+
+## Post-register update (same review date)
+B37 includes current official NDC prescription and registered dental-mechanic notices, Telangana Clinical Establishments Rules, DPDP commencement/Rules/corrigendum and ABDM published-vs-preview profile comparison. It also links the official CDSCO Drugs Rules directory and July 2024 consolidated text; exact drug-class prescribing applicability remains a professional review item.
+
+DPDP Rules link correction: use the MeitY-hosted G.S.R. 846(E) PDF (https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf) and G.S.R. 892(E) corrigendum (https://egazette.gov.in/WriteReadData/2025/268455.pdf). The commencement notice G.S.R. 843(E) remains https://egazette.gov.in/WriteReadData/2025/267647.pdf.
