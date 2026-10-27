@@ -765,3 +765,7 @@ The owner confirmed that the intended Windmill URL uses workspace ID `clearflow-
 - Once dry-run passes, perform a separately controlled real sync of the smoke-test script, verify it appears under the Windmill dental folder, and run it to confirm the returned test message. Only after this vertical slice passes should automatic push-on-commit be enabled.
 
 This is a prepared and scoped workflow, not evidence that synchronization is already working.
+
+
+### Follow-up correction to section 28 — CLI flag validation
+The dry-run workflow was rechecked against the official Windmill CLI sync reference. Removed `--keep-deleted`, which is not a documented `wmill sync push` option. The workflow remains manually triggered and dry-run only; its output must be inspected for any proposed deletions before any live push is considered. Correction commit: `802dd18d80df0e37ec6aa70c2148e9cad7980849`.
