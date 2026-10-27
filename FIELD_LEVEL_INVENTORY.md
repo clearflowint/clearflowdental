@@ -1,5 +1,5 @@
 # ClearFlow Dental Clinic — Field-Level Domain Inventory
-**Version:** 0.1 · **Reviewed:** 2026-10-27 · **Purpose:** Source-to-candidate mapping before schema design  
+**Version:** 0.2 · **Reviewed:** 2026-10-27 · **Purpose:** Source-to-candidate mapping before schema design  
 **State:** A structured inventory of fields and data groups found in Batches 17–38. It is not a frozen schema, a complete clinical terminology set, or a legal compliance declaration.
 
 ## How to interpret this file
