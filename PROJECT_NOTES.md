@@ -1780,3 +1780,73 @@ Reference paths under https://github.com/rbarfinezhadfeli0/open_dental/tree/25d6
 5. Statement snapshots and adjustments are not receipts; financing agreement and PayPlanCharge schedule rows are not cash movement.
 6. API/security audit captures source and permission scope; retain structured audit in addition to display text.
 These are source-derived candidates from a third-party mirror. Verify with official docs and/or source/runtime tests. Schema research continues.
+
+
+---
+
+## Batch 24 addendum — OpenEMR payer posting, DentalPin contact policy, transactional outbox and reorder semantics (2026-10-27)
+
+This addendum preserves additional cross-reference findings from the workspace dossier. Sources include OpenEMR EHI export tables and DentalPin notification, inventory and agenda models/services/tests. These are implementation observations and ClearFlow candidates, not universal legal or clinical rules.
+
+### OpenEMR payer posting refinement
+Sources:
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/insurance_data.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/insurance_companies.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/insurance_numbers.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/benefit_eligibility.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/eligibility_verification.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/fee_schedule.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/claims.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/billing.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/ar_activity.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/ar_session.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/payment_processing_audit.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/x12_partners.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/x12_remote_tracker.html
+
+Observed fields include coverage relationship and primary/secondary/tertiary priority; payer/provider/plan/group; subscriber identity, relationship, DOB/sex/address/phone/employer; policy copay/type/effective/end dates; payer aliases/CMS/X12/eligibility IDs; provider billing versus rendering identifiers; eligibility request/response IDs/timestamps and benefit rows; claim versions, payer and process state, submitted payload; billing service line code/modifier/units/fee/provider/authorization/payer/revenue category; AR session EOB/check/payment/deposit/posting dates and totals; AR activity payment and adjustment amounts, posting actor/session, follow-up/reason code, void timestamp and payer claim number; payer clearinghouse partner/file/status/messages and processing audit/reversal metadata.
+ClearFlow requirements: normalize coverage, eligibility observations, claim submission versions, normalized claim lines, remittance/EOB, AR posting sessions and lines. Submitted fee, allowed amount, payer paid amount, contractual adjustment, deductible, coinsurance, write-off, denial, patient responsibility and actual cash receipt are different facts. Keep original raw exchange evidence but secrets redacted; no live credentials in ordinary settings. Fee schedule keys should include code system, code, modifier, payer/plan/provider scope and effective interval; snapshot the applied schedule.
+
+### DentalPin notification preference and durable-outbox semantics
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/gateway.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/tests/test_notifications_gateway.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/recall_reminders/__init__.py
+
+Observed design:
+- NotificationTemplate is channel- and locale-specific; global/system vs clinic-defined; includes key, email subject/HTML/plain body, provider-approved template name/status, variables, description and active/system flags. Uniqueness by clinic+key+locale+channel.
+- NotificationPreference scopes clinic plus patient/user and stores channel toggles, some opt-in timestamps, inbound-message time for WhatsApp session-window rules, per-purpose choices and locale.
+- ClinicNotificationSettings stores default/fallback channel policy, manual options, daily SMS cap and per-event enabled/auto-send/offset. Business event selection differs from transport channel.
+- ClinicChannelSettings maps clinic/channel to adapter, enable/verified status and non-secret config. Provider credentials live in provider module/secret storage. SMTP has provider/host/port/username/encrypted password/TLS/SSL/from identity/active/verified state.
+- CommunicationMessage is queue/outbox + current delivery audit row: clinic, channel, direction, recipient address, optional patient, template key, kind (template/session), subject/body for literal messages, status, attempts/max attempts, next retry, provider/provider message ID, error, dedup key, sent/delivered/read times, triggering event/user and sanitized context. Indexes support dispatcher polling and patient/channel/time message threads. Partial unique index enforces clinic+dedup key.
+- Lifecycle separates queued/sending/sent/delivered/read/failed/skipped; network sends occur asynchronously after request transaction commit. Dispatcher uses row locks plus SKIP LOCKED, honors retry time/attempt limits and isolates individual failed messages. Provider accepted/sent is not delivered/read; retry uses bounded exponential backoff.
+- Purpose vocabulary includes appointment confirmation/reminder/cancellation, budget sent/accepted/reminder, invoice sent, recall reminder, welcome. Unknown preference keys can fail to enforce opt-out, so vocabulary changes need migration/tests.
+- Recall module emits event/glue into gateway; recalls store care obligation/contact attempts but do not send messages. SMS has daily cost cap; WhatsApp templates require approved provider templates and session policy; push requires registered subscription and stale 404/410 endpoints can be pruned.
+
+ClearFlow requirements: enforce do_not_contact above every channel and even force-send; purpose-level and channel-level opt-out are separate checks. Save opt-in evidence/source/time and effective policy version. Transactionally create an outbox row beside the triggering business commit, then dispatch asynchronously. Never claim external send succeeded before provider response; delivery/read are separate provider observations. Keep marketing, recall, clinical reminder, appointment reminder and operational notices distinct. Do not expose unredacted message content or credentials to AI unless explicitly required and authorized.
+
+### DentalPin inventory supplier-specific reorder evidence
+Source modules: https://github.com/dentalpin/dentalpin/tree/main/backend/app/modules/inventory and supplier_items, purchase_orders, inventory_reorder.
+Inventory stock row and movement ledger are not sufficient to model procurement. Enterprise scope candidates:
+- Supplier-item catalogue with supplier SKU, manufacturer code, unit conversion/package size, lead time and minimum order quantity, effective unit price/currency, quote/contract validity, preferred status and last price provenance.
+- Reorder policy/config with minimum/maximum/reorder point, safety stock, lead-time demand, forecast method/config version, pack rounding, expiry/lot constraints and explanation of recommendation.
+- On-order quantities need purchase-order header/lines, receiving events and partial receipts. Reorder suggestion is a proposal, PO is a document/workflow, authorized PO is a commitment, receiving updates lots and stock, supplier invoice/payable is separate.
+- Auto-generated POs remain drafts until authorized approval. Supplier preference is not a replacement for many-to-many supplier catalogue.
+These are coverage candidates; inspect exact modules/migrations before assuming all are currently modeled.
+
+### Appointment and patient-context boundaries
+DentalPin AppointmentService normalizes naive clinic-local wall-clock time to UTC instants, records initial status history and re-reads current status under a row lock for transitions. Conflict backstop exists, but check the exact constraint/interval handling separately; exact-start uniqueness is not full interval overlap protection.
+Patient core in the reviewed source has a single phone/email plus do-not-contact field. ClearFlow should keep multiple purpose-coded contact points with verification/validity rather than expanding only one phone field. Medical context needs field-level provenance/reviewer, controlled units/precision (e.g. INR), and separate guardian relationship from legal decision/information authority. Active/archive state and history should survive edits.
+
+### Batch 24 matrix additions
+- Payer: identifiers/type, eligibility partner, billing/rendering provider numbers, plan/member/subscriber snapshots.
+- Eligibility: request/response ID, checked time, benefit lines, dates/type/level, amount/percent/network/status and freshness.
+- Remittance/posting: EOB/check, payer, receipt/deposit/post dates, session totals, line allocation, adjustment/reason code, reversal and reconciliation actor.
+- Communication: patient/user recipient, channel/purpose/opt-in proof, locale, inbound-session window, template/provider approval version, queue/backoff/dedup, delivered/read state/fallback rationale.
+- Inventory procurement: supplier SKU/prices, lead-time source, partial receipts, reorder policy/config version and draft-PO review.
+- Patient safety: source/reviewer for clinical context, units/precision, guardian authority, archive state and field-level provenance.
+- Media: original/derivative, upload/capture times, taxonomy, checksum, paired assets, scoped storage and owner-registry validation.
+
+Evidence classification: OpenEMR EHI export pages are dictionary evidence; DentalPin code/tests show implementation patterns that still require validation against current deployment and real provider integrations. Continue the Open Dental field comparison and authoritative India standards research before locking the schema.
