@@ -30,6 +30,9 @@ Priority labels:
 - [Batch 34](./PROJECT_NOTES_ADDENDUM_B34.md) — patient data categories, unit-aware observations/vitals, medication statements versus prescriptions, forms/signatures.
 - [Batch 35](./PROJECT_NOTES_ADDENDUM_B35.md) — India-specific legal evidence gate; exact effective dates, scope and applicability require review.
 - [Batch 36](./PROJECT_NOTES_ADDENDUM_B36.md) — lab workflow plus odontogram, periodontics, treatment plans, recalls, imaging/DICOM and orthodontic records.
+- [Batch 37](./PROJECT_NOTES_ADDENDUM_B37.md) — NDC prescription particulars, dental-mechanic registration, Telangana facility rules, DPDP effective dates, CDSCO Drugs Rules and ABDM version pinning.
+- [Batch 37A](./PROJECT_NOTES_ADDENDUM_B37A.md) — attendance punches, schedule templates/overrides, availability resolution and restricted payroll profile/period lifecycle.
+- [Batch 38](./PROJECT_NOTES_ADDENDUM_B38.md) — AERB dental X-ray governance, biomedical-waste evidence, dental-clinic standards template and GST document fields.
 
 ## Matrix A — Identity, tenant boundaries and platform controls
 
@@ -194,7 +197,7 @@ Use these statuses precisely: `Observed-source`, `Candidate`, `Clinical review p
 **Next controlled phase:** close P0 security and regulator-driven field reviews, then create source-by-source detailed extract sheets for each remaining batch/source. Do not generate production migrations or label the schema final yet.
 
 
-## v0.2.1 — source-qualified field-map companion
+## v0.2.1 — source-qualified field-map companion (historical checkpoint; superseded by v0.4)
 
 `SOURCE_FIELD_MAPS.md` now holds a more granular source-family layer for named DentalPin module records, Open Dental coverage/claims/procedures/plans/periodontal/medication/recall records, OpenEMR EHI patient/medication/order/result/observations/finance/audit/signature tables, and ABDM/India regulatory requirements. It maps observed field groups to candidate concepts and normalization tests. Its scope is exactly the field families documented in existing addenda; it does not claim every underlying vendor column is fully extracted where only API excerpts or partial schema documentation were reviewed.
 
@@ -215,11 +218,11 @@ The DPDP Rules citation in B35/B37 was corrected to the verified MeitY-hosted G.
 ## Matrix v0.3 — consolidated completion status
 
 The evidence pack now includes:
-- Source-specific notes B17–B38;
+- Source-specific notes B17–B38 plus B37A;
 - Source coverage register B17–B38;
 - Source-to-concept field maps with source-specific field families and raw-to-normalized rules;
 - Field-level domain inventory;
-- Traceability matrix v0.3;
+- Traceability matrix v0.4 (supersedes the earlier v0.3 checkpoint);
 - Read-only implementation gap review of the preserved Appwrite/Vue prototype;
 - Exact source URLs and separate pending legal/clinical/runtime status fields.
 
