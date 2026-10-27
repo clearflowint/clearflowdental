@@ -1960,3 +1960,14 @@ Open Dental distinguishes an allergy definition catalogue from the patient's all
 Open Dental's 1:1 PatientNote summary has family-financial, medical, service, complete medical-history, treatment and emergency contact fields; API updates replace fields, with append implemented as manual read-concatenate-write. ClearFlow must keep structured clinical histories and attributed note revisions as the source of truth, and avoid loss-prone append read-modify-write. RecallType stores default interval/time pattern/procedure links; each patient Recall stores due/date/status/type/priority/disable rules, while reminder counts/contact outcome are projections. Retain interval/policy version at the time a due date is computed.
 
 These fields strengthen the requirements for preserving unknown vs negative, current vs historical, catalogue vs patient fact, prescription vs medication statement and obligation vs communication delivery. See B28 addendum for test cases and source-quality limitations.
+---
+
+## 26. Supplemental OpenEMR EHI Export table research (27 October 2026)
+
+See `PROJECT_NOTES_ADDENDUM_B29.md` for the source-linked field inventory and requirements.
+
+Key findings: OpenEMR patient data includes preferred/name history, many contact channels, guardian details, care-team/provider/facility relationships, referral/work/financial context and purpose-specific portal/health-exchange/registry choices. `history_data` stores lifestyle, family history and prior examinations/surgeries; `lists` stores issues/problems/allergies with onset/end/occurrence, coded diagnosis, reaction/severity/verification, external eRx source/upload state and active/deleted status. Medication source is separated across catalog, prescription, patient medication/adherence record, stock inventory by lot/expiry and dispensing/sale transaction.
+
+Clinical order architecture distinguishes order header, request code lines, specimen collection, report, individual result values and result review/correction; code lines may be amended after an order is sent, and the order can link to observations/conditions via a resource-type/UUID relation. Result records carry code/system, value/data type, units, range, abnormal indication, lab comments, status and attachments. Vitals and general observations hold typed values/units, interpretation, reason, status, encounter/parent observation and reviewer context. Encounter, billing party, patient-signed document, authorization signature, document binary and attachment links are different records.
+
+OpenEMR table shapes include legacy fields and U.S.-specific concepts (SSN/HIPAA/VFC/CMS ABN/NDC and imperial measurement defaults). Preserve their meanings through localization/import adapters; do not make those codes or fields mandatory in ClearFlow's global schema.
