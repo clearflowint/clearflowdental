@@ -1,0 +1,67 @@
+name: Deploy dental assets to Windmill
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: "Confirm deployment to Windmill (review the dry-run first)"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windmill-dental-production-sync
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Production sync dental folder
+    if: ${{ inputs.confirm_deploy == 'yes' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned Windmill CLI
+        run: npm install --global windmill-cli@1.850.0
+
+      - name: Configure workspace and deploy only dental assets
+        env:
+          WMILL_URL: ${{ secrets.WMILL_URL }}
+          WMILL_TOKEN: ${{ secrets.WMILL_TOKEN }}
+          WMILL_WORKSPACE: ${{ vars.WMILL_WORKSPACE }}
+        run: |
+          set -euo pipefail
+          test -n "$WMILL_URL" || { echo "Missing GitHub Actions secret WMILL_URL"; exit 1; }
+          test -n "$WMILL_TOKEN" || { echo "Missing GitHub Actions secret WMILL_TOKEN"; exit 1; }
+          test -n "$WMILL_WORKSPACE" || { echo "Missing GitHub Actions variable WMILL_WORKSPACE"; exit 1; }
+
+          # Register the existing remote workspace in this temporary runner.
+          wmill workspace add "$WMILL_WORKSPACE" "$WMILL_WORKSPACE" "$WMILL_URL" --token "$WMILL_TOKEN"
+
+          # Generate metadata, then sync only the fixed dental folder scope.
+          wmill folder add-missing -y
+          wmill generate-metadata f/dental --strict-folder-boundaries --yes
+
+          # Production deployment. This can overwrite or delete remote items
+          # within the included dental scope when they differ from local source.
+          # Secrets and resources are explicitly excluded.
+          wmill sync push \
+            --base-url "$WMILL_URL" \
+            --token "$WMILL_TOKEN" \
+            --workspace "$WMILL_WORKSPACE" \
+            --yes \
+            --skip-secrets \
+            --skip-resources \
+            --includes "f/dental/**"
