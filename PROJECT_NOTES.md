@@ -1991,3 +1991,14 @@ These addenda already exist in the repository and remain part of the evidence se
 - `PROJECT_NOTES_ADDENDUM_B34.md` — OpenEMR patient identity and care-team categories, unit-aware observations/vitals, medication statements vs prescriptions, dynamic forms, signatures and data-minimization tests.
 
 The newer B27–B30 addenda contribute additional direct official Open Dental API evidence and first-party OpenEMR EHI table details; the B31–B34 addenda are retained rather than overwritten. Where material overlaps, use the combined source inventory and record the stronger-source/earlier-version decision explicitly in the reconciliation matrix.
+
+## 29. India-specific regulatory evidence gate (Batch 35, 2026-10-27)
+
+Source-specific detail is preserved in `PROJECT_NOTES_ADDENDUM_B35.md`; index entry is in `RESEARCH_INDEX.md`. This is not a legal opinion and does not freeze the schema.
+
+- DCI-hosted Dentists (Code of Ethics) Regulations, 2014 text references a three-year minimum for dental records and a 72-hour response clause for record requests. Verify current amendments, applicability and interaction with other duties; do not implement a universal auto-delete timer.
+- The DPDP Act/Rules commencement is phased under the official November 2025 Gazette notification. Do not claim every substantive provision is already in force solely because the Act/Rules were notified; maintain an effective-date-aware legal obligations register.
+- MoHFW telemedicine guidance emphasizes professional judgment, identity, consent/context and appropriate patient evaluation. Verify dental-specific scope before asserting direct applicability.
+- Cited NMC/EMRB platform guidance says AI may assist but final prescription/counselling is to be delivered by an RMP in its stated context. Keep AI outputs as drafts and require authorized clinician review/issuance; verify current status and dental applicability.
+
+Candidate matrix requirements: policy-driven retention and legal holds; verified, auditable disclosure requests; effective-date-aware privacy obligations; separate teleconsultation context and clinician decisions; human authorization for prescriptions; immutable signed content snapshots and linked amendments. Remaining India-specific legal research includes current dental regulator status, Telangana clinical-establishment obligations, prescription/pharmacy law, imaging/radiology, biomedical waste and applicable health-record standards. Tag unresolved claims as provisional/legal review required.
