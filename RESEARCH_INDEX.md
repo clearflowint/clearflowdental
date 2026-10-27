@@ -4,7 +4,9 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 
 ## Core notebook
 - [PROJECT_NOTES.md](./PROJECT_NOTES.md) — consolidated project goals, domain coverage, architecture principles, core source observations, invariants and next research steps.
-- [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) — initial cross-batch requirement-to-evidence matrix (v0.1), including entity coverage, lifecycle boundaries, tenant/security invariants, acceptance tests, priority and unresolved legal/clinical decisions.
+- [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) — v0.2 cross-batch requirements matrix with selected field-to-concept mappings, lifecycle/security tests, implementation evidence, and India-specific requirements.
+- [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) — field groups from B17–B37 mapped into candidate entities, preserving source semantics, units, missingness, provenance, authority and lifecycle distinctions.
+- [IMPLEMENTATION_GAP_REVIEW.md](./IMPLEMENTATION_GAP_REVIEW.md) — read-only review of the preserved Vue/Appwrite prototype and current database metadata; includes P0 security test plan and current limitations.
 
 ## Source-specific addenda
 - [Batches 17–22](./PROJECT_NOTES_ADDENDUM_B17_B22.md) — AI execution approval gate, tenant-scoped FKs, import integrity, prescriptions/orders/reports, agent approval/tooling, authoritative payments/refunds, invoice issue snapshots, inventory ledger, specialist dental modules, migration provenance.
