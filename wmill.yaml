@@ -1,0 +1,9 @@
+# ClearFlow Dental Windmill sync configuration.
+# The workflow additionally overrides includes to f/dental/** on every run.
+defaultTs: bun
+includes:
+  - "f/dental/**"
+excludes: []
+skipSecrets: true
+skipResources: true
+syncBehavior: v1
