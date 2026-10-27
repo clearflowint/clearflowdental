@@ -10,7 +10,6 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 - [IMPLEMENTATION_GAP_REVIEW.md](./IMPLEMENTATION_GAP_REVIEW.md) — read-only review of the preserved Vue/Appwrite prototype and current database metadata; includes P0 security test plan and current limitations.
 - [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) — per-batch evidence-class ledger for B17–B38 plus B37A, source confidence, evidence gaps and completion gates.
 - [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) — named source-field families from B17–B38 plus B37A mapped to candidate ClearFlow concepts, normalization rules, lifecycle constraints and acceptance tests; includes explicitly source-specific encodings and unverified gaps.
-- [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) — comparative domain coverage and lifecycle differences across DentalPin, Open Dental, OpenEMR, ABDM/India sources and the preserved ClearFlow prototype.
 - [RESEARCH_COMPLETION_STATUS.md](./RESEARCH_COMPLETION_STATUS.md) — explicit completed/pending ledger separating completed documentation from legal/clinical sign-off, physical-column extraction, runtime tests and implementation work.
 
 ## Source-specific addenda
