@@ -2050,11 +2050,11 @@ The research pack now has these linked layers: source-specific evidence addenda 
 
 - `PROJECT_NOTES_ADDENDUM_B38.md` adds official-source research for AERB dental X-ray registration/safety and eLORA, CPCB/DGHS-hosted biomedical waste guidance and TSPCB current-process review, the government-hosted national dental-clinic minimum-standards template, and CBIC tax invoice/bill-of-supply particulars. Each is labelled with source status and category-specific review gates.
 - `SOURCE_FIELD_MAPS.md` and `FIELD_LEVEL_INVENTORY.md` now cover B38 candidate groups for radiation equipment, waste authorization and pickup, facility standards evidence, and tax documents.
-- `TRACEABILITY_MATRIX.md` now includes the B38 P0/P1 traceability rows and explicit closure gates.
-- `SOURCE_COVERAGE_REGISTER.md` tracks B17–B38 evidence classes and gaps.
+- `TRACEABILITY_MATRIX.md` now includes B37A workforce rows, B38 P0/P1 traceability rows, and explicit closure gates.
+- `SOURCE_COVERAGE_REGISTER.md` tracks B17–B38 plus B37A evidence classes and gaps.
 - `RESEARCH_COMPLETION_STATUS.md` defines exactly what has been completed in the documentation/research pass and what remains pending: exhaustive source DDL extraction, dental clinical validation, counsel/tax/radiation/waste applicability reviews, real two-tenant Appwrite runtime tests, implementation tests, and deployment validation.
 
-**Completion boundary:** The research pack is assembled and navigable through Batch 38; it is not an exhaustive copy of every physical field in every vendor system, final canonical schema, legal sign-off, clinical approval, runtime security proof, or production-readiness certification. The repository `main` remains documentation-only and the application remains on the preserved backup branch. No live data or permissions were changed.
+**Completion boundary:** The research pack is assembled and navigable through Batch 38 plus B37A; it is not an exhaustive copy of every physical field in every vendor system, final canonical schema, legal sign-off, clinical approval, runtime security proof, or production-readiness certification. The repository `main` remains documentation-only and the application remains on the preserved backup branch. No live data or permissions were changed.
 
 
 ## 35. Batch 37A workforce domain and matrix v0.4 (2026-10-27)
@@ -2067,7 +2067,7 @@ The research pack now has these linked layers: source-specific evidence addenda 
 The current documentation set therefore covers B17–B38 plus the explicitly named B37A companion. Keep the source sequence and B37A link in the index; do not merge its source-specific payroll assumptions into an Indian canonical model without validation.
 
 
-## 35. Cross-system comparison and workforce integration (B37A, 2026-10-27)
+## 36. Cross-system comparison and workforce integration (B37A, 2026-10-27)
 
 - `PROJECT_NOTES_ADDENDUM_B37A.md` documents DentalPin source observations for append-only staff attendance punches, clinic/professional schedule templates, date-range overrides, the distinction between availability windows and actual free slots, and role-restricted payroll period/profile/entry lifecycles. This is a comparator, not an Indian payroll implementation; keep the workforce domain optional until scoped and separately validate Indian statutory rules.
 - `CROSS_SYSTEM_COMPARISON.md` consolidates the main coverage differences across DentalPin, Open Dental, OpenEMR EHI, ABDM/FHIR and the preserved ClearFlow prototype. It compares source strength, lifecycle distinctions and prototype gaps and explicitly notes that the comparators are not universal schemas.
@@ -2077,7 +2077,7 @@ The current documentation set therefore covers B17–B38 plus the explicitly nam
 **Research assembly status:** the core comparison, source-specific batch index, field-family maps, traceability matrix and implementation gap report are now connected. The research-documentation work is assembled through B38 plus B37A; full physical-source-column extraction, legal/clinical review, live security tests and schema implementation remain explicit gates.
 
 
-## 36. Cross-system comparison integrated (2026-10-27)
+## 37. Cross-system comparison integrated (2026-10-27)
 
 `CROSS_SYSTEM_COMPARISON.md` was found in the repository root, inspected, and added to `RESEARCH_INDEX.md` and `RESEARCH_COMPLETION_STATUS.md`. It compares the domain contribution and limitations of DentalPin, Open Dental, OpenEMR, ABDM/NRCeS, India official sources and the preserved ClearFlow prototype. It covers tenant/role access, patient identity, workforce, scheduling, clinical context, odontogram/periodontics, plans/procedures, encounter notes, medications/prescriptions, lab and imaging, signatures, waste/radiation, facility compliance, inventory/finance/claims, communications, migration, audit and AI execution.
 
