@@ -482,3 +482,49 @@ Tax columns named CGST/SGST reflect a specific domestic tax pattern. Tax calcula
 - AI conversation storage must have PHI minimization, access controls, retention and provider/model/version provenance.
 - Audit records should be structured and tamper-resistant enough to answer who changed what, when, why, under which tenant/context, and which operation/result was involved.
 - Lab and sterilization workflows need full history and QC/release evidence, not just a status column.
+
+
+## 14. Batch follow-up: OpenDentist and LibreDental exact schema review
+
+### OpenDentist schema inventory
+Source: https://github.com/clawnify/OpenDentist/blob/master/src/server/schema.sql
+The inspected SQLite DDL defines 15 tables: settings, operatories, practitioners, treatment_types, patients, appointments, treatment_plan_items, clinical_notes, tooth_conditions, invoices, invoice_items, waiting_list, insurance_plans, lab_cases and appointments_to_make.
+
+Key details:
+- settings is a key/value store with update time; defaults include day-start/day-end minutes and slot length. These are clinic configuration and should be typed/versioned where business meaning matters rather than kept as arbitrary strings.
+- operatories have name, color, sort order and creation time.
+- practitioners have name, role, color, email, phone and creation time.
+- treatment_types have code, name, duration, default_fee stored as REAL, color and creation time.
+- patients have name, DOB, email, phone, address, medical-alerts as comma-separated text, notes, referral source and creation time. Medical-alerts as comma-separated tags are weakly typed; don't copy.
+- appointments allow patient/provider/operatory/treatment type, start/end, status, kind (patient/break/lunch/block), title override and notes. Status values include scheduled, arrived, in_chair, completed, no_show and cancelled. A break/block can be represented as a calendar reservation, but it should not masquerade as a patient appointment; use a resource-blocking event or explicit appointment kind. Patient and practitioner may be set null on deletion, while operatory deletion cascades to appointment records, which is a potential audit/history-loss risk for ClearFlow.
+- treatment_plan_items are patient-associated single rows with treatment type, tooth string, surface string, fee REAL, planned/accepted/completed/declined state, notes and order. This is compact but lacks a plan header/version, alternatives, structured tooth relations, clinician assignment and immutable quote snapshot.
+- clinical_notes have patient, practitioner, note date, body and created time; there is no signature/amendment/history structure visible in this DDL.
+- tooth_conditions record patient, tooth, optional surface, condition and recorded time; history is additive by design in this table, but the schema shown has no normalized tooth identity, code-system/version or correction linkage.
+- invoices contain patient, optional appointment, issue time, status, total REAL, amount_paid REAL and notes; invoice_items have description, quantity, unit_price REAL and treatment type. This does not establish a reliable subledger, allocation, tax snapshot, numbering, immutable issue document or reversal trail.
+- waiting_list is separate from appointments and has patient, treatment type, preferred practitioner, duration, notes and created time. A separate waitlist entity is useful; a real waitlist may also need desired time windows, priority, expiration, contact attempts, availability offers, response and booking conversion.
+- insurance_plans has patient, rank, carrier, member/group IDs, subscriber name/DOB, effective/termination dates, copay, deductible total/used, annual max/used and notes. Used/remaining amounts are mutable benefit projections and need source/verification timestamps.
+- lab_cases include patient/practitioner/treatment type/lab, case type, tooth/shade/fee, sent/expected/received/delivered times and status (inspect remaining DDL for any additional fields before formal source inventory).
+- appointments_to_make is a separate follow-up concept and should be compared with recall/recare and treatment-plan follow-up rather than assumed to be the same thing.
+- README/schema seeding confirms this is a small local practice application; MIT license is permissive, but the financial/clinical schema is not enterprise-complete.
+
+### LibreDental exact schema observations
+Sources:
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/schema/patients.sql
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/schema/clinical.sql
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/schema/billing.sql
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/schema/providers.sql
+- https://github.com/Cojekt/LibreDental/blob/main/LICENSE
+The LICENSE file directly confirms Apache-2.0. The patients table has first/last/preferred name, DOB, sex, email, primary/secondary phone, emergency contact, guarantor, insurer/policy/group/subscriber fields, preferred contact method/language, reminder opt-in, preferred provider, referral source, structured address parts, national ID type/value, medical-alerts/allergies JSON text, notes, version, status and timestamps. DOB and sex are NOT NULL in this schema, while DentalPin permits DOB to be nullable. This illustrates a product policy decision, not a universal truth: ClearFlow should decide how to handle unknown birth dates and demographic data without fabricating values.
+- Documents are separate from patients and preserve file path, size, content type, description, type, timestamps and optional patient link. Storage metadata should be supplemented by cryptographic hash, object-store identity/version, retention/access and signature evidence where required.
+- Appointments reference patient/provider/operatory with ON DELETE RESTRICT, preventing deletion of these linked records while appointments exist. By contrast, OpenDentist uses SET NULL or CASCADE in some relations. Referential delete policy materially changes audit/history guarantees and must be chosen per entity.
+- Dental conditions use patient, tooth number, surfaces as JSON text, ADA code, description, status, integer fee, optional insurance provider and JSON pricing source. A JSON pricing source is useful provenance, but should not replace canonical fee schedule IDs and snapshot values.
+- Claims use patient/provider/appointment, insurer/policy/group, date of service, status, notes, JSON line items and payer ID. Payments store integer amount, method/date/notes and optional claim ID with ON DELETE SET NULL. This is a simple receipt representation, not a multi-invoice allocation/remittance ledger.
+- Procedure codes use composite country_code + code primary key; fee schedules support practice-wide and provider-level override uniqueness using partial indexes. This is a strong discovery point for jurisdiction-aware catalogs and pricing precedence.
+- Providers include role, specialty, license, email/phone, hourly rate, NPI and taxonomy. Timecards snapshot hourly rate, store clock-in/out, total minutes, paid time/manual flag and calculate total pay using a generated expression; a partial unique index allows only one open timecard per provider. Generated calculations and partial unique constraints can be useful, but rounding policy and payroll correction/audit must be explicit.
+
+### Cross-source cautions
+- Deletion semantics differ: CASCADE can destroy clinical notes or appointment links; SET NULL preserves a child but loses attribution; RESTRICT protects relationships. Use deliberate per-entity policies and prefer archival/correction for legal/clinical/financial evidence.
+- A string or JSON list of teeth is easy to build but hard to validate, query and join. Use normalized tooth/surface rows and retain raw source payload only as import evidence.
+- REAL/float fees are unsuitable for authoritative monetary amounts. Integer minor units or exact decimal are better, provided currency exponent and rounding are explicit.
+- Simple status values are not sufficient without transition history, actor, timestamp, reason and allowed-transition rules.
+- Patient, treatment plan, treatment, appointment, invoice, payment, claim, lab case, waitlist and recall are separate entities even if a small UI combines their actions.
