@@ -4,6 +4,7 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 
 ## Core notebook
 - [PROJECT_NOTES.md](./PROJECT_NOTES.md) — consolidated project goals, domain coverage, architecture principles, core source observations, invariants and next research steps.
+- [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) — initial cross-batch requirement-to-evidence matrix (v0.1), including entity coverage, lifecycle boundaries, tenant/security invariants, acceptance tests, priority and unresolved legal/clinical decisions.
 
 ## Source-specific addenda
 - [Batches 17–22](./PROJECT_NOTES_ADDENDUM_B17_B22.md) — AI execution approval gate, tenant-scoped FKs, import integrity, prescriptions/orders/reports, agent approval/tooling, authoritative payments/refunds, invoice issue snapshots, inventory ledger, specialist dental modules, migration provenance.
