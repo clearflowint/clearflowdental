@@ -24,7 +24,6 @@
 | [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) | Domain-by-domain comparison across DentalPin, Open Dental, OpenEMR, ABDM/India sources and prototype | Existing research artifact inspected, preserved and now indexed; comparison is not a completeness/compliance score |
 | [RESEARCH_INDEX.md](./RESEARCH_INDEX.md) | Navigation to each research batch and core artifact | Updated through B38 plus B37A |
 | [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) | Requirements, invariants, priority, lifecycle and acceptance tests | v0.4; cumulative matrix with B37A workforce and B38 operational domains |
-| [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) | Coverage/lifecycle comparison across DentalPin, Open Dental, OpenEMR, ABDM/India sources and the preserved ClearFlow prototype | Saved; comparison by domain, source strengths and material gaps |
 | [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) | Source field families → candidate concept → normalization/lifecycle/test | B17–B38 plus B37A coverage by major field families; not every physical column |
 | [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) | Consolidated domain/field-group inventory | Extended through B38 plus B37A; candidate requirements labeled |
 | [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) | Source classes, per-batch evidence and gaps | Extended through B38 plus B37A |
