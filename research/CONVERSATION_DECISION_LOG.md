@@ -677,3 +677,21 @@ The owner requires a clear separation of responsibilities among PWA, Appwrite, W
 - Keep module boundaries explicit and shared infrastructure reusable; do not duplicate authorization, audit, upload or job logic in each feature.
 - Maintain a module status matrix (not started / in progress / implemented / tested / validated) and record evidence, blockers and deferred scope.
 - The sequence is a recommended plan, not a claim that all stack choices or features have been implemented or production-approved.
+
+
+## 25. Prototype-first delivery; staged audits and hardening
+**Discussion date:** 2026-10-28  
+**Status:** Owner direction; supersedes the implication that extensive production controls must all be completed before the working prototype can be built.
+
+The owner clarified that ClearFlow should not be burdened with heavy rules and infrastructure from the beginning. The priority is to build the planned end-to-end working prototype, test it in realistic synthetic scenarios, then audit and introduce industry-standard mechanisms in stages. The plan may change as the working product reveals better options; avoid overengineering and repeated rework.
+
+### Delivery approach
+1. Build a coherent, end-to-end functional prototype for the agreed product scope, with clear but lightweight component boundaries.
+2. Use simple, consistent conventions and the chosen candidate stack; avoid elaborate frameworks/processes before the need is demonstrated.
+3. Use synthetic data and a non-production environment for prototype testing. Do not expose real patient data or describe the prototype as production-ready.
+4. Test complete workflows early, capture usability gaps and revise the plan where evidence justifies it.
+5. Audit by module and risk area, then incrementally harden tenant security, clinical integrity, privacy, reliability, observability and compliance before any production/pilot use with real patient data.
+6. Keep a short status/gap list distinguishing prototype behavior, known risks, audited/fixed issues, and evidence-backed validation. Do not claim a control is implemented or verified merely because it is on the plan.
+7. Preserve the essential safety floor while prototyping: no real patient data in an unvalidated prototype; no claim of production readiness; and no unsafe direct AI authority over clinical approvals or consequential writes/deletes. Production security gates must be passed before real patient data or external users are onboarded.
+
+This direction supersedes any interpretation of Phase 0/1 as requiring a fully hardened production architecture before a functional prototype can exist. The component boundaries and module roadmap remain useful guides, but implementation should be iterative, practical and responsive to evidence.
