@@ -166,7 +166,7 @@ The app preserved on `backup/before-project-notes-reset-2026-10-27` contains onl
 
 
 
-## 12. Additional India operational domains from B38
+## 11. Additional India operational domains from B38
 
 | Candidate entity / field group | Source evidence | Candidate field inventory | Key distinction / open gate |
 |---|---|---|---|
