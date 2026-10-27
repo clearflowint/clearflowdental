@@ -1971,3 +1971,12 @@ Key findings: OpenEMR patient data includes preferred/name history, many contact
 Clinical order architecture distinguishes order header, request code lines, specimen collection, report, individual result values and result review/correction; code lines may be amended after an order is sent, and the order can link to observations/conditions via a resource-type/UUID relation. Result records carry code/system, value/data type, units, range, abnormal indication, lab comments, status and attachments. Vitals and general observations hold typed values/units, interpretation, reason, status, encounter/parent observation and reviewer context. Encounter, billing party, patient-signed document, authorization signature, document binary and attachment links are different records.
 
 OpenEMR table shapes include legacy fields and U.S.-specific concepts (SSN/HIPAA/VFC/CMS ABN/NDC and imperial measurement defaults). Preserve their meanings through localization/import adapters; do not make those codes or fields mandatory in ClearFlow's global schema.
+---
+
+## 27. Supplemental audit, signature and external identity mapping research (27 October 2026)
+
+See `PROJECT_NOTES_ADDENDUM_B30.md` for source links and full observations.
+
+OpenEMR EHI tables distinguish audit master approval/workflow from table/field value details, amendment history, and a limited patient history row for previous names/care-team. Legal document master template/version is separate from per-patient/encounter signed instance. Signature evidence includes signer/user/time, lock/amendment, data hash and signature hash; onsite signatures may include raw image/hash/IP. UUID mapping/registry tables map external resource identity to internal table/row; API logging stores request/response and may therefore become a sensitive-data sink. Notification log has sent/message/date fields but does not alone represent current multi-channel outbox/retry/delivery semantics.
+
+ClearFlow needs separate entity audit history, security audit, clinical amendment/signature evidence, external ID mapping, import/interop provenance and a user-facing event timeline projection. Do not log unredacted tokens or unnecessary PHI; signed artifacts bind to immutable content hashes/versions, and corrections create linked amendments rather than mutating signed content.
