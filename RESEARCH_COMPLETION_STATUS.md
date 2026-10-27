@@ -106,3 +106,29 @@ The research-documentation phase is assembled into a navigable, traceable eviden
 CROSS_SYSTEM_COMPARISON.md consolidates comparative evidence across major domains: tenant authorization, patient identity, workforce, scheduling, allergies/medical context, odontogram/periodontics, encounter/plan/procedure, medication/prescription, orders/results, imaging, signatures/consent, prosthetic lab, X-ray safety, waste, facility credentials, inventory, finance/insurance, recall/messaging, migration, audit and AI execution. It explicitly records the preserved prototype as absent for the majority of these domains and keeps source limitations visible.
 
 Batch 37A is included as a supplemental workforce source batch; it is a comparison input, not confirmation that attendance or payroll belongs in the first MVP. The current core research pack is indexed through B38 plus B37A. Completion still depends on source-by-source physical-field extraction for selected implementation sources, clinical/legal decision owners, and actual P0 runtime security tests.
+
+
+## 8. Final repository read-back verification (2026-10-27 continuation)
+
+This section records a fresh GitHub read-back, not an assumption based on earlier conversation.
+
+- Repository confirmed: `clearflowint/clearflowdental`; default branch `main`; repository permissions reported by the connected GitHub integration include pull/push/admin.
+- `main` head at verification: `9828edfb250ae7a1734d18543c6b873ebf9906b4`.
+- Backup branch `backup/before-project-notes-reset-2026-10-27` head at verification: `b476adc4cdc775ea165481de9dda2ae7bce8b0f2`.
+- A fresh root listing of `main` returned 26 documentation files: the consolidated `PROJECT_NOTES.md`, B17–B38 plus B37A source addenda, and the comparison, inventory, gap review, index, completion status, source register, field maps and traceability matrix. The key completion status, matrix, source register, source maps, implementation gap review and B38 addendum were fetched successfully.
+- A fresh root listing of the backup branch confirmed the original application tree is still present at the root: `.env.example`, `.github/`, `README.md`, `index.html`, `package.json`, `src/` and `vite.config.js`. This confirms preservation of the application tree at branch level; it is not a full code diff or a runtime test.
+- The main branch is documentation-only (not literally a single-file root); the source code remains on the named backup branch. No branch mutation, application write, live Appwrite permission change or patient-row read was performed in this verification pass.
+
+### Verification result
+
+**Repository documentation/read-back: PASS.** The core artifacts and the batch sequence are present and readable, and the application tree remains on the backup branch.
+
+**Research/legal/clinical/runtime completion: NOT PASSED / still open.** This read-back does not close the already-listed gates for exhaustive selected-source physical-column extraction, qualified dental review, legal/tax/radiation/waste applicability decisions, two-tenant Appwrite runtime isolation tests, signed-artifact/prescription acceptance tests, authenticated browser tests, or deployment validation. Do not interpret the repository pass as production approval.
+
+### Next execution order
+
+1. Run the two-synthetic-tenant Appwrite isolation matrix against the actual deployed Appwrite version in a non-production project, without broadening table permissions as a shortcut.
+2. Select the exact source systems/domains required for MVP and extract their physical columns/API contracts into source-pinned fixtures; do not promise exhaustive extraction of every comparator source unless scope requires it.
+3. Obtain qualified dental and India legal/regulatory/tax review for the applicability register and record decisions with source/version, owner and effective date.
+4. Add deterministic domain tests, tenant-negative tests, idempotency/concurrency tests, signed-document immutability tests and authenticated browser workflows; capture run IDs and artifacts.
+5. Only then freeze the canonical schema and evaluate pilot readiness.
