@@ -317,3 +317,36 @@ The next database-design topic is the lifecycle of clinical records and artifact
 - Audit history: append-oriented event history with controlled access and integrity protections.
 
 These are conceptual patterns, not a commitment to these exact status names or a single shared state machine. Exact transitions, signatures, retention and deletion rules must be mapped to selected healthcare standards, applicable Indian/Telangana requirements, and qualified clinical/legal review. This does not close the existing legal, clinical or runtime-security gates.
+
+
+## 12. Duplicate uploads and records from external providers
+**Discussion date:** 2026-10-28  
+**Status:** Recommended baseline; implementation details and applicable retention rules require validation.
+
+The owner raised the cases of a previously received file being sent again and patients bringing historical prescriptions/forms/reports from other hospitals.
+
+### Separate the file, the receipt, and the clinical interpretation
+- Model (a) the stored file object, (b) each upload/receipt event, and (c) any classification or interpretation as separate concepts.
+- Use a cryptographic content hash such as SHA-256 to detect exact-byte matches within an authorized scope. Where safe, reuse the stored file while preserving each receipt's timestamp, actor/source/channel and context.
+- Do not reveal to one tenant whether another tenant has matching content. Tenant-scoped duplicate detection is the safe default unless a reviewed storage design prevents cross-tenant existence disclosure and access leakage.
+- A new photo, scan, crop, rotation, compression or PDF conversion may have different bytes despite showing the same document. Similarity signals may flag possible duplicates for human review, but must not silently discard them.
+- Similar-looking prescriptions may differ in date, dose, prescriber, signature or instructions. Similarity alone must never merge or discard clinical records.
+
+### Historical records from other providers
+- Preserve the external document as received and identify it as externally authored/source material.
+- Capture known source organization/practitioner, document type, date stated on the document, date received, receiving actor/channel, patient link, and optional encounter/review link. Keep document date distinct from receipt date; unknown values remain unknown.
+- Keep authenticity/verification status separate from clinical review status. Uploading a document does not prove its source or make its contents current.
+- Do not automatically turn an external prescription into an active medication list, an external diagnosis into a confirmed current diagnosis, or an outside procedure into a procedure performed by this clinic.
+- Preserve the original and its provenance. In keeping with the capture-first requirement, do not automatically restructure handwritten clinical notes into a rigid schema. Any explicitly requested extraction remains a source-linked draft until reviewed and approved by an appropriately authorized clinician.
+- A historical document can be linked to the patient without being forced into the current encounter. It may also be linked to the encounter where it was supplied or reviewed.
+
+### Recommended intake sequence
+1. Authorize the uploader and target patient/encounter links.
+2. Validate the file and perform security checks.
+3. Compute the content hash and check for exact matches in the authorized scope.
+4. Reuse an existing stored object for an exact match where safe, but record the new receipt event; otherwise store the new original.
+5. Save known provenance/metadata without guessing missing facts.
+6. Flag probable near-duplicates for authorized human review; do not auto-delete based on similarity.
+7. Keep optional extraction separate from the source, draft-only until approved, and traceable back to the original.
+
+This extends the existing document-first and provenance decisions. It does not authorize automatic clinical interpretation, patient merging, cross-tenant disclosure, or bypassing applicable retention obligations.
