@@ -500,3 +500,22 @@ This is a domain requirement derived from the owner's clarification and enterpri
 **Status:** Owner decision; applies to initial scope.
 
 For the initial ClearFlow Dental Clinic release, direct API/account/system integrations with external diagnostic centres and laboratories are out of scope. Support only the clinic's own referral documentation and manual receipt/upload of returned reports or images, with source metadata and patient/encounter links. Do not build automated result exchange or require external provider onboarding now. Keep the model extensible so integrations can be added later without redesigning core patient/document relationships.
+
+
+## 21. Audit, consent, privacy and retention — enterprise baseline
+**Discussion date:** 2026-10-28  
+**Status:** Recommended baseline; legal applicability and retention schedules require qualified review.
+
+Use established healthcare information-management patterns, including HL7 FHIR AuditEvent, Provenance and Consent as reference concepts. Do not create a separate audit or consent workflow for every module.
+
+- **Audit history** records relevant access/actions, actor or service, time, tenant, target, authorization/outcome, and reason/source when useful. Include security-relevant events, sensitive reads where appropriate, changes, approvals/signatures, amendments, exports, permission changes and background jobs. Keep logs lean: do not log credentials, tokens or unnecessary clinical content.
+- **Record provenance** describes where information originated and who created, transformed, reviewed, signed or amended it. Keep it distinct from audit history.
+- Protect audit records from ordinary user editing/deletion, restrict access, and set an appropriate retention policy. Corrections to approved records should preserve the prior state and link to the amendment.
+- Keep patient consent, clinical approval/signature, access authorization, and communication preferences as separate concepts. Store consent evidence only when relevant, including purpose/scope, source or notice version, time, method, status and withdrawal/supersession. Do not add a consent prompt for every ordinary operation or assume consent is always the applicable legal basis.
+- Apply least privilege and tenant scoping; minimize data in logs, exports, AI prompts and derived indexes. Define processes for access requests, correction, incidents and disclosures.
+- Define retention by record category and applicable obligations. Distinguish access restriction, archival, legal hold and eventual destruction. A clinic's request to delete data does not automatically override a legal retention requirement; linked files, backups and vector indexes must be considered.
+
+### India applicability
+The DPDP Act, 2023 and DPDP Rules, 2025 are relevant references, but commencement is phased. Maintain an effective-date/applicability register and obtain qualified Indian legal review for the actual launch date and clinic context; do not claim that every substantive provision is already in force.
+
+This is a recommended enterprise baseline, not legal advice, a final retention schedule, or a reason to add excessive approval buttons.
