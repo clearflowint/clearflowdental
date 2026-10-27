@@ -6,12 +6,12 @@
 ## 1. Completion summary
 
 **Completed in this research pass**
-- Preserved and indexed source-specific batches B17–B38 without replacing the earlier source research.
+- Preserved and indexed source-specific batches B17–B38 plus B37A without replacing the earlier source research.
 - Expanded Batch 36 longitudinal dental evidence: odontogram and tooth numbering, periodontal exam measurements and calculated values, procedure target constraints, signed plan snapshots, recall vs appointment state, image payload/provenance, orthodontic visits, and lab workflow.
 - Added Batch 37 primary-source leads for NDC prescription particulars (M-2749, 23 October 2026), dental-mechanic qualification/registration (M-2662, 13 October 2026), Telangana Clinical Establishments Rules, DPDP staged commencement, CDSCO Drugs Rules, and ABDM FHIR profile version pinning.
 - Added Batch 37A workforce evidence for append-only attendance punches, clinic/professional schedule templates/overrides, availability vs free slots, and sensitive payroll profile/period lifecycle. Its Spanish/EU-oriented defaults are explicitly not India payroll rules.
 - Added Batch 38 source leads for AERB dental X-ray equipment registration/safety, biomedical waste, national dental-clinic standards template and CBIC GST invoice/bill-of-supply rules.
-- Created the field-level domain inventory, source-to-concept maps, source coverage register, traceability matrix v0.3, and read-only implementation gap review.
+- Created the field-level domain inventory, source-to-concept maps, source coverage register, traceability matrix v0.4, and read-only implementation gap review.
 - Inspected the preserved Vue/Appwrite application code and live Appwrite schema/settings metadata without reading patient rows or changing the database. Recorded the observed code/metadata gaps and sandbox test plan.
 - Corrected DPDP Rules/corrigendum links in the recent legal batches and linked the official CDSCO Rules and NRCeS profile version sources.
 - Re-read the key GitHub files from `main` after commits to verify that the outputs exist and the index points to the latest batch and artifacts.
