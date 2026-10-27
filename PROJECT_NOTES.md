@@ -528,3 +528,54 @@ The LICENSE file directly confirms Apache-2.0. The patients table has first/last
 - REAL/float fees are unsuitable for authoritative monetary amounts. Integer minor units or exact decimal are better, provided currency exponent and rounding are explicit.
 - Simple status values are not sufficient without transition history, actor, timestamp, reason and allowed-transition rules.
 - Patient, treatment plan, treatment, appointment, invoice, payment, claim, lab case, waitlist and recall are separate entities even if a small UI combines their actions.
+
+
+## 15. Batch follow-up: DentalPin application-level state machines and concurrency rules
+
+Source files inspected:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/agenda/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/budget/workflow.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/budget/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/clinical_notes/models.py
+
+### Appointment lifecycle is an explicit state machine
+DentalPin's documented canonical transitions are:
+- scheduled → confirmed, checked_in, cancelled, no_show
+- confirmed → checked_in, cancelled, no_show
+- checked_in → in_treatment, cancelled
+- in_treatment → completed, cancelled
+- completed/cancelled/no_show are terminal in this state machine.
+The workflow rejects invalid transitions and same-state transitions. It appends an initial status event at creation, not only later changes, so the history is complete from the beginning. It updates current_status_since with the transition. A parity test checks the frontend's mirrored state machine against the backend definition.
+Check-in has a defined time window: two hours before scheduled start until one hour after appointment end, evaluated using UTC instants. Moving to in_treatment requires a cabinet/operatory assignment.
+On status transition, the service refreshes the status under a row lock (FOR UPDATE) and re-reads it before writing. This addresses a race where two operators could both read the old state and write conflicting transitions. ClearFlow should adopt server-owned state machines and transactional locking/optimistic concurrency for contested operations, not trust frontend transition options.
+The source's partial unique index around clinic/cabinet/professional/start time is an additional guard but is not a substitute for arbitrary interval-overlap checking.
+
+### Budget/estimate lifecycle and acceptance evidence
+DentalPin budget workflow documents:
+- draft → sent, accepted, rejected or cancelled
+- sent → accepted, rejected, expired or cancelled
+- accepted → cancelled
+- rejected, expired and cancelled are terminal.
+A legacy completed status remains a no-op terminal value for old persisted rows, but new transitions do not enter it. This is a strong migration lesson: status values that exist in historical rows may need compatibility handling without remaining valid in new workflows.
+Budget records include budget number, version, parent_budget_id for version chain, validity period, creator/assigned professional, global discount type/value, calculated subtotal/discount/tax/total, internal and patient notes, plan snapshots, signatures and history. Budget items snapshot pricing and VAT at creation time. Version chain makes quote revisions explicit rather than overwriting accepted terms.
+Acceptance creates a separate signature record with signer name/email, relationship to patient, signature method and method-specific signature data. Signature type can distinguish full acceptance/rejection; an external signature ID can be retained. Budget history captures actions and previous/new states.
+Public-link acceptance has a bounded auth model: methods include last four phone digits, DOB, manual code or none; failed attempts are rate-limited in a rolling window, repeated total failures lock the token, and public sessions expire. These are source-system rules, not automatic ClearFlow defaults, but they show that patient-facing links require explicit authentication, expiry, rate limits and audit.
+Patient-facing rejection reasons are a closed catalogue (price, time, second opinion, other) with free-text note for other. ClearFlow should consider structured reasons plus notes where they improve analytics.
+Default budget validity and plan auto-close windows are configurable defaults (30 days each in this source). Do not hard-code these durations as universal dental rules; make jurisdiction/clinic policy configurable and record the effective policy.
+
+### Clinical notes and polymorphic references
+DentalPin clinical notes use owner_type/owner_id plus note_type to attach notes to patient, treatment, plan or appointment. An owner/type matrix is validated, but owner_id has no database FK because the relation is polymorphic; service code verifies the owner exists in the same clinic. This is a deliberate modularity trade-off. For ClearFlow, compare alternatives:
+- separate typed FK columns or subtype tables for stronger DB integrity;
+- an explicit record-reference/attachment relation with validated target type;
+- polymorphic IDs only for extension points where DB-enforced integrity is not practical.
+Never accept a client-supplied owner type/ID without verifying the target record and tenant. Clinical note attachments are moved to a media/attachment registry module, showing that file linkage can be generalized while preserving allowed owner types.
+The note types distinguish administrative, diagnosis, treatment, treatment-plan, appointment-clinical and appointment-administrative. Clinical vs administrative classification should affect permissions, retention, visibility and audit.
+
+### Additional rule-design implications
+1. Every lifecycle needs a canonical server-owned transition map and a transition event/history row, including the initial state.
+2. Contested transitions must lock/re-read the row or use a robust optimistic concurrency version; frontend state is not authoritative.
+3. Terminal/legacy states need migration policy, not ad hoc exceptions in every UI.
+4. Patient-facing acceptance links need expiry, authentication method, attempt rate limits, lockout, signer relationship and evidence.
+5. Quotes and treatment plans should be versioned; accepted commercial terms and signature evidence must survive later catalog changes.
+6. Clinic-configurable defaults need explicit policy provenance and snapshots where a past decision must be reproduced.
+7. Polymorphic ownership weakens FK integrity; choose it only with tenant-scoped service validation, tests and a documented trade-off.
