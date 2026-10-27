@@ -24,6 +24,7 @@
 | [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) | Domain-by-domain comparison across DentalPin, Open Dental, OpenEMR, ABDM/India sources and prototype | Existing research artifact inspected, preserved and now indexed; comparison is not a completeness/compliance score |
 | [RESEARCH_INDEX.md](./RESEARCH_INDEX.md) | Navigation to each research batch and core artifact | Updated through B38 plus B37A |
 | [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) | Requirements, invariants, priority, lifecycle and acceptance tests | v0.4; cumulative matrix with B37A workforce and B38 operational domains |
+| [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) | Coverage/lifecycle comparison across DentalPin, Open Dental, OpenEMR, ABDM/India sources and the preserved ClearFlow prototype | Saved; comparison by domain, source strengths and material gaps |
 | [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) | Source field families → candidate concept → normalization/lifecycle/test | B17–B38 plus B37A coverage by major field families; not every physical column |
 | [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) | Consolidated domain/field-group inventory | Extended through B38 plus B37A; candidate requirements labeled |
 | [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) | Source classes, per-batch evidence and gaps | Extended through B38 plus B37A |
@@ -99,3 +100,10 @@ Never change one of these states based only on a prose note or the presence of a
 The research-documentation phase is assembled into a navigable, traceable evidence pack through Batch 38 plus the separately numbered B37A workforce companion. The remaining work is not merely more prose: it requires exact source-by-source extraction for chosen sources, named clinical/legal decisions, and runtime security tests against the actual application/backend. Until those gates pass, do **not** generate or label the final canonical database schema, claim legal compliance, or classify the prototype as production-ready.
 
 **Last verified documentation paths:** `main` contains research notes and the artifacts linked above. The original application remains on `backup/before-project-notes-reset-2026-10-27`; this pass did not edit application code or live database permissions.
+
+
+## 7. Cross-system comparison deliverable
+
+CROSS_SYSTEM_COMPARISON.md consolidates comparative evidence across major domains: tenant authorization, patient identity, workforce, scheduling, allergies/medical context, odontogram/periodontics, encounter/plan/procedure, medication/prescription, orders/results, imaging, signatures/consent, prosthetic lab, X-ray safety, waste, facility credentials, inventory, finance/insurance, recall/messaging, migration, audit and AI execution. It explicitly records the preserved prototype as absent for the majority of these domains and keeps source limitations visible.
+
+Batch 37A is included as a supplemental workforce source batch; it is a comparison input, not confirmation that attendance or payroll belongs in the first MVP. The current core research pack is indexed through B38 plus B37A. Completion still depends on source-by-source physical-field extraction for selected implementation sources, clinical/legal decision owners, and actual P0 runtime security tests.
