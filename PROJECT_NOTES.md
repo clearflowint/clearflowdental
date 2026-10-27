@@ -2005,7 +2005,7 @@ Candidate matrix requirements: policy-driven retention and legal holds; verified
 
 ---
 
-## 29. Additional research addenda: India legal gate and prosthetic laboratory workflow
+### Companion addenda index: India legal gate and prosthetic laboratory workflow
 
 - `PROJECT_NOTES_ADDENDUM_B35.md` — India-specific regulatory evidence gate covering dental records, DPDP applicability, telemedicine/AI prescribing and the need for exact official source/version/actor applicability checks before a rule is labelled mandatory.
 - `PROJECT_NOTES_ADDENDUM_B36.md` — first-party Open Dental lab workflow plus continued database/API research on odontogram and tooth numbering provenance, periodontal exam/measurement structure and derived CAL, procedure target constraints, signed treatment plans, recall versus appointment lifecycle, image metadata versus binary assets and DICOM context, orthodontic chart versions/signatures, and lab case event history. Direct LabCases/Laboratories API schema extraction remains an explicit evidence gap.
