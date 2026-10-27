@@ -272,3 +272,20 @@ Workflow for future database design discussions:
 5. Append new decisions to this log and update relevant research documents as the project progresses.
 
 This agreement changes the discussion method; it does not itself approve a final physical schema, grant cross-tenant access, or authorize changes to live infrastructure.
+
+
+## 10. Apply enterprise healthcare modeling to encounters and clinical workflows
+**Discussion date:** 2026-10-28  
+**Status:** Agreed design method; detailed mapping and validation remain in progress.
+
+The project owner clarified that encounter, appointment, treatment, and related concepts should also follow established enterprise healthcare information-modeling logic. They are not to be invented ad hoc or presented as basic owner-choice questions.
+
+Working method:
+- Use established healthcare information models and mature dental/clinical system patterns as reference points, then map them to ClearFlow's researched scope and workflows. Where relevant, compare concepts against standards such as HL7 FHIR without assuming the application must implement every FHIR resource or adopt its entire model.
+- Keep distinct concepts distinct: patient identity; appointment/scheduled service; actual clinical encounter; observations/findings; clinical notes and source documents; planned/recommended care; performed procedures; orders/prescriptions; and follow-up/recall.
+- Derive cardinalities, lifecycle states, referential constraints, and provenance requirements from enterprise practice and the research. Avoid collapsing unrelated concepts into one table or forcing one-to-one relationships where real workflows require one-to-many or optional relationships.
+- Do not infer that a scheduled appointment occurred, that a treatment was performed because it was listed, or that captured/extracted content is clinically approved.
+- Use the simplest implementation that preserves clinical meaning, traceability, tenant isolation, and future extensibility. Standards are reference models, not an instruction to overbuild or reproduce a standard wholesale.
+- Bring the owner only material unresolved choices that depend on ClearFlow's product policy, target workflow, clinical governance, legal requirements, or commercial scope.
+
+This is a decision about the modeling approach, not approval of a final physical schema. Research mapping and clinical/legal validation remain required before production claims.
