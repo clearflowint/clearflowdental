@@ -1980,3 +1980,14 @@ See `PROJECT_NOTES_ADDENDUM_B30.md` for source links and full observations.
 OpenEMR EHI tables distinguish audit master approval/workflow from table/field value details, amendment history, and a limited patient history row for previous names/care-team. Legal document master template/version is separate from per-patient/encounter signed instance. Signature evidence includes signer/user/time, lock/amendment, data hash and signature hash; onsite signatures may include raw image/hash/IP. UUID mapping/registry tables map external resource identity to internal table/row; API logging stores request/response and may therefore become a sensitive-data sink. Notification log has sent/message/date fields but does not alone represent current multi-channel outbox/retry/delivery semantics.
 
 ClearFlow needs separate entity audit history, security audit, clinical amendment/signature evidence, external ID mapping, import/interop provenance and a user-facing event timeline projection. Do not log unredacted tokens or unnecessary PHI; signed artifacts bind to immutable content hashes/versions, and corrections create linked amendments rather than mutating signed content.
+---
+
+## 28. Existing research addenda discovered during continuation (Batches 31–34)
+
+These addenda already exist in the repository and remain part of the evidence set; they are indexed here to ensure the main notebook is a complete navigation point:
+- `PROJECT_NOTES_ADDENDUM_B31.md` — DentalPin medical reference model, tenant mutation requirements, patient clinical context, prescription issue/cancel freeze, GDPR-like privacy/erasure workflow, India-specific applicability boundary.
+- `PROJECT_NOTES_ADDENDUM_B32.md` — medical reference service/test semantics, clinic-scoped mutation/audit contract, medication safety and prescription lifecycle, candidate canonical entities, India law/standards research gate.
+- `PROJECT_NOTES_ADDENDUM_B33.md` — OpenEMR prescription fields, inventory/product/lot/dispensing flows, order/result/review distinctions, patient reminder obligations, immunization fields, signature/amendment evidence.
+- `PROJECT_NOTES_ADDENDUM_B34.md` — OpenEMR patient identity and care-team categories, unit-aware observations/vitals, medication statements vs prescriptions, dynamic forms, signatures and data-minimization tests.
+
+The newer B27–B30 addenda contribute additional direct official Open Dental API evidence and first-party OpenEMR EHI table details; the B31–B34 addenda are retained rather than overwritten. Where material overlaps, use the combined source inventory and record the stronger-source/earlier-version decision explicitly in the reconciliation matrix.
