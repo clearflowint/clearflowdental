@@ -2055,3 +2055,13 @@ The research pack now has these linked layers: source-specific evidence addenda 
 - `RESEARCH_COMPLETION_STATUS.md` defines exactly what has been completed in the documentation/research pass and what remains pending: exhaustive source DDL extraction, dental clinical validation, counsel/tax/radiation/waste applicability reviews, real two-tenant Appwrite runtime tests, implementation tests, and deployment validation.
 
 **Completion boundary:** The research pack is assembled and navigable through Batch 38; it is not an exhaustive copy of every physical field in every vendor system, final canonical schema, legal sign-off, clinical approval, runtime security proof, or production-readiness certification. The repository `main` remains documentation-only and the application remains on the preserved backup branch. No live data or permissions were changed.
+
+
+## 35. Batch 37A workforce domain and matrix v0.4 (2026-10-27)
+
+- Preserved and indexed `PROJECT_NOTES_ADDENDUM_B37A.md`: DentalPin attendance events (append-only in/out punches and correction behavior), clinic/professional schedule templates and date-range overrides, availability windows vs booked free slots, and sensitive payroll profile/period/entry lifecycle. These are comparator observations; Spanish/EU-oriented defaults are explicitly not Indian payroll law.
+- `SOURCE_FIELD_MAPS.md` section 9 and `FIELD_LEVEL_INVENTORY.md` section 14 now map attendance, schedule, staff permission, employment/payroll profile, payroll period/entry and actual bank settlement as distinct concepts.
+- `SOURCE_COVERAGE_REGISTER.md` records B37A evidence class and missing validation; `TRACEABILITY_MATRIX.md` is v0.4 and includes staff and payroll test rows.
+- Workforce attendance/payroll is enterprise-domain research, not a confirmed MVP requirement. Indian labour, overtime, leave and statutory payroll configuration remain legal/HR review pending.
+
+The current documentation set therefore covers B17–B38 plus the explicitly named B37A companion. Keep the source sequence and B37A link in the index; do not merge its source-specific payroll assumptions into an Indian canonical model without validation.
