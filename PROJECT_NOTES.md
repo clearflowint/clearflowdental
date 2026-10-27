@@ -2054,7 +2054,7 @@ The research pack now has these linked layers: source-specific evidence addenda 
 - `SOURCE_COVERAGE_REGISTER.md` tracks B17–B38 plus B37A evidence classes and gaps.
 - `RESEARCH_COMPLETION_STATUS.md` defines exactly what has been completed in the documentation/research pass and what remains pending: exhaustive source DDL extraction, dental clinical validation, counsel/tax/radiation/waste applicability reviews, real two-tenant Appwrite runtime tests, implementation tests, and deployment validation.
 
-**Completion boundary:** The research pack is assembled and navigable through Batch 38 plus B37A; it is not an exhaustive copy of every physical field in every vendor system, final canonical schema, legal sign-off, clinical approval, runtime security proof, or production-readiness certification. The repository `main` remains documentation-only and the application remains on the preserved backup branch. No live data or permissions were changed.
+**Completion boundary:** The research pack is assembled and navigable through Batch 38 plus B37A; it is not an exhaustive copy of every physical field in every vendor system, final canonical schema, legal sign-off, clinical approval, runtime security proof, or production-readiness certification. The repository `main` is documentation-only. The old application backup branch has been deleted from the active branch list; this does not guarantee permanent erasure of its commits from Git history or retained Git objects. No live data or permissions were changed.
 
 
 ## 35. Batch 37A workforce domain and matrix v0.4 (2026-10-27)
