@@ -1671,3 +1671,34 @@ Sources: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/me
 
 ### Batch 20 requirements
 Structured medical history should preserve source/validity/review; lab workflow needs validated scope; must-use transactional event handling for internal invariant side effects and outbox for remote work; agent operations must be typed and controlled at a server chokepoint; approvals need atomic single-winner resolution + immutable proposal/target binding; polymorphic attachments must verify owner/patient/tenant. Batch status: runtime/service cross-check complete for this slice; research remains ongoing.
+
+
+---
+
+## Batch 21 — Open Dental API workflow reference (2026-10-27; third-party documentation mirror)
+
+Mirror: https://github.com/rbarfinezhadfeli0/open_dental/tree/25d68236cda608bd699296dfaeed9caee2bb9372/docs/www.opendental.com/site. Recheck current official Open Dental docs before implementation. Open Dental public source repository LICENSE states GPL v2; schema/workflow concepts used for research only, no code reuse assumed.
+
+### Procedure log and treatment plan snapshots
+API source mirrors: apiprocedurelogs.html, apitreatplanattaches.html, apiproctps.html.
+- ProcedureLog fields include patient/appointment/date/fee, tooth/surface/tooth range, priority/status/provider/diagnosis/planned appointment, place of service, prosthesis/date, code/description, units/base units, treatment-plan date, site, timing, prognosis, lock, billing note, discount and audit timestamps.
+- Statuses include TreatmentPlanned, Complete, ExistingOtherProvider, ExistingCurrentProvider, ReferredOut and Condition. On completed procedures, code/discount/tooth/surface/range become immutable; associations to certain appointments, claims or orthodontic cases further constrain edits. Keep status-dependent edits and amendment history.
+- Active/inactive treatment plans link procedures via TreatPlanAttach + priority; saved plans use copied ProcTP rows linked to original procedure. Preserve accepted quote version/snapshots rather than live-link-only.
+
+### Claims, claim procedures and claim payments
+Sources: apiclaims.html, apiclaimprocs.html, apiclaimpayments.html.
+- Claim can be primary/secondary/preauthorization and includes patient/procedure list/subscriber/other coverage, service/sent/received dates, claim status, treating/billing provider, fee, estimated/actual insurer payment, deductible, writeoff, place of service, accident/prosthesis/orthodontic facts, prior authorization, notes and custom tracking.
+- ClaimProc lines include billed fee, estimated and actual insurer pay, deductible applied, status, remarks, claim-payment link, payment date, writeoff, code sent, allowed/percentage/copay overrides, no-bill-insurance, paid-other-insurance, base/total estimate, clinic/subscriber and audit fields.
+- API payment workflow requires ClaimProc status updated to Received/Supplemental and InsPayAmt finalized before ClaimPayment. Check amount must equal sum of eligible line amounts not yet linked to a ClaimPayment; then claim status is set to Received.
+ClearFlow should normalize claim header/version, claim lines, adjudication, remittance/EOB, receipt/batch, line allocations, adjustments and reconciliation separately. Keep partial/unapplied differences as exceptions, not silently force totals. Add idempotency and concurrency protections.
+
+### Appointment, patient/guarantor and recall
+Sources: apiappointments.html, apipatients.html, apiinssubs.html, apirecalls.html.
+- Appointment includes status, time pattern, confirmation state, time lock, operatory, provider/hygienist, time, linked next appointment, unscheduled state, new-patient/hygiene flags, attached procedure description, clinic, arrival/seated/dismissed timestamps, requested-arrival, appointment type, priority and audit metadata. Slot API returns start/end/provider/operatory. Appointment status, confirmation state and patient-flow timestamps differ.
+- Patient API exposes demographics/contact, guarantor, primary/secondary providers, fee schedule, billing type, individual estimated balance versus family total, family financial urgent note, chart number, payer identifier, employer, first visit, clinic, premedication, ward and preferred contact/confirmation method. Do not import balance summary as source-of-truth ledger data.
+- Subscriber relationship links plan to subscriber and effective/termination dates, subscriber ID, benefit notes, release-information/assignment-of-benefits flags and subscriber notes. Coverage is time bounded; preserve issue/service snapshots.
+- Recall fields include due/previous date, interval, status, note, disabled flag, recall type, disable-until-balance/date, scheduled date, priority and time-pattern override. “Mailed postcard” state is not provider-confirmed delivery. Recall task, suppression rule and delivery attempt are separate.
+- Treat these findings as source evidence from a third-party mirror; verify against current official docs before locking model decisions.
+
+### Batch 21 consequences
+A clinical procedure's state and editability depend on completion and relations to claims/payments/appointments/orthodontic cases. Treatment plan acceptance needs historical snapshots. Claim envelope, line adjudication, remittance/payment and receipt allocation are distinct. Guarantor/family financial relationship differs from insurance subscriber. Appointment state differs from confirmation and real flow events. Recall workflow differs from message delivery.
