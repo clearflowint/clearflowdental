@@ -99,9 +99,9 @@ https://egazette.gov.in/WriteReadData/2025/267647.pdf
 Official MeitY landing page for Rules, corrigendum and timeline:  
 https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa  
 Rules, G.S.R. 846(E), 13 November 2025:  
-https://egazette.gov.in/WriteReadData/2025/267646.pdf  
+https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf  
 Corrigendum, G.S.R. 892(E), 10 December 2025:  
-https://egazette.gov.in/WriteReadData/2025/267650.pdf
+https://egazette.gov.in/WriteReadData/2025/268455.pdf
 
 The Act commencement notification assigns provisions to three groups: provisions commencing on publication; section 6(9) and section 27(1)(d) one year after publication; and the listed core obligations including sections 3–17 and other provisions eighteen months after publication. From the Gazette date, the one-year date is 13 November 2026 and eighteen-month date is 13 May 2027. The Rules' own commencement is separately staged: rules 1, 2 and 17–21 come into force on publication; rules 3, 5–16, 22 and 23 eighteen months after publication. Read the Gazette text and corrigendum together; this batch does not replace legal advice.
 
