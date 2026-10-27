@@ -1369,3 +1369,149 @@ Sources:
 10. Payroll/treasury/expenses stay role restricted and excluded from AI tools unless an explicit typed policy permits safe projections. Bank/tax secrets never leak.
 11. Public lead intake key rotation/revocation, concurrency-safe limits and untrusted prose redaction work as designed.
 12. Disabling an optional module cannot purge legally/operationally retained history without a confirmed retention policy.
+
+
+---
+
+## 21. Batch follow-up: migration import, notification outbox, webhooks, consent/erasure and activity journal (27 October 2026)
+
+### 21.1 DentalPin migration import: source fidelity, operator mapping and recoverable partial execution
+
+The reviewed DPMF migration-import module is a useful implementation reference for importing legacy clinic systems; it is not proof that an import is all-or-nothing.
+
+**ImportJob**
+- Fields include clinic/tenant, creating actor, state, human-readable error, original filename/path/size, source system/adapter/exporter/format versions, source tenant label, declared and computed integrity hashes, total and processed entities, resumable checkpoint, explicit fiscal-compliance opt-in, execution options and start/completion timestamps.
+- Lifecycle: uploaded → validating → validated → previewing → executing → completed or failed. Validate/preview/execute are background tasks; progress/errors are saved for polling. A row lock plus status check prevents two execute workers from starting the same job concurrently.
+- File validation verifies format/magic, compatibility version, encrypted/compressed payload and integrity hash. The passphrase is kept in process memory rather than persisted.
+- Preview returns entity counts and sample rows, warnings, binary manifest summary and detection of fiscal compliance records. Proposals are dry-run catalog matching and stored as MappingDecision rows for an operator to accept, re-link, create new or ignore. Bulk acceptance uses a confidence threshold; this is an explicit human approval point for ambiguous catalogue mappings.
+- ImportJob has last_checkpoint and commits every 500 entities. The checkpoint enables near-resume after restart; idempotency is actually held by EntityMapping, not checkpoint alone.
+- **No rollback in version reviewed:** failure halfway leaves successfully imported target records. It is explicitly documented that catastrophic recovery requires restoring backup. The UI must disclose this. For ClearFlow, if we adopt partial commit, each row must have stable source identity, result, retry behavior and reconciliation; ideally support a separate staging/commit plan, dry run, row-level transaction, compensation or a proven snapshot/restore procedure. Never tell operators a migration is atomic when it isn't.
+
+**EntityMapping**
+- Maps (clinic_id, source_system, entity_type, source_canonical_uuid) → target table/row UUID. This is the stable source-to-target crosswalk and primary dedupe control. Unique per clinic/source-system/entity type/source canonical UUID, not per job. This lets repeated imports into the same clinic find an already-imported source row instead of duplicating it; separate clinics can import the same source UUID independently.
+- Target UUID is stored as a loose value, not a foreign key, because target tables live in other modules and modules can be optional. Runtime resolver controls reads. Source IDs are not used as FKs; cross-entity source references must go through MappingResolver.
+- The entity-mapping uniqueness is a concurrency backstop only if inserts handle a uniqueness conflict by rereading the winner. Test it under concurrent imports, same source file and different jobs.
+
+**FileStaging / ImportWarning / MappingDecision / RawEntity**
+- FileStaging maps source file-manifest entry (canonical UUID, owning entity UUID, relative path, declared size, SHA-256, MIME hint) to a resolved media Document after an external agent uploads bytes. Unique per job+canonical file ID; file bytes are staged outside the media library until validated. Hashless files receive a warning and cannot be matched by hash.
+- ImportWarning stores entity type/source ID, severity, code, message and raw data. These warnings describe parser/import compatibility and data that may be omitted/skipped.
+- MappingDecision stores source catalogue label/code/type, automatic proposed action (link/fuzzy link/create), target/category, score and the operator's decision. When non-pending decision exists, it overrides automatic matcher.
+- RawEntity persists source system/entity/source ID and original source JSON per job. It supports data provenance and investigations, but is sensitive: access, retention, redaction and prompt/export rules must be defined. A raw dump should never automatically enter AI context.
+- The module writes into target modules by calling their services, so the target services remain responsible for local invariants, side effects and audit/events. Imported clinic_id always comes from authenticated job context, never the payload.
+
+**ClearFlow migration design candidate**
+1. Import source bundle and cryptographic manifest/hash; capture source software/version/export time.
+2. Staging job, source entities/raw payload and file manifest.
+3. Schema/version validation plus required-field and integrity report; retain row-level errors.
+4. Identity resolution/dedup suggestions, catalog crosswalk proposals and mappings; per-decision human acceptance.
+5. Preview aggregates and samples, including data that will be skipped/retained.
+6. Commit authorization and explicit options for legal/fiscal artefacts.
+7. Per-entity/row processing state, stable idempotency key, target IDs, warning/error, retry/compensation status; source mapping saved transactionally with each successful target write.
+8. Final reconciliation counts and financial/clinical control totals, unmatched attachments, source-to-target mapping export, and immutable audit.
+9. Rollback only where explicitly supported by a reversible row operation/snapshot; otherwise label partial import and provide recovery plan.
+10. Imported records must retain source provenance and not be misattributed to the current user as the original clinical author; actor who imported and original source author are distinct.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/migration_import/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/migration_import/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/migration_import/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/migration_import/events.py
+
+### 21.2 Notification outbox: request, send attempt, delivery receipt and inbound response are different
+
+The reference Notification module has these core records:
+- NotificationTemplate: system-wide or per-clinic template keyed by notification type, locale and channel. Email has subject/HTML/text; WhatsApp uses a provider-approved template name/status and ordered variables. Clinic override is separate from system default.
+- NotificationPreference: clinic + patient or user; email/SMS/WhatsApp/push enable flags, channel opt-in timestamps, last inbound message time for a WhatsApp 24-hour session window, per-event-type preferences and preferred locale. The schema supports both patient and user.
+- ClinicNotificationSettings: which notification types are enabled/auto-sent and their timing, plus preferred channel, fallback policy, manual channels and SMS daily limit.
+- ClinicChannelSettings: one row per clinic/channel with adapter name, enabled/verified flags and non-secret config; provider secrets live in their vendor/integration config.
+- ClinicSmtpSettings: per-clinic provider/host/port/user/encrypted password/TLS/SSL/from address/name, active/verified state/time. Secret plaintext is not serialized.
+- CommunicationMessage is both outbox row and broad audit record: tenant, channel/direction, destination snapshot, optional patient, template key/message kind, optional literal body for inbound/session sends, status, attempts/max attempts/retry time, provider/provider message ID/error, dedup key, sent/delivered/read timestamps, triggering event/user and sanitized context. Unique partial index on (clinic_id, dedup_key) protects duplicates.
+- PushSubscription: clinic/patient, endpoint, p256dh/auth keys, user agent, active state and a unique tenant/endpoint identity; endpoints returning 404/410 are pruned.
+- Outbound lifecycle: queued → sending → sent → delivered/read, or failed/retried, or skipped because of opt-out/unavailable channel. Request transaction only enqueues; no network is sent before commit. Dispatcher uses FOR UPDATE SKIP LOCKED for concurrent workers and exponential backoff capped at an hour.
+- Before queueing it hard-blocks patient.do_not_contact even when force_send is requested; a per-event-type opt-out and explicit channel opt-out also cannot be bypassed by force_send. Force_send only bypasses clinic's enabled/auto_send gate. This is an important permission invariant.
+- Channel resolution tries configured channels in order, checking a viable adapter, target address, patient channel preference and provider policy. SMS quota is per clinic; exhausted preferred channel can fall back to another channel or skip visibly. Proactive WhatsApp requires approved provider template; free-form session replies allowed only within a 24-hour window opened by patient inbound message.
+- Provider delivery callback updates message state using tenant + provider message ID, and writes delivered/read timestamps. Read implies delivered. Inbound replies are stored as inbound CommunicationMessage with provider message ID idempotency, opens the 24-hour session window and publishes a reply event. That event payload includes reply text, which is untrusted user-provided prose; downstream AI ingestion must classify/redact it and protect against prompt injection.
+- Provider message ID currently isn't itself the queue's original stable identity for every channel; it is provider evidence. Keep our own dedupe key/event ID and provider message ID distinct.
+
+**Important limits and ClearFlow requirements**
+- One CommunicationMessage combines queue row and audit data, but only counters/current status are stored for repeated send attempts. If per-attempt request/response evidence is required, add NotificationAttempt with attempt number, provider, request/event correlation ID, timestamps, HTTP/provider result, error code and retry decision; avoid overwriting the first failed attempt.
+- "Sent" means provider accepted/sent request, not necessarily delivered; "delivered" relies on provider callback. Unknown state after timeout needs reconciliation, not false failure/success.
+- SMS cap should count by defined clinic-local business day or explicit UTC day as policy; reference counts UTC day. Country/legal/business communication rules must choose and disclose.
+- Do not use Boolean preference alone as a legal consent proof. Store exact notice text/version, purpose, channel, source, who/when, opt-in mechanism and withdrawal history; distinguish absence of stored preference from affirmative consent if legal policy requires opt-in.
+- Default type-preference in reference includes all supported types set true; missing key reads as consent. Treat this as reference-specific behavior, not a universally safe default. In ClearFlow, central consent/communication policy must specify type-level default, channel opt-in and lawful basis, especially for marketing vs care reminders.
+- Dedup key must be stable per logical notification occurrence. Rescheduling must create a new reminder occurrence, but retry of the same occurrence should not resend a delivered message. Queue idempotency should be part of the event/notification occurrence model.
+- Notifications can be subject to erasure/redaction, but financial/clinical message evidence can have retention obligations. Preserve message status/ids while redacting only categories that policy allows.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/gateway.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/CLAUDE.md
+
+### 21.3 External webhook integrations and API tokens
+
+- WebhookSubscription stores clinic, description, target URL, ordered subscribed event types, encrypted HMAC signing secret, active state, consecutive failure count, disabled time/reason.
+- WebhookDelivery doubles as outbox and delivery audit: subscription/clinic, event type/payload, stable event_id shared across subscriptions for one emitted event, queue status, attempt/max attempts/next attempt, response status/error/sent time. Retry backoff is exponential and subscription auto-disables after repeated consecutive failures.
+- Enqueue is database-only inside publisher transaction; scheduled dispatcher uses FOR UPDATE SKIP LOCKED, commits state before network call and uses raw-body HMAC signing. Event ID lets receivers deduplicate across retries/subscriptions.
+- Target URL is supplied by tenant admin and server POSTs to it, so the module applies SSRF protection at create/update and again before delivery: HTTPS, DNS resolution and rejection of private/loopback/link-local/reserved/multicast IPs and unsafe IP literals. DNS/rebinding and redirects should also be evaluated in ClearFlow's actual HTTP client; URL validation only at creation is insufficient.
+- Webhook secret is high-entropy, encrypted at rest and revealed once; API token is high-entropy, SHA-256 hashed for indexed lookup (appropriate for random high-entropy secrets, unlike passwords), shown once and soft-revocable, with scopes. A scope catalog alone is not enforcement; every read endpoint must verify requested scope, tenant and actor. Never assume token issuance means future data endpoint enforces all intended scope.
+- Public data-read integrations are rate-limited per token (ref: 60/min and 1000/day), tenant-scoped from resolved token rather than URL/body, and last_used_at is updated.
+- Stable event IDs, HMAC signature, timestamp tolerance, retry queue and receiver idempotency contract should all be part of ClearFlow integration spec. Keep event schema version and canonical payload version to prevent incompatible replay after deploy.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/integrations/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/integrations/gateway.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/integrations/CLAUDE.md
+
+### 21.4 Consent, data-subject requests, retention, erasure and breaches
+
+The inspected GDPR module is an EU-specific reference. Do not treat its 30-day deadline or legal categories as universal rules for India/other jurisdictions.
+
+**Observed models**
+- GdprRequest: tenant, optional patient, requester name/email, request type (access, rectification, erasure, portability, restrict), state received/in_progress/completed/rejected, received/deadline/resolved times and notes. It is a ticket tracker in v1; rectification/restriction request does not necessarily mutate the underlying record in that module. Request rows are not deleted.
+- PatientConsent: append-only grant/withdraw record per patient/purpose, exact text shown to subject, granted bool, grant/withdraw times. Current consent is latest row per patient+purpose; previous grant/withdraw event remains. Purpose vocabulary is canonicalized. More fields are needed for ClearFlow: notice version, source/channel, representative authority, identity verification, scope, version, language, evidence/hash, withdrawal actor and exact event time.
+- RetentionPolicy: clinic/category, retention years, legal hold date, active. A unique partial index permits one active policy per clinic/category, leaving superseded policy rows as history.
+- ErasureAuditLog: patient/request reference, categories erased, fields blanked, rationale, execution time/actor. Append-only.
+- DataBreach: description, involved data, affected people, status, authority/subject notification timestamps and notified subject count.
+- Partial erasure sets permitted identity/contact fields NULL while retaining the patient and legally retained clinical/fiscal records. For each module an ErasureContributor declares what can be redacted/retained; all contributors run within one transaction; a failure rolls back; post-commit event announces outcome.
+- The reference determines erasure category eligibility using active retention policy, legal_hold_until and age relative to patient.updated_at. This is a particular implementation shortcut: updated_at is not necessarily the valid or collection date of every category. ClearFlow needs category-specific retention anchors (record creation/collection, last clinical activity, document issuance, legal requirement) and authoritative legal review. Never choose the age anchor from convenience.
+- The module says invoice snapshots, clinical notes, documents, timeline and fiscal evidence may need retention under other obligations. Erasure is not necessarily hard deletion; retaining information should be justified, access restricted and logged.
+
+**ClearFlow requirements**
+- Consent state/event, request ticket, identity/representative verification, jurisdictional policy, per-category retention rule/version, legal hold, export job and erasure job/report each need separate model/state.
+- Data request lifecycle should track deadline, extension/clarification, identity check, scope, communication with requester, per-system completion, reviewer/approver and outcome evidence. Request status cannot be equivalent to the actual completion status of every contributor.
+- Erasure must enumerate first-party databases, object storage, backups, search/vector indexes, caches, external processors, logs and third-party integration copies. Define how deletion/tombstone propagation, backups and legal holds are handled.
+- Each erasure run should record category, fields/entities processed, retained/deferred reason and policy version; do not state “fully deleted” if data remains in a legal hold or backup. Retention categories are jurisdiction-specific.
+- Data breach register should track discovery time, nature/scope, affected systems/categories/subjects, risk/severity, containment, evidence, decisions/approvals, notification deadlines/outcomes, external reference and postmortem tasks; not only free-text description and count.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/gdpr/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/gdpr/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/gdpr/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/notifications/CLAUDE.md
+
+### 21.5 Activity journal vs audit trail vs timeline
+
+- ActivityJournalEntry is an append-only subscribed-event log: clinic, event type, optional actor and patient IDs, source module/table + entity ID, complete event payload JSONB and occurred_at. Cross-module IDs are loose so optional module removal does not break schema FKs. Event subscribers write transactionally inside source publisher transaction.
+- This is different from a patient timeline (patient-centric derived feed), a field-level security audit (who read/wrote what and before/after), a fiscal ledger, a provider delivery log, or an AI execution log. Full event payload can contain sensitive prose/amounts; access, retention and redaction need per-event schema rules. Do not treat the generic event journal alone as a sufficient clinical access audit.
+- For ClearFlow, keep independent retention/data-classification contracts for: business event/outbox, activity journal, patient timeline projection, field change/audit, notification/webhook delivery, AI execution, import trace, access log, fiscal records and clinical artifacts. Correlate with common request/correlation/source event IDs without flattening them into one unrestricted log.
+
+Source:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/activity_journal/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/activity_journal/events.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/activity_journal/CLAUDE.md
+
+### 21.6 Acceptance tests implied by batch 21
+
+1. Import one source bundle twice, concurrently, and after failure at entity 500; mapping table prevents duplicates; warning and processed counts do not double; imported target data remains linked to original source identity.
+2. Retry failed import job after an operator resolves catalog mappings; accepted/relinked/create_new/ignored decisions win over fuzzy matching. Same source identity imported into a different tenant does not collide.
+3. Verify hash mismatch, unsupported major version, wrong passphrase, missing binary hash, corrupt binary, and cross-tenant staged attachment each produce durable warning/failure without creating an unvalidated document.
+4. Repeat notification enqueue for same logical occurrence: one message row. Repeat webhook event: same event_id and receiver can dedupe; separate subscriptions each get their own delivery row. A failed attempt keeps error/retry evidence.
+5. Explicit do_not_contact or channel/event opt-out blocks even forced/manual sends. Template fallback respects locale/channel/provider approval. Missing adapter/invalid destination results in visible skipped/failed state, never fake sent.
+6. Provider accepts send then worker crashes before commit; delivery is unknown and reconciled by provider ID/idempotency, not blindly resent without policy.
+7. Incoming webhook/message duplicate event ID is a no-op; verify HMAC against raw body/time tolerance, scope token, revoke token and tenant filters, SSRF/DNS-rebinding/redirect safeguards.
+8. Consent withdrawal appends a new row and blocks future applicable processing while old evidence remains. Marketing and care reminder have distinct purposes; missing purpose key behavior follows explicit ClearFlow policy.
+9. Erasure with a failing contributor rolls back all redactions; a retention/legal hold causes category to be retained and documented; timeline/invoice/note redaction coverage is explicit; vector/search/media copies receive same policy.
+10. Changing retention policy does not rewrite prior policy evidence; concurrent policy creations have one active row; different retention anchors are tested per category.
+11. Patient timeline/event journal duplicates are idempotent, append-only, tenant-scoped and do not include unredacted sensitive payload in LLM summaries.
+12. Privileged AI tools cannot rotate a public intake/webhook key, run irreversible erasure or change permissions without the policy-defined human approval path.
