@@ -350,3 +350,21 @@ The owner raised the cases of a previously received file being sent again and pa
 7. Keep optional extraction separate from the source, draft-only until approved, and traceable back to the original.
 
 This extends the existing document-first and provenance decisions. It does not authorize automatic clinical interpretation, patient merging, cross-tenant disclosure, or bypassing applicable retention obligations.
+
+
+## 13. Keep related clinical context within the draft/approved JSON workflow
+**Discussion date:** 2026-10-28  
+**Status:** Owner direction accepted as a workflow/design principle; exact JSON contract and clinical sign-off rules remain to be mapped.
+
+The owner prefers past history and external records to be represented in clearly separated sections of the relevant draft or approved clinical JSON, rather than creating extra approval buttons and fragmented approval work for every item.
+
+Working interpretation:
+- Prefer a coherent clinical record/document structure with sections for current encounter content, past medical/dental history, external records/prescriptions, allergies/medication history and source references where relevant.
+- Do not create a separate approval UI action for each ordinary section by default. Provide a consolidated review/approval action for the appropriate clinical record or artifact where the workflow and professional authority allow it.
+- Preserve section-level provenance/metadata inside the JSON when needed: source document/reference, source organization if known, document date, received date, who entered/reviewed it, and whether information is reported, imported, verified, uncertain, historical or current. This can support traceability without multiplying screens or approval buttons.
+- Keep the source original linked and preserved. Embedding a structured representation or summary in JSON must not replace or alter the original source file.
+- A consolidated approval must not falsely imply that every imported historical fact has been independently verified. Approval semantics should be clear about what the clinician is attesting to (for example, approval of the authored encounter note versus confirmation of every item in an imported history).
+- Avoid excessive normalization and approval ceremony, but do not flatten legally or clinically distinct artifacts into a single unversioned blob. Prescriptions that are actually issued, signatures, amendments and other regulated artifacts may require their own lifecycle or immutable/versioned representation even if they are surfaced through a unified review workflow.
+- Keep this as a data-model and UX principle to validate against the research and applicable clinical/legal obligations before finalizing schema and approval semantics.
+
+This direction supersedes any assumption that each imported-history section should automatically have its own approval button. It does not authorize automatic AI approval, erase source provenance, or remove mandatory legal/clinical signature requirements.
