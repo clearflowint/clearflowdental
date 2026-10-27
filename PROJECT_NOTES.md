@@ -759,3 +759,101 @@ Add explicit tests for:
 - Do OpenEMR and DentalERP store actual insurer EOB/remittance service lines elsewhere in schema? Inspect table inventory and workflows further.
 - Open Dental's official full schema/docs need a versioned field extraction and feature-by-feature trace, not a guessed schema dump.
 - Need official current Indian legal source review for GST, consent, retention, provider credentials and exchange standards before defining statutory business rules.
+
+
+---
+
+## 17. Batch follow-up: OpenEMR remittance idempotency and eligibility benefits; LibreDental repository concurrency (27 October 2026)
+
+### 17.1 OpenEMR ERA / EOB posting: receipt, adjudication, reversals and retry identity
+
+Source-level service files inspected:
+- `interface/billing/sl_eob_process.php`: parses and posts X12 835 electronic remittance advice (ERA).
+- `src/Billing/EraCheckPosting.php`: check/session/claim posting deduplication.
+- `src/Billing/EraReversal.php`: reversal handling.
+- `src/Billing/EraAdjustmentMemo.php`: adjustment/secondary payer memos.
+- `src/Billing/EDI270.php`: 270 eligibility inquiry and 271 response flow.
+
+Key observations:
+- The check-level idempotency identity is not just a check number: it finds an earlier `ar_session` using payer ID + normalized check reference (bare value or “ePay - …”) + check date when available. The date matters because a payer may reuse placeholder check numbers. The session can be reused rather than duplicated.
+- Posting is also claim-scoped within a check: `EraCheckPosting` remembers claims handled during the current request and checks prior `ar_activity` by patient, encounter, check reference, payer and check date. Denials may create no AR posting row, so the code separately checks whether the latest claim version already records the same payer denial/reason codes; otherwise re-running an ERA could create repeated denied versions.
+- The payer's CLP claim status and payer claim number are durable inputs. A reversed claim status (CLP02 = 22) is not automatically treated as a payment posting. It may need to reopen the payer level so the remaining balance stays with the payer instead of being incorrectly assigned to the patient.
+- The reversal logic identifies the insurance level using coverage effective on date of service and/or payer claim number. It checks whether the same check already posted a corrected payment before reopening the insurance level. A correction consists of a reversal plus corrected payment, and the resulting level should remain closed in either posting order.
+- ERA patient responsibility adjustments are represented separately from actual payment. A zero-dollar `ar_activity` row/memo can retain the payer's deductible/coinsurance/copay/other patient-responsibility explanation or non-primary payer note without crediting the claim itself. ClearFlow should model adjustment/remark codes as structured adjudication detail, not require a text memo to be parsed later as the sole source of truth.
+- The EOB UI has explicit authorization gates and CSRF protection. This is part of the operational evidence: financial-write endpoints need role/permission checks and request integrity, not just a correct data schema.
+- Eligibility flow uses X12 270/271 and correlates the request/response partner and `verification_id`. `eligibility_verification` joins benefit rows through `verification_id`; this supports one verification response containing multiple benefits. Repeated eligibility checks are new dated observations rather than updates to a timeless insurer field.
+
+**ClearFlow candidate model:**
+- `payer_remittance` / `remittance_file`: payer, clearinghouse, check/EFT reference, payment date, deposit date, received timestamp, original file/object ID and hash, raw interchange/control IDs, parse status and reconciliation state.
+- `remittance_claim`: original payer claim number, submitted-claim reference/version, CLP status, paid amount, patient responsibility, claim-level adjustment codes, received amount and posting state.
+- `remittance_service_line`: service/procedure reference, original billed amount, allowed amount, payer payment, patient-responsibility amount, adjustment/denial code groups and per-line posting result.
+- `remittance_posting_attempt`: import/run, idempotency identity, session/ledger IDs, prior match, current status/error and actor/system/correlation.
+- `remittance_reversal` / correction relationship: references original remittance/claim/line and exact prior posting, reason, replacement and outcome.
+- Deduplication should key on provider/clearinghouse + payer + check/EFT reference + date/control number as available, plus line/claim IDs; do not use only one human-entered string. If a payer legitimately reissues a check or claim, the identity policy must permit it.
+- The posting transaction must atomically persist session, claim/service adjudication entries, payment/allocation/adjustment records and dedupe state. Preserve raw source payload for audit and reprocessing.
+
+Source links:
+- https://github.com/openemr/openemr/blob/master/interface/billing/sl_eob_process.php
+- https://github.com/openemr/openemr/blob/master/src/Billing/EraCheckPosting.php
+- https://github.com/openemr/openemr/blob/master/src/Billing/EraReversal.php
+- https://github.com/openemr/openemr/blob/master/src/Billing/EraAdjustmentMemo.php
+- https://github.com/openemr/openemr/blob/master/src/Billing/EDI270.php
+
+### 17.2 OpenEMR benefits table: response is a collection, not one coverage number
+
+The inspected `benefit_eligibility` table is described as holding eligible benefits for a specific insurance as received from a verification. It includes:
+- response ID and verification ID;
+- type and benefit type;
+- start/end dates;
+- coverage level, type, plan type, plan description and coverage period;
+- amount and percentage;
+- network indicator and message;
+- active/denied response state and response create/modify dates.
+
+This confirms a single successful verification can return multiple differently effective benefits (e.g. service category/coverage level/plan terms) and is distinct from persistent patient insurance identity. A canonical eligibility design should hold a verification header/request/response and child benefit rows. It should preserve who/what/when was checked, provider transaction identifiers, response code/status, raw response where allowed, per-benefit effective periods and staleness. A current summary may be derived for UI, but must not erase past verification responses or pretend eligibility remains current indefinitely.
+
+Source:
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/benefit_eligibility.html
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/eligibility_verification.html
+
+### 17.3 LibreDental appointment repository: optimistic concurrency is present; booking conflict control remains unproven
+
+Repository/service/test findings:
+- Appointment model has patient/provider/operatory/start/end/status/reason/notes, timestamps and `version`.
+- Create validates that ID and patient ID exist and persists UTC-formatted start/end times, status and version.
+- Update writes `WHERE id = ? AND version = ?`, increments the database version and returns `ErrConflict` when no row matched. The service test proves that a stale version is rejected. This is a good optimistic concurrency pattern for concurrent edits.
+- List queries use interval-aware range filtering (`end_time >= filter start`, `start_time <= filter end`), and the service rejects missing or inverted intervals.
+- But the reviewed `AppointmentService` + `appointment_repo.go` do not calculate provider/operatory interval overlaps or prevent two overlapping active bookings. The schema has provider/operatory/start indexes but no exclusion/unique interval constraint. Until other paths are checked, do not treat LibreDental as a slot-conflict model. ClearFlow needs explicit interval conflict logic and concurrency-safe enforcement beyond timestamps/indexes.
+- The service accepts any known status from its `UpdateAppointmentStatus` method rather than enforcing the strict transition graph used in DentalPin. A closed vocabulary alone is weaker than a state machine. For ClearFlow, a state transition API must validate both vocabulary and the allowed edge from the current state, retain the old/new status and actor/time, and use locking/version checks to prevent competing transitions.
+- The repository's delete method removes the appointment row by ID. That may suit a small local product, but enterprise design should define cancellation, retention and history-preservation deliberately—especially when appointment history relates to patient care, notifications or audit. Hard-delete should not erase the history of clinical/financial actions without a policy.
+- Audit is stored in a separately configured SQLite database/tree. Entries include ID/time/user ID/name/patient ID/action/resource/resource ID/details/IP. Keyset paging uses timestamp plus SQLite rowid as tie-breaker and validates that a cursor belongs to the requested patient. This is a useful pagination lesson, but a cross-database audit write isn't atomic with the clinical mutation; the service sometimes logs an audit failure and continues with the operation. ClearFlow should explicitly define fail-closed vs transactional outbox/retry per operation, especially for sensitive/financial writes.
+
+Source links:
+- https://github.com/Cojekt/LibreDental/blob/main/internal/services/appointment_service.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/appointment_repo.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/appointment_repo_test.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/services/audit_service.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/audit_repo.go
+- https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/audit_schema
+
+### 17.4 DentalERP tenant foreign-key caveat confirmed in a migration
+
+The MySQL migration shows `Appointment.hospitalId` separately references `Hospital.id`, while `Appointment.patientId` references `Patient.id` and `Appointment.doctorId` references `Staff.id` as independent FKs. The same pattern applies to invoice/payment ownership fields: hospital ID is a separate FK and patient/invoice links have separate single-column FKs. This protects that referenced row exists but does not by itself prove the referenced patient/staff/invoice belongs to the same hospital as the child record. Some routes explicitly verify tenant ownership before insertion, so do not characterize the entire system as unprotected; the gap is that such ownership equality is not established by those independent database FKs alone.
+  
+For ClearFlow, test and ideally enforce composite references such as `(tenant_id, patient_id)` → tenant-scoped parent key where relational database supports it, or equivalent database policies/transactional validation. An API helper that adds a tenant filter is valuable, but it cannot cover direct imports, admin tooling, background tasks, integrations or every future write route by itself.
+
+Evidence:
+- https://github.com/abinauv/dental-erp/blob/main/prisma/migrations/20260127152236_multi_tenancy/migration.sql
+- https://github.com/abinauv/dental-erp/blob/main/prisma/schema.prisma
+- https://github.com/abinauv/dental-erp/blob/main/app/api/appointments/route.ts
+
+### 17.5 Additional high-value acceptance tests
+
+Add to the earlier test catalogue:
+- Reprocess the same remittance file twice and verify there is exactly one financial posting for each claim/service line, including denials with zero payment and adjustments that create no monetary credit.
+- Import a reversal before its corrected payment and then in the opposite order; the final payer-level responsibility and balances should reconcile identically.
+- Reuse a check number with a different date/payer and verify the dedupe key allows legitimate distinct transactions while preventing duplicate retransmissions.
+- Eligibility response includes several benefit rows with different effective periods; historical result remains queryable after a later verification.
+- Two appointment edits with the same expected version: one succeeds, the other returns a deterministic conflict; two overlapping new bookings for the same clinician/operatory must not both commit.
+- Directly insert an appointment in tenant A linked to patient/staff/invoice of tenant B through DB/import paths; the tenant-equality protection must reject it.
+- Audit database/outbox unavailable during a financial posting: the defined policy executes (rollback or durable pending audit) without silent evidence loss.
