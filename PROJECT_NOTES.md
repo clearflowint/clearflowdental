@@ -2028,3 +2028,11 @@ Do not overwrite earlier batch notes. When sources overlap, preserve each source
 The preserved application code remains on `backup/before-project-notes-reset-2026-10-27`. Appwrite schema/settings metadata was inspected read-only; no patient rows were queried and no live data/permissions were modified. Research `main` stays notes-only. Keep source facts, candidate fields, legal/clinical decisions, runtime observations and implementation status separate.
 
 Do not overwrite earlier batch notes. When sources overlap, preserve each source’s provenance/quality label and reconcile in the canonical model matrix, rather than merging vendor-specific field names into a universal schema.
+
+## 32. Source coverage register (2026-10-27)
+
+`SOURCE_COVERAGE_REGISTER.md` tracks B17–B37 by source type (database reference, API contract, service inspection, test evidence, workflow, official legal source, candidate design), records what each batch actually establishes and lists source-specific gaps. It explicitly differentiates high confidence within a cited source from universal/Indian applicability and from live ClearFlow implementation evidence.
+
+Research now has a cross-batch traceability matrix (v0.2), field-level concept inventory, source coverage ledger and read-only prototype gap review. This is enough to perform a disciplined reconciliation pass, but it does not mean every physical vendor column is transcribed, the canonical schema is frozen, or the application is production-ready.
+
+The preserved application code remains on `backup/before-project-notes-reset-2026-10-27`. Appwrite schema/settings metadata was inspected read-only; no patient rows were queried and no live data/permissions were modified in this review. Research `main` stays notes-only. Keep source facts, candidate fields, legal/clinical decisions, runtime observations and implementation status separate.
