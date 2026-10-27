@@ -472,3 +472,24 @@ Data/workflow rules:
 - Use the same simple upload flow for prescriptions, reports, images and referrals; apply extra fields only when they are genuinely needed.
 
 This records the owner's preferred upload UX direction. Exact UI wording and physical schema remain to be validated.
+
+
+## 19. Support external diagnostics and labs as a first-class enterprise workflow
+**Discussion date:** 2026-10-28  
+**Status:** Agreed design requirement; detailed schema and regulatory mappings remain pending.
+
+The owner clarified that some dental clinics do not operate their own diagnostic centre or laboratory and instead refer patients externally, then receive the resulting report. ClearFlow must support this without assuming every clinic owns diagnostic equipment or performs every service in-house.
+
+Recommended enterprise model:
+- Support **internally performed services** and **externally performed services** in the same overall workflow, while preserving provider responsibility and provenance.
+- Distinguish the **order/referral/request**, the **external or internal service actually performed**, and the **result/report received**. They are related, but not interchangeable.
+- An external request should be linkable to patient and relevant encounter, requested service, referring clinic/practitioner, destination provider when known, request date, status, and eventual result(s). Avoid requiring details that the clinic does not know.
+- A service may be performed by an external diagnostic centre/lab; do not attribute it as performed by the dental clinic or its staff.
+- A returned report is a source artifact. Receiving/uploading it does not automatically mean the referring dentist has reviewed or accepted its clinical interpretation.
+- Also support a patient-supplied historical report where ClearFlow did not create the referral/request. It should be classified as an external record with available source/date metadata and linked to the patient and optionally the encounter in which it was reviewed.
+- Use the common upload/source-classification flow for returned reports and images. Preserve original files and duplicate-receipt provenance; avoid duplicate file storage where safe.
+- Clinics without in-house diagnostic capability should not need to configure or populate internal equipment/workstation/lab entities to use external referral workflows. In-house resources are optional capabilities, not mandatory tenant setup.
+- External provider details may be minimal or unknown. Do not require a full external-provider directory for a one-off referral unless operationally needed; support reusable provider records when beneficial.
+- Keep order/referral status, service status, result availability, report review and any downstream clinical decision separate. Do not infer that a service happened just because a request was sent, or that a result was clinically reviewed just because it was uploaded.
+
+This is a domain requirement derived from the owner's clarification and enterprise workflow patterns; the exact implementation is to be validated against selected dental systems and applicable clinical/legal requirements.
