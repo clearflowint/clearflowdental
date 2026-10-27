@@ -1,6 +1,6 @@
 # ClearFlow Dental Clinic — Source Coverage Register
-**Version:** 0.1 · **Review date:** 2026-10-27  
-**Purpose:** Track what each research batch actually observed, what kind of evidence it provides and what remains unverified before schema freeze.
+**Version:** 0.2 · **Review date:** 2026-10-27  
+**Purpose:** Track what each research batch actually observed, now through B38, what kind of evidence it provides and what remains unverified before schema freeze.
 
 ## Evidence classes
 - **DDL/database reference:** documented table/column shape or live database metadata; strongest for physical field evidence within that source/version.
