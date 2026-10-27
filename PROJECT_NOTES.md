@@ -2075,3 +2075,10 @@ The current documentation set therefore covers B17–B38 plus the explicitly nam
 - The prototype remains a three-table clinic/patient/visit slice and the reviewed frontend uses direct Appwrite TablesDB operations. The matrix does not assert these controls are implemented. The private row permission vs listRows behavior and forged parent-ID defenses still require a two-account, synthetic-data sandbox run before any patient-data pilot.
 
 **Research assembly status:** the core comparison, source-specific batch index, field-family maps, traceability matrix and implementation gap report are now connected. The research-documentation work is assembled through B38 plus B37A; full physical-source-column extraction, legal/clinical review, live security tests and schema implementation remain explicit gates.
+
+
+## 36. Cross-system comparison integrated (2026-10-27)
+
+`CROSS_SYSTEM_COMPARISON.md` was found in the repository root, inspected, and added to `RESEARCH_INDEX.md` and `RESEARCH_COMPLETION_STATUS.md`. It compares the domain contribution and limitations of DentalPin, Open Dental, OpenEMR, ABDM/NRCeS, India official sources and the preserved ClearFlow prototype. It covers tenant/role access, patient identity, workforce, scheduling, clinical context, odontogram/periodontics, plans/procedures, encounter notes, medications/prescriptions, lab and imaging, signatures, waste/radiation, facility compliance, inventory/finance/claims, communications, migration, audit and AI execution.
+
+Use this comparison as the summary layer over the source-specific evidence. The source-field maps remain the field-family detail, the coverage register remains the evidence-quality ledger, and the traceability matrix carries testable candidate invariants. The comparison's “absent” label is limited to the inspected prototype paths/schema and never means that a domain is unnecessary; “explicit” in a source is only explicit within that source and does not confer universal/Indian legal authority.
