@@ -178,7 +178,7 @@ The app preserved on `backup/before-project-notes-reset-2026-10-27` contains onl
 | Tax invoice / bill of supply | CBIC GST invoice rules (B38) | issuer/recipient legal identity snapshot, GSTIN/UIN if applicable, document type, financial-year unique serial/series, issue date, HSN/Accounting Code system/code, description, quantity/unit when applicable, discount, taxable/supply value, applicable tax components, place-of-supply/reverse-charge fields, rendered artifact/hash | Tax invoice, bill of supply, receipt voucher, settled payment, credit/debit note and refund are distinct; clinic-specific taxability/exemption and e-invoice applicability need tax-professional review. |
 | Legal/compliance evidence review | B35–B38 | authority, source URL/version/date, applicable facility/provider/device category, verified by/time, status, exception/reason, evidence hash, next review date | “Uploaded” is not “verified”; “not applicable” is not “missing”; policy/version changes preserve historical decisions. |
 
-## 12. Coverage limitations / completion gate
+## 13. Coverage limitations / completion gate
 - B17–B38 plus B37A research is summarized here by entity family. This is not yet a source-to-target row for every physical field in every vendor table/API. The next expansion should mine exact field names, type/nullable/enum/relationship/constraint behavior from each source addendum and original documentation, avoiding invented canonical fields.
 - Direct Open Dental LabCases/Laboratories API field extraction remains unverified. Product/material/shade candidates must not be called confirmed vendor schema fields.
 - India-specific legal status and clinic applicability require counsel/regulatory owner sign-off. Current NDC public notices M-2749 and M-2662 are included in B37 with testable product requirements.
@@ -188,11 +188,11 @@ The app preserved on `backup/before-project-notes-reset-2026-10-27` contains onl
 **Decision:** The inventory is a working field coverage register, not the final canonical schema. Preserve the whole justified domain model; make the interface simpler.
 
 
-## Source-qualified field map companion
+## 12. Source-qualified field map companion
 For named vendor/source field families and exact source names that were documented in B17–B38 plus B37A, see [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md). That file provides explicit source → candidate concept → normalization → lifecycle/security → test mappings and labels the gaps where a full DDL/API extract was not verified. Together, the field-level inventory and source-field map provide a wider review surface, but not an assertion that every physical field in every vendor schema has been individually transcribed.
 
 
-## 13. Workforce, attendance, schedules and payroll (Batch 37A)
+## 14. Workforce, attendance, schedules and payroll (Batch 37A)
 
 | Candidate entity / field group | Source-observed concepts | ClearFlow candidate field inventory | Important distinctions / validation |
 |---|---|---|---|
