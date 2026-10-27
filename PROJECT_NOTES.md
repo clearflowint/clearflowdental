@@ -995,3 +995,212 @@ Do not guess column names/types or mark these domains complete until backed by t
 - Fail chart condition mutation after claim creation and crash the service; transaction rollback must leave no orphan claim and no partial chart state.
 - Simulate audit persistence failure after a claim/payment create; no ambiguous “failed” response should be returned after a committed write unless the outcome includes a stable idempotency key and recoverable result.
 - Billed status, completed clinical treatment, invoice issuance, payer submission and payment receipt remain separate facts; test that none incorrectly implies another.
+
+
+---
+
+## 19. Batch follow-up: dental-specific periodontal, orthodontic, prosthodontic, inventory, imaging-AI and prescription domains (27 October 2026)
+
+This batch expands the canonical coverage map using DentalPin's actual models, services, module contracts, migrations and tests. These are implementation observations from a BSL-licensed reference, not a proposal to copy source code. Some data semantics (especially clinical index calculations and imaging model weights) must be clinically/licensing validated before ClearFlow uses them.
+
+### 19.1 Periodontal charting is a dated clinical exam, not a mutable “periodontal status”
+
+Inspected:
+- `backend/app/modules/periodontogram/models.py`
+- `indices.py`
+- `CLAUDE.md`
+- `docs/technical/periodontogram-plan.md`
+- lifecycle and calculation tests.
+
+**Observed schema**
+- `PeriodontogramSnapshot`: clinic/patient; status `draft|closed`; recorded time/user; closed time/user; notes; persisted `indices` JSONB. CHECK constraints couple status and close metadata. Closed snapshots are immutable. Partial unique index permits at most one draft per patient in a clinic. A new draft is seeded from the then-current odontogram with a row for each permanent FDI tooth 11–48.
+- `PeriodontogramTooth`: one tooth row per snapshot/tooth; tooth number, present/missing state, implant flag, mobility (0–3), prognosis (good/fair/poor/hopeless), buccal and lingual furcation grade (0/I/II/III), keratinized gingiva (mm). FDI-range and value-range CHECKs exist. Missing/extracted teeth are removed from metric denominators; implants count as present.
+- `PeriodontogramSite`: at most one row per snapshot + tooth + site; tooth reference/number, one of six SEPA sites `MV,V,DV,ML,L,DL`, probing depth (0–15 mm), gingival-margin position (-5 to +10 mm), bleeding on probing, plaque and suppuration. Rows are created lazily; in the source implementation bleeding/plaque/suppuration default false even if probing depth is not set.
+
+**Lifecycle and integrity**
+- Draft open is idempotent and returns the same draft on repeat. Draft creation seeds 32 permanent teeth; site values may remain absent.
+- Draft edits occur per tooth/site; close computes an index bundle and freezes the state. Closed record cannot be reopened; corrections mean a new dated exam. Draft can be discarded; closed snapshots cannot be deleted through normal API.
+- At close, derived BoP %, PI %, mean CAL and number of teeth with a pocket above threshold are stored in JSONB as a performance cache; source code includes a recompute function for backfill. Preserve raw site rows as authority and treat cached indices as recomputable output, with formula version/time if these ever change.
+- Cross-module decoupling: no FK to odontogram tooth records; the service pre-fills from the odontogram at draft time and refreshes active draft tooth flags from performed-treatment events. This protects optional-module uninstall behavior, but creates a synchronization contract that must be tested.
+- Source table only supports permanent dentition (FDI 11–48); deciduous numbering is rejected. For ClearFlow this is an intentional scope choice only if pediatric-periodontal requirements are out of scope; otherwise the schema needs an explicit dentition/notation profile and age-appropriate sites.
+
+**Important metric caveat—do not copy blindly**
+- Current source `indices.py` defines total_sites as six multiplied by every present tooth. BoP and plaque numerators count site rows with true flags, so absent/unmeasured site rows effectively count as negative for the percentage. The unit tests explicitly assert this.
+- CAL adds probing depth + gingival-margin only where both values are non-null, but then divides by the *theoretical total site count*, not the number of valid measured CAL observations. The tests explicitly expect this denominator.
+- That means a half-completed exam can produce a lower BoP/plaque percentage and a lower mean CAL than the measured-only values would suggest. A clinical standard may legitimately require a known denominator rule, but “not measured” is not biologically equivalent to “negative.” ClearFlow should preserve three states at each site (measured positive, measured negative, not assessed) and store measured/evaluable counts and formula/version. Do not call a metric complete or compare exams unless coverage rules are explicit and validated against a current authoritative periodontal standard / clinician review.
+- Explicit absent tooth vs tooth/site not assessed vs healthy finding must never collapse to the same null/false value.
+- The periodontogram’s fields should be compared with the full intended periodontal examination: gingival recession/CEJ reference, CAL, pocket depth, bleeding/plaque/suppuration, mobility, furcation, keratinized tissue and other clinical measures vary by exam model. Do not imply this particular SEPA slice is an exhaustive worldwide periodontal chart.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/periodontogram/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/periodontogram/indices.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/periodontogram/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/docs/technical/periodontogram-plan.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/tests/modules/periodontogram/test_indices_calc.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/tests/modules/periodontogram/test_snapshot_lifecycle.py
+
+### 19.2 Orthodontics: longitudinal case, repeated controls, appliance state and plan-session financing
+
+Inspected `orthodontics/models.py`, `schemas.py`, `service.py`, `CLAUDE.md` and detailed tests.
+
+**Observed model**
+- `OrthoCase`: clinic/patient, responsible professional, appliance type, status, start date, estimated months, diagnosis notes, current upper/lower wire, finish time, reopen time, status note and optional unique treatment-plan link plus plan-item link.
+- Appliance types: metal/esthetic brackets, self-ligating, aligners, functional appliance, retention.
+- Case statuses: active, paused, finished, transferred_out. Allowed transitions: active → paused/finished/transferred_out; paused → active/finished/transferred_out; finished → active; transferred_out is terminal. `finished_at` is retained when reopening and `reopened_at` timestamps the return to active. A transfer-out suggests closing the linked plan but does not automatically close the financial record.
+- `OrthoControl`: case/clinic, performed time/actor, upper/lower arch wire, procedures list (JSONB), free-text other-procedure notes, aligner number, hygiene state, notes, weeks to next control, appointment ID and optional plan-session ID.
+- `OrthoSettings`: clinic-level default wires/procedure labels. Seeding is idempotent.
+- Control registration checks staff membership; the named orthodontist must be a professional member. Appointment link must match the case patient and clinic. Plan/session links must exist under the case’s own treatment-plan item. Controls are refused on terminal cases.
+- Next due date is calculated from the latest control, not a denormalized due-date counter; recall creation is duplicate-guarded and is skipped while case is paused. Editing a control re-derives current wires from latest controls, avoiding stale cached wire state.
+- Optional payment plan integration is deliberately through treatment-plan item sessions. Schedule generation checks exact Decimal equality between down payment + (months × monthly amount) and existing pending amount; it refuses if any session is already completed, adds the new sessions through the plan service and removes replaced pending sessions. Orthodontics itself never writes payments or paid/earned deltas.
+- Tests cover illegal status edges, non-professional rejection, tenancy, idempotent defaults, conflicting second case for one plan, plan-item/session foreign relationship, appointment scope, installment total mismatch, editing controls, recall upsert and a transferred-out close suggestion.
+
+**Canonical implications**
+- Orthodontic treatment requires more than an `orthodontic` procedure enum. Preserve a case-level longitudinal record with appliance type/status, treatment goals/diagnosis, planned duration, repeated control visits, current and prior archwire/aligner stage, actions performed, hygiene, findings/photos, progress measures, compliance, breakage/remake events, retention and follow-up.
+- If aligner cases are supported, do not rely only on one `aligner_number`: potential entities include aligner system/series, stage number, planned vs actually delivered tray, wear/replace date, attachment/IPR changes, lost/replacement tray, adherence issue and outcome measure. Mark these as candidate future fields until source and clinician review.
+- JSONB procedures is flexible but limits relational reporting and code validation. Consider normalized control-procedure rows referencing a versioned catalogue, with `other` detail retained separately.
+- Monthly money schedule belongs to the patient’s accepted treatment/financial plan, with each session/instalment link, not a parallel amount counter hidden in the orthodontic module.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/orthodontics/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/orthodontics/schemas.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/orthodontics/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/orthodontics/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/tests/modules/orthodontics/test_orthodontics.py
+
+### 19.3 Prosthodontic lab work order vs diagnostic laboratory/specimen order
+
+DentalPin's `lab_orders` module describes manufacturing work sent to an external dental laboratory—not an EHR diagnostic specimen order. It stores:
+- `LabOrder`: clinic/patient/lab contact; work type; tooth reference; impression type; antagonist information; shade; status; sent/expected/received dates; notes; created_by; timestamps.
+- Work types include crown, bridge, denture, implant, veneer, orthodontic, repair and other.
+- Status vocabulary includes sent, in_progress, ready, received, cancelled. Receipt date is stamped on transition into received and repeated PATCH with received status leaves original received date intact. There is no DELETE endpoint: cancel the order to preserve patient linkage. The service validates the patient and lab contact belong to the clinic and emits status-changed event within the transaction.
+- A migration later adds impression type, antagonist info and shade. The fields represent actual dental fabrication inputs, not generic free-text lab order.
+- The reviewed model/service has no separate first-class status history table, lab-order line/component table, fabrication attempt/rework or remake link, technical quality acceptance/rejection, vendor purchase/invoice reconciliation, or document/scan/surface-file relationship. Those are gaps to investigate/cover in ClearFlow when building a truly complete lab operations domain.
+- The schema permits a status enum at the API layer, but the reviewed service mutates the supplied status directly; don't infer a strict transition graph from a closed set of allowed status strings. ClearFlow should define valid edges, status history, rework/remake transitions and actor/time.
+- This domain must not be merged with the separate OpenEMR diagnostic `procedure_order → specimen → report → result` workflow. Manufacturing orders produce an appliance/device; diagnostic orders produce clinical results.
+
+**ClearFlow candidate lab work objects**
+1. `DentalLabOrder` header: patient/clinic, source treatment plan item/procedure, ordering professional, lab contact/vendor, order code/number, priority, sent/required/expected/received/delivered dates, state/version and communication/correlation IDs.
+2. `DentalLabOrderItem`: one crown/bridge/denture/aligner/etc. component, FDI tooth(s), role (abutment/pontic/etc.), arch/site, material, shade system/value, impression/scanner source, antagonist/bite record, implant system/abutment/platform, custom instructions, version and expected cost.
+3. `DentalLabOrderArtifact`: original scan/impression, STL/PLY/OBJ/DICOM/image/prescription/file hash, secure storage key, media type, created/uploader, link to the exact order revision.
+4. `DentalLabStatusEvent`: from/to state, actor/system, time, external confirmation, reason/note.
+5. `DentalLabQualityCheck` / `DentalLabRework`: trial/fit/occlusion/shade/finish check, accepted/rejected, measurement/note/evidence, defect and root cause, return/resend date, replacement/remake version.
+6. Supplier/financial link: expected lab cost vs invoiced/actual cost; separate supplier invoice/payables from patient charge.
+7. Clinical delivery/seating event: appointment/treatment performed, date, provider, fit/occlusion outcome, follow-up/corrective treatment. A lab package “received” is not evidence it was clinically delivered/seated.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/lab_orders/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/lab_orders/schemas.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/lab_orders/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/lab_orders/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/lab_orders/migrations/versions/labo_0002_add_prosthodontic_fields.py
+
+### 19.4 Treatment consumables are a recipe; stock movements are the execution evidence
+
+Observed `TreatmentConsumable`:
+- Junction linking a catalog procedure to an inventory item with Decimal quantity, optional note and clinic ID.
+- DB unique constraint on (clinic_id, catalog_item_id, inventory_item_id) closes duplicate-link race. Service validates both catalog treatment and stock item are active/present in the same clinic; duplicate insert returns 409. This is a good example of database enforcement plus tenant-scoped service checks.
+- The link stores consumption rule only; it does not deduct stock. On `odontogram.treatment.performed`, a transactional event handler calls the inventory service's apply-consumption method with the treatment ID as the idempotency/reference identity and actor.
+- Stock changes must always go through the inventory service rather than raw cross-module updates. The data must retain actual consumption movements and whatever stock lot/location/expiry/method was selected at performance time.
+
+**Canonical implication:** separate recipe/BOM (catalog treatment → consumable + expected quantity/unit/conditions/per-session vs per-treatment) from actual usage (treatment/session → item/lot/location, used quantity/unit, waste, actor/time, source event/idempotency key). A later recipe edit should not rewrite existing consumption. Record planned vs actual, substitutions and waste; ensure duplicate event retries cannot deduct twice. Verify whether the underlying inventory module enforces atomic lot depletion and handles insufficient stock/backorder, returns and corrections before treating the recipe integration as an end-to-end solution.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treatment_consumables/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treatment_consumables/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treatment_consumables/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treatment_consumables/events.py
+
+### 19.5 Imaging index is not the image object; import identity needs a review/approval trail
+
+DentalPin's imaging viewer uses separate entities:
+- `ImagingStudy`: clinic/patient, document FK to original media file, StudyInstanceUID, modality, study date, extracted DICOM tags in JSONB, active/archived status. Pixel bytes stay in object/media storage; study row supports structured index/listing without reparsing the bytes. Unique partial index permits one active row per clinic/document (repeat indexing is idempotent while archived versions remain).
+- `RvgLink`: approved DICOM PatientID → patient binding per clinic, unique per clinic + DICOM PatientID, actor who approved the identity link.
+- `RvgImport`: one import queue record per file hash: clinic, optional patient/document/study, filename/hash, identity tags, suggested patient/score/reason, pending/approved/rejected/failed state and error. Same-byte rescans are no-ops. Failed files remain visible/retryable. Approve/reject twice is conflict, not silently treated as another decision. Reject retains the row for audit; unreadable sources remain discoverable.
+- Matching implementation scores national ID +60, DOB +25 and tokenized name overlap up to +30, threshold 40; ties do not suggest a patient. A user approves one DICOM patient ID link, and later uploads carrying the same ID can then auto-import. Therefore the approved mapping is a security-relevant, auditable identity decision and must be revocable. DICOM PatientID should not be assumed globally unique or correct merely because it is present.
+- `ImagingAnnotation`: study/patient/clinic, kind ruler/freehand/note, normalized coordinates (0–1), JSON payload, optional mm spacing and author. Millimeter values are computed only when spacing metadata exists; never guess. Original image content remains immutable; annotations/derived views are overlays.
+- DICOM image render protects memory by bounding rows×columns before decoding (80 MP limit), refuses unsupported multi-frame/colour/encapsulated transfer syntaxes with actionable errors, uses DICOM LUT/rescale/VOI/windowing order and does not expose patient PHI in render URLs. The viewer is explicitly a visualization tool, not itself a diagnosis.
+
+**Canonical imaging requirements**
+- Store original file exactly, cryptographic hash, MIME/format, encrypted storage pointer, uploader/received time, patient/encounter/source, device/modalities, source and derived document relationships.
+- Separate patient imaging study/series/instance metadata; DICOM UIDs; modality; acquisition time; pixel geometry/spacing/orientation; rows/columns; body part/tooth; view/projection; laterality/arch; machine/manufacturer; radiation exposure if applicable; operator; quality/status; export/import identifiers.
+- Store identity-matching candidate evidence, chosen patient and approver, threshold/scoring/mapping version, link validity/revocation and auto-import source. An approved mapping remains traceable when future files auto-import.
+- Keep annotations and AI findings separate from original images; include normalized location/ROI/coordinates, model version, author/actor, date and evidence link. No AI artifact should be treated as confirmed diagnosis without a clinical review state and provenance.
+
+Source links:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/imaging_viewer/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/imaging_viewer/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/tests/modules/imaging_viewer/test_rvg_import.py
+
+### 19.6 AI imaging outputs are versioned drafts, not clinical truth
+
+Observed `AiJob`:
+- Patient/clinic/source document; DICOM series document IDs; backend key, model ID/version; proposed/queued/running/done/failed/cancelled status; queued user; draft review status; reviewer/time; bounded log/error; artifact document ID list.
+- Agent-generated unsupervised request becomes `proposed` with null queued_by and cannot execute until a clinician confirms (which stamps the responsible user). A supervised/authorized request can queue directly. Result artifacts are imported as ordinary media `document` records with an `ai-draft` tag, linked to job source; they do not overwrite source DICOM, do not create photo pairing, and remain reviewable. A clinician confirms the results; that confirmation records review metadata without mutating original output.
+- Background scheduler claims queued jobs with row locking, runs in its own DB session, and reaps stuck running jobs after a bounded age. Job failures become durable rows with status/error rather than disappearing into logs.
+- Source tests cover proposed→confirm→queued, executor skips proposed, done→reviewed, cancel restrictions, draft artifacts, foreign-patient/document rejection, series requirement, stale job reaping, runner command contract and tenant scoping.
+- Backend is pluggable, with model ID/version recorded. One model is for single-frame panoramic dental findings; nnU-Net requires a DICOM volume. Model weights and third-party dependencies require explicit licence/terms review. The README NOTICE points out a S3 weights bundle with no stated terms and restricts it to evaluation until the clinic confirms the weight licence; Ultralytics dependency is AGPL-3.0, NNUnet CLI is Apache-2.0 and DentalSegmentator weights are cited as CC-BY-4.0. Never infer the weights have the same license as the inference code.
+- Pano model output includes an FDI-related findings CSV and optional overlays. DICOM is rendered to PNG first; geometry/codec constraints may cause explicit failure. Failed model calls must preserve errors and not create an authoritative finding.
+
+**ClearFlow AI output lifecycle**
+1. Analysis job record, model/provider/version/weights digest, input study/series and source hashes.
+2. Proposals (per finding) with code/label, tooth/surface/location, confidence or uncertainty, geometry, source artifact, inference timestamp and model output hash.
+3. Human review decision per proposal: confirm, reject, defer/needs better image; reviewer, time, reason and amended values.
+4. Only reviewed proposal can become a clinical finding/diagnosis or create a plan item, and then it must be linked to both AI proposal and approving person; preserve the AI original and clinician-edited record separately.
+5. Log execution resources/errors, retries and outcome, while separating AI telemetry from patient clinical truth and minimizing PHI in application logs.
+
+**Third-party licence boundary**
+- The inspected DentalPin NOTICE describes nnU-Net CLI (Apache-2.0), DentalSegmentator weights under CC-BY-4.0 and dental-pano-ai code under MIT. It also warns the S3 model-weights tarball has no stated terms; production use needs independent confirmation. The upstream dependency list includes Ultralytics AGPL-3.0, which needs separate deployment/licensing review. Do not use source or weights merely because GitHub/URLs are reachable.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/imaging_ai/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/imaging_ai/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/imaging_ai/runner.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/imaging_ai/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/imaging_ai/NOTICE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/tests/modules/imaging_ai/test_imaging_ai.py
+
+### 19.7 Medication catalogue vs prescription artifact
+
+**Medication catalogue observed**
+- One clinic-level entry with name, dose, unit, pharmaceutical form, `requires_prescription` and active status.
+- Form enum includes tablet, capsule, syrup, suspension, injection, topical, drops, spray, mouthwash, gel, cream, paste, varnish and other.
+- Case-insensitive unique index on `clinic_id + lower(trim(name))` prevents duplicates including concurrent insert races. Seeder has 56 dental-related medication items, idempotently invoked when clinic is created or manually.
+- The catalogue is a small clinic-local autocomplete reference, not a drug knowledge base. It lacks fully normalized ingredient/combination, standard drug code, standardized strength/form/package, branded/generic status, contraindication/interaction literature, jurisdiction approval, supplier/lot/expiry and catalog version. ClearFlow should keep catalogue item separate from clinical medication statement and prescription; add terminology mappings as licensing allows.
+
+**Prescription observed**
+- Prescription header: clinic/patient/prescriber, draft/issued/cancelled, issue time, notes, locale; issue-time snapshot of prescriber name/license/signature-document ID; country-hook compliance payload JSONB.
+- Prescription item: optional soft-linked catalogue UUID, medication name snapshot, dosage, unit, route, frequency, duration, instructions and order. Free-text works when catalogue module is uninstalled; there is deliberately no FK from the optional catalogue.
+- Template stores clinic/name/items JSONB; prescriber profile separate from core user stores clinic/user/license/signature document.
+- Only a draft can be edited; empty prescription cannot be issued. Issue obtains row lock/re-reads status to prevent two concurrent issues, runs country-specific validation, snapshots prescriber information and issues the legal artifact. Issued prescription is immutable; correction is cancel + reissue; no delete. Uninstall is blocked when issued prescriptions exist. AI has a tool to create a draft but does not issue it; issuance stays a human-authorized action.
+- Allergy/interaction warnings are displayed but explicitly not blocking. This warning policy needs clinical/risk review for ClearFlow and must never be generalized without a clinician/regulatory decision.
+- Country compliance follows a hook registry keyed by clinic country; required fields, label overrides, issue validation, structured compliance snapshot and PDF data can vary by jurisdiction without making the base schema assume one country. Hooks return structured data, not arbitrary HTML.
+
+**ClearFlow candidate prescription and medication fields**
+- Prescription header: patient, encounter/treatment/diagnosis indication, prescriber and licensing snapshot, issuer time, status/version, urgency, locale, country code, pharmacy/fulfilment target, signature/consent, regulatory artifact reference and amendment/cancel reason. Define permitted prescriber roles and any controlled-drug workflow by jurisdiction.
+- Line: ingredient(s)/brand, medication standard/code+version, dose amount and UCUM unit, dose form/strength, route, frequency/interval, duration/start/end, quantity and quantity unit, renewals/refills, PRN flag/reason, max dose where legally/clinically meaningful, timing/food instructions, taper/schedule where needed, patient instruction text, substitution permission, pharmacy, line state, external Rx ID and dispensing/transmission records.
+- Separate prescription from a medication list/statement (patient actually taking, start/end, source, status), dispense/fill, administration and cancellation/revocation. A prescription created doesn't prove it was dispensed or taken.
+- Store each issued prescription snapshot/artifact and keep previous issue/cancellation versions traceable. Never regenerate a prior issued script using current clinician identity, label or mutable catalogue values.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/medication_catalog/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/medication_catalog/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/prescriptions/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/prescriptions/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/prescriptions/hooks.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/prescriptions/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/tests/modules/prescriptions/test_prescriptions.py
+
+### 19.8 New ClearFlow acceptance tests derived from this batch
+
+1. Periodontal site states distinguish not measured from measured normal/negative; BoP/PI/CAL denominator counts follow an explicitly approved formula and report coverage/number assessed. Partial exam cannot silently appear to have a complete normal index.
+2. A closed periodontal snapshot cannot be edited/reopened; correction creates a new snapshot and preserves old exam and author. Draft open is idempotent. Patient archive handles draft/snapshot according to explicit retention rules.
+3. Validate permanent vs deciduous tooth numbering using declared notation/dentition, not only numeric range. Mixed dentition and implants must behave as the selected clinical standard requires.
+4. Orthodontic control update re-derives current wire state from latest control; deleting/reordering controls is protected or recalculated in a versioned transaction. Terminal transitions cannot be bypassed; transferred-out case does not delete plan/financial history.
+5. Monthly installment schedule must sum exactly to outstanding plan/session amount, refuses rewrite after any completed session, and is idempotent under retries/concurrent scheduling.
+6. Lab order transition sequence and event history: repeated received update cannot rewrite received date; illegal edge rejected; cancellation retains source references; remake/rework creates new linked attempts rather than erasing prior order.
+7. Treatment consumption duplicate event must not decrement a lot twice; recipe snapshot/version and actual item+lot+quantity used remain linked to treatment/session; insufficient stock follows explicit transactional policy.
+8. Same DICOM file re-scan does not duplicate a document/study. Failed import remains retryable. Ambiguous patient identity stays pending with no suggestion; approved identity link is actor-attributed, clinic-scoped and revocable.
+9. Imaging annotations never mutate source pixels; millimeter geometry is absent (not invented) without pixel spacing and correctly uses rows vs columns for non-square images.
+10. AI job proposed by autonomous agent cannot execute until authorized confirmation; artifacts stay drafts; confirmed/rejected per-finding review does not overwrite raw output. Record the exact model/weight version and license; inference failure creates durable state.
+11. Two concurrent prescription-issue calls cannot both issue; issued script cannot edit/delete; cancel-and-reissue preserves prescriber and compliance snapshots.
+12. Catalogue rename/retire does not rewrite existing prescriptions; prescription item has a frozen medication string/form/strength snapshot.
