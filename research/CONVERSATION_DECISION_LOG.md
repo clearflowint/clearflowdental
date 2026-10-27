@@ -739,3 +739,29 @@ The owner clarified that a single Windmill workspace will host several ClearFlow
 Start with one product repository (ClearFlow Dental), one fixed folder mapping, one protected credential, and a test commit containing a harmless Windmill-compatible script. Confirm the resulting deployed script and run status, then generalize the mapping for other products. Avoid building a generic sync server before this first vertical slice works.
 
 This entry records the multi-product requirement and a recommended implementation path; automatic synchronization remains unverified until an end-to-end test passes.
+
+
+## 28. Safer staged validation of GitHub-to-Windmill dental sync
+**Discussion date:** 2026-10-28  
+**Status:** Repository prepared for manual dry-run; end-to-end sync still blocked on GitHub Actions credentials and must be run to verify.
+
+The owner confirmed that the intended Windmill URL uses workspace ID `clearflow-automations`. The connected Windmill integration lists this workspace, and a read-only listing confirms the shared `dental` folder exists there. This resolves the earlier workspace-ID mismatch for the currently intended target; the former `clearflow` ID should not be used for this workflow.
+
+### Changes committed
+- Updated `.github/workflows/sync-windmill-dental.yml` to be manually triggered only for the initial validation stage, avoiding automatic deployment before credentials and scope are verified.
+- Pinned Windmill CLI to version `1.850.0` and Node.js to `22` based on the current official CLI guidance.
+- Added a harmless Python smoke-test script at `f/dental/sync_smoke_test.py`.
+- Added root `wmill.yaml` with the intended dental-only scope and safe defaults.
+- The workflow creates missing local Windmill folder metadata, generates script metadata, and runs `wmill sync push --dry-run` with explicit scope `f/dental/**`, secrets/resources skipped, and `--keep-deleted`. The initial workflow is intended to preview changes only and not modify the Windmill workspace.
+- Workflow update commit: `69b5b3658c024589f7e3199b97318d6040926d8f`.
+- Scope configuration commit: `d5db29bd1059c0c937ee545b1190b3ff41c56a4d`.
+- Smoke-test script commit: `fd7db6f85a232c50e96d17c4af5e49c6db2e2ccb`.
+- The CLI flags and sync behavior were checked against the current official Windmill documentation, including the destructive nature of ordinary sync and the supported dry-run / keep-deleted options.
+
+### Remaining validation
+- The workflow has not been executed because GitHub Actions secrets/variable have not been confirmed as configured.
+- Required GitHub repository settings: secret `WMILL_URL=https://clearflowwindmill.duckdns.org`, secret `WMILL_TOKEN` (a Windmill API token stored only in GitHub Secrets), and variable `WMILL_WORKSPACE=clearflow-automations`.
+- Run the workflow manually from GitHub Actions and inspect the dry-run output. Do not switch to actual push or enable push-on-commit until the preview shows only the intended dental assets and no unrelated paths.
+- Once dry-run passes, perform a separately controlled real sync of the smoke-test script, verify it appears under the Windmill dental folder, and run it to confirm the returned test message. Only after this vertical slice passes should automatic push-on-commit be enabled.
+
+This is a prepared and scoped workflow, not evidence that synchronization is already working.
