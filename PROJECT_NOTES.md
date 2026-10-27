@@ -2002,3 +2002,12 @@ Source-specific detail is preserved in `PROJECT_NOTES_ADDENDUM_B35.md`; index en
 - Cited NMC/EMRB platform guidance says AI may assist but final prescription/counselling is to be delivered by an RMP in its stated context. Keep AI outputs as drafts and require authorized clinician review/issuance; verify current status and dental applicability.
 
 Candidate matrix requirements: policy-driven retention and legal holds; verified, auditable disclosure requests; effective-date-aware privacy obligations; separate teleconsultation context and clinician decisions; human authorization for prescriptions; immutable signed content snapshots and linked amendments. Remaining India-specific legal research includes current dental regulator status, Telangana clinical-establishment obligations, prescription/pharmacy law, imaging/radiology, biomedical waste and applicable health-record standards. Tag unresolved claims as provisional/legal review required.
+
+---
+
+## 29. Additional research addenda: India legal gate and prosthetic laboratory workflow
+
+- `PROJECT_NOTES_ADDENDUM_B35.md` — India-specific regulatory evidence gate covering dental records, DPDP applicability, telemedicine/AI prescribing and the need for exact official source/version/actor applicability checks before a rule is labelled mandatory.
+- `PROJECT_NOTES_ADDENDUM_B36.md` — first-party Open Dental Lab Cases manual and LabTurnarounds API. Confirms lab case origin from chart/plan/appointment, laboratory, instructions, fees, due date, appointment link, sent/received/quality-check tracking, lab-slip templates and separate published/actual turnaround duration. Records lab API schema extraction as an open evidence gap.
+
+Do not overwrite earlier batch notes. When sources overlap, preserve each source’s provenance/quality label and reconcile in the canonical model matrix, rather than merging vendor-specific field names into a universal schema.
