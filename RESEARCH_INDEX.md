@@ -4,6 +4,7 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 
 ## Core notebook
 - [PROJECT_NOTES.md](./PROJECT_NOTES.md) — consolidated project goals, domain coverage, architecture principles, core source observations, invariants and next research steps.
+- [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) — domain-by-domain comparison of DentalPin, Open Dental, OpenEMR, ABDM/India sources and the preserved ClearFlow prototype, including what each source contributes and where evidence is absent or partial.
 - [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) — v0.4 cumulative cross-batch requirements matrix with selected field-to-concept mappings, lifecycle/security tests, implementation evidence, India-specific requirements and workforce/payroll traceability.
 - [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) — field groups from B17–B38 plus B37A mapped into candidate entities, preserving source semantics, units, missingness, provenance, authority and lifecycle distinctions.
 - [IMPLEMENTATION_GAP_REVIEW.md](./IMPLEMENTATION_GAP_REVIEW.md) — read-only review of the preserved Vue/Appwrite prototype and current database metadata; includes P0 security test plan and current limitations.
