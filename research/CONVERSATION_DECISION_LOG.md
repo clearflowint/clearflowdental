@@ -717,3 +717,25 @@ The owner supplied the Windmill URL `https://clearflowwindmill.duckdns.org/works
 - This bootstrap uses GitHub Actions → Windmill CLI (Git → Windmill), not Windmill Enterprise's native Git Sync. Do not enable both deployment paths for the same branch because they can conflict.
 
 This records the setup attempt and known limitations; it does not claim that automatic deployment is active or production-validated.
+
+
+## 27. Multi-product Windmill workspace and repository-independent synchronization
+**Discussion date:** 2026-10-28  
+**Status:** Owner's architecture requirement; sync implementation strategy to be prototyped and verified.
+
+The owner clarified that a single Windmill workspace will host several ClearFlow products in separate folders, while Windmill's native workspace Git Sync permits only one repository connection in the current setup. Product repositories must not be forced into one monolithic Git repository or one shared deployment scope.
+
+### Required direction
+- Keep one shared Windmill workspace where practical, with isolated product folders such as `f/dental/`, `f/chitfund/`, and `f/fulfiller/`.
+- Each product retains its own GitHub repository and branch. A change in one repository must synchronize only that product's allowlisted folder; it must not overwrite/delete another product's assets.
+- Do not depend on the single workspace-level native Git Sync connection for multi-repository orchestration.
+- Use an external per-repository GitHub Actions workflow with Windmill CLI sync as the simplest initial implementation, or a single authenticated Windmill HTTP-triggered dispatcher calling a reusable Python sync function if a shared webhook service proves materially simpler. Compare with a small end-to-end prototype before adding complexity.
+- If an HTTP dispatcher is used, it must authenticate requests, validate repository/branch/commit against an explicit allowlist, map each repository to a fixed Windmill folder, prevent arbitrary target-path injection, be idempotent, log commit/result, and never accept secrets or arbitrary code from the webhook body.
+- Keep Windmill resource values and secrets out of Git sync; configure credentials separately. Never store tokens in source code.
+- The GitHub Actions workflow previously added for the dental repository is a bootstrap attempt, not proof of a successful sync. Its CLI flags, file layout, target workspace ID, and actual deployment behavior must be validated before relying on it.
+- The connected Windmill integration currently exposes only workspace `clearflow-automations`, while the supplied UI URL specifies `clearflow`. Resolve that workspace access/identity mismatch before deploying into the intended workspace. Do not silently treat these IDs as interchangeable.
+
+### Initial recommended implementation
+Start with one product repository (ClearFlow Dental), one fixed folder mapping, one protected credential, and a test commit containing a harmless Windmill-compatible script. Confirm the resulting deployed script and run status, then generalize the mapping for other products. Avoid building a generic sync server before this first vertical slice works.
+
+This entry records the multi-product requirement and a recommended implementation path; automatic synchronization remains unverified until an end-to-end test passes.
