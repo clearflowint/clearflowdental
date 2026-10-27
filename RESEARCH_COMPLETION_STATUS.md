@@ -21,7 +21,7 @@
 | Artifact | Purpose | Completion state |
 |---|---|---|
 | [PROJECT_NOTES.md](./PROJECT_NOTES.md) | Consolidated unstructured research and decisions | Updated; preserves earlier notes |
-| [RESEARCH_INDEX.md](./RESEARCH_INDEX.md) | Navigation to each research batch and core artifact | Updated through B38 |
+| [RESEARCH_INDEX.md](./RESEARCH_INDEX.md) | Navigation to each research batch and core artifact | Updated through B38 plus B37A |
 | [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) | Requirements, invariants, priority, lifecycle and acceptance tests | v0.4; cumulative matrix with B37A workforce and B38 operational domains |
 | [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) | Source field families → candidate concept → normalization/lifecycle/test | B17–B38 plus B37A coverage by major field families; not every physical column |
 | [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) | Consolidated domain/field-group inventory | Extended through B38 plus B37A; candidate requirements labeled |
@@ -95,6 +95,6 @@ Never change one of these states based only on a prose note or the presence of a
 
 ## 6. Finish line
 
-The research-documentation phase is now assembled into a navigable, traceable evidence pack through Batch 38. The remaining work is not merely more prose: it requires exact source-by-source extraction for chosen sources, named clinical/legal decisions, and runtime security tests against the actual application/backend. Until those gates pass, do **not** generate or label the final canonical database schema, claim legal compliance, or classify the prototype as production-ready.
+The research-documentation phase is assembled into a navigable, traceable evidence pack through Batch 38 plus the separately numbered B37A workforce companion. The remaining work is not merely more prose: it requires exact source-by-source extraction for chosen sources, named clinical/legal decisions, and runtime security tests against the actual application/backend. Until those gates pass, do **not** generate or label the final canonical database schema, claim legal compliance, or classify the prototype as production-ready.
 
 **Last verified documentation paths:** `main` contains research notes and the artifacts linked above. The original application remains on `backup/before-project-notes-reset-2026-10-27`; this pass did not edit application code or live database permissions.
