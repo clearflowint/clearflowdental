@@ -6,7 +6,7 @@
 
 ## Purpose and reading rules
 
-This matrix links source observations to candidate ClearFlow requirements and testable acceptance conditions. It is a traceability artifact—not a claim that every field has been exhaustively enumerated. Detailed evidence remains in the linked source-specific addenda and PROJECT_NOTES.md.
+This matrix links source observations to candidate ClearFlow requirements and testable acceptance conditions. It is a traceability artifact—not a claim that every field has been exhaustively enumerated. Detailed evidence remains in the linked source-specific addenda and PROJECT_NOTES.md. Use [CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) for the domain-by-domain view of which reviewed system contributes evidence, lifecycle semantics and where the preserved ClearFlow prototype remains absent.
 
 Evidence labels:
 - **Observed** — explicitly documented in a cited source or reviewed database/API behavior.
@@ -254,3 +254,7 @@ No production schema migration, database permission change or application write 
 
 ## Workforce applicability decision
 Attendance, schedule overrides, and payroll are in the enterprise research inventory, but are not confirmed MVP requirements. If deferred, the owner must record the scope decision and version; do not treat “not in the first release” as evidence the domain is unnecessary or omit its lifecycle/privacy boundaries from later design.
+
+
+## Cross-system comparison companion
+[CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) complements this requirements matrix with the comparative source-coverage view. The matrix is the testable requirement/invariant ledger; the comparison is the source-domain gap view; SOURCE_COVERAGE_REGISTER.md says what type of evidence was actually reviewed; IMPLEMENTATION_GAP_REVIEW.md distinguishes documentation requirements from code/runtime evidence.
