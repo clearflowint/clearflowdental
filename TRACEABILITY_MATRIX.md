@@ -199,3 +199,39 @@ Use these statuses precisely: `Observed-source`, `Candidate`, `Clinical review p
 `SOURCE_FIELD_MAPS.md` now holds a more granular source-family layer for named DentalPin module records, Open Dental coverage/claims/procedures/plans/periodontal/medication/recall records, OpenEMR EHI patient/medication/order/result/observations/finance/audit/signature tables, and ABDM/India regulatory requirements. It maps observed field groups to candidate concepts and normalization tests. Its scope is exactly the field families documented in existing addenda; it does not claim every underlying vendor column is fully extracted where only API excerpts or partial schema documentation were reviewed.
 
 The DPDP Rules citation in B35/B37 was corrected to the verified MeitY-hosted G.S.R. 846(E) PDF; G.S.R. 892(E) corrigendum is separately linked. B37 now also indexes the official CDSCO Drugs Rules 1945 consolidated document dated 1 July 2024 as a source for later pharmacist/legal review, not as automatic prescribing permission.
+
+
+# Traceability Matrix v0.3 — India operational compliance domains (B38)
+**Added:** 2026-10-27  
+**Companions:** SOURCE_FIELD_MAPS.md (section 7), SOURCE_COVERAGE_REGISTER.md, PROJECT_NOTES_ADDENDUM_B38.md.
+
+| Requirement ID / priority | Source evidence | Candidate entities/fields | Lifecycle and security boundary | Minimum acceptance test | Status |
+|---|---|---|---|---|---|
+| RAD-IN-01 / P0 | AERB FAQ and eLORA dental X-ray guidance; B36 DICOM/image findings | Device asset, modality/category, manufacturer/model/serial, source location, AERB registration application/ID/certificate/status/validity, maintenance/QC/decommission events | Equipment registration distinct from facility registration; requirements vary by device category. Restrict radiation safety/occupational monitoring information | Unverified or expired device registration cannot be shown “cleared”; equipment replacement preserves old device and registration history; image links to source device/acquisition metadata only where supported | Official source leads observed; device-category/current-rule review pending |
+| BMW-IN-01 / P0 | CPCB/DGHS-hosted 2018 healthcare-waste guideline and CPCB/TSPCB portals | Facility authorization, applicable waste stream/category version, CBWTF/operator, collection/manifest/receipt, quantity/unit, handover/treatment evidence, incidents and remediation | Facility authorization and per-pickup evidence differ. Keep patient identifiers out of manifests unless justified. Current state-board requirements override stale templates | Scheduled pickup cannot count as completed without required receipt/handover; expired authorization flagged; changing waste contractor doesn't alter prior event evidence | Regulatory source found; current TSPCB applicability/amendments pending |
+| FAC-STD-01 / P1 | Government-hosted national minimum-standards template for dental clinics; Telangana Gazette B35/B37 | Facility category/services, standard/template version, checklist items, applicability, evidence, reviewer/time, deficiency/remediation | A reference template is not a facility registration certificate and not automatically binding for every Telangana category | Not-applicable is distinct from missing evidence; changing standard version preserves old inspection/checklist evidence | Category-specific regulatory review pending |
+| TAX-IN-01 / P0 if invoicing enabled | CBIC Tax Invoice / Rule 46 and bill-of-supply page | Supplier/recipient legal snapshot, GSTIN/UIN where applicable, doc type, FY unique serial, issue date, HSN/Accounting Code, description, quantity/unit where applicable, taxable/discount/tax values, applicable place-of-supply/reverse-charge data, rendered hash and credit/debit relation | Use clinic-specific effective-dated tax configuration. Tax invoice, bill of supply, receipt, payment and credit/debit note remain distinct. No universal dental tax rate is assumed | Concurrent issuance produces unique FY serial; issued document unchanged after rule/profile change; correct tax invoice vs bill of supply selection under approved rules | Official CBIC rules located; clinic-specific taxability/exemption requires tax-professional review |
+
+## Matrix v0.3 — consolidated completion status
+
+The evidence pack now includes:
+- Source-specific notes B17–B38;
+- Source coverage register B17–B38;
+- Source-to-concept field maps with source-specific field families and raw-to-normalized rules;
+- Field-level domain inventory;
+- Traceability matrix v0.3;
+- Read-only implementation gap review of the preserved Appwrite/Vue prototype;
+- Exact source URLs and separate pending legal/clinical/runtime status fields.
+
+The phrase **“research pack assembled”** means the evidence and field groups have been organized and the high-risk cross-domain invariants traced. It does **not** mean every physical column in every source system was independently scraped, every Indian rule has been legally interpreted, clinical field semantics are approved, or the prototype passes live security testing.
+
+### Explicit closure gates before canonical schema lock
+1. Full-column extracts for any selected source table/API, with source version/release and exact type/nullability/default/enum/index/relationship details.
+2. Clinical review of tooth notation, periodontal measurements/units/missingness and specialty workflows.
+3. Legal/professional review of prescription particulars, registered dental-mechanic evidence, facility registration, DPDP effective dates, dental X-ray registration, biomedical waste obligations, GST treatment and current Indian medication regulations.
+4. Tenant A / tenant B negative tests on the actual deployed Appwrite version/configuration, including listRows, direct-ID access and forged cross-tenant relationships.
+5. Idempotency/concurrency tests for all implemented financial, stock, appointment and message side effects.
+6. Source/target migration fixtures covering conflicting IDs, units, sentinel values, enums, signatures, dates/time zones and partially failed imports.
+7. Named owner and decision status for every unresolved item; “not in MVP” remains a documented decision instead of silent omission.
+
+No production schema migration, database permission change or application write is included in this research update.
