@@ -1,0 +1,50 @@
+name: Sync dental automation assets to Windmill
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "f/dental/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windmill-dental-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync dental folder to Windmill
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Windmill CLI
+        run: npm install --global windmill-cli@1.682.0
+
+      - name: Sync only dental Windmill assets
+        env:
+          WMILL_URL: ${{ secrets.WMILL_URL }}
+          WMILL_TOKEN: ${{ secrets.WMILL_TOKEN }}
+          WMILL_WORKSPACE: ${{ vars.WMILL_WORKSPACE }}
+        run: |
+          set -euo pipefail
+          test -n "$WMILL_URL" || { echo "Missing GitHub Actions secret WMILL_URL"; exit 1; }
+          test -n "$WMILL_TOKEN" || { echo "Missing GitHub Actions secret WMILL_TOKEN"; exit 1; }
+          test -n "$WMILL_WORKSPACE" || { echo "Missing GitHub Actions variable WMILL_WORKSPACE"; exit 1; }
+          wmill sync push \
+            --base-url "$WMILL_URL" \
+            --token "$WMILL_TOKEN" \
+            --workspace "$WMILL_WORKSPACE" \
+            --yes \
+            --skip-secrets \
+            --skip-resources \
+            --includes "f/dental/**"
