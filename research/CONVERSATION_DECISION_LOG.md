@@ -223,3 +223,24 @@ Use this log alongside—not instead of—the source research and traceability m
 - [Research Completion Status](./RESEARCH_COMPLETION_STATUS.md)
 
 **Maintenance note:** Add future project conversation decisions here as dated append-only entries, and update the relevant topical document/index rather than relying on chat history alone.
+
+
+## 8. Database design discussion roadmap
+**Discussion date:** 2026-10-28  
+**Status:** Agenda proposed; topics must be decided individually before schema freeze.
+
+After reviewing the research pack and the discussions already captured above, the next database design conversations should follow this order:
+
+1. **Tenant, clinic/branch, staff membership and authorization:** multi-branch relationships; users who work at multiple branches; separate authentication, tenant membership, professional credentials, role grants and action-level permissions. Branch-aware records and tenant isolation are required design constraints.
+2. **Patient, appointment, visit/encounter and performed service:** clearly distinguish a scheduled booking, actual attendance, clinical encounter, and a treatment/procedure actually performed. Define cardinalities and links.
+3. **Clinical record and signed-artifact lifecycle:** original files, optional drafts, approved versions, prescription draft/issue, signatures, corrections, amendments, audit and retention.
+4. **Patient medical context:** allergies/intolerances, conditions, medication statements, patient-reported history, verified information, provenance, uncertainty and review lifecycle.
+5. **Dental clinical structures:** odontogram/tooth notation, findings, periodontal measurements, treatment plans, procedures, multi-session care and which parts are in initial scope.
+6. **Next-visit, appointment and follow-up semantics:** separate a suggested date, booking, reminder, recall obligation, patient response and completed follow-up.
+7. **Documents, imaging, labs and referrals:** file metadata and immutable originals, authorized links to patients/encounters, X-ray/image metadata, lab case and referral scope.
+8. **Audit, consent, privacy and retention:** actor/action/time/source, consent and authority evidence, revocation, correction, access history and applicable legal retention.
+9. **Integrity and processing mechanics:** tenant-safe relations and every mutation, concurrent editing, idempotency, outbox/retries, background job permissions, vector-index invalidation and rebuilds.
+
+This is an agenda, not a set of final schema decisions. The owner and assistant should discuss one topic at a time, distinguish owner-approved decisions from proposals, record open questions, and update this log when a decision is made. Do not freeze the canonical schema until relevant clinical/legal review and the required runtime tenant-isolation tests are complete.
+
+**Immediate next topic:** tenant → clinic/branch → user membership/role/authority relationships, because these boundaries affect almost every other table and permission rule.
