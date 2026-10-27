@@ -3,7 +3,7 @@
 **Linked documents:** FIELD_LEVEL_INVENTORY.md · TRACEABILITY_MATRIX.md · SOURCE_COVERAGE_REGISTER.md · IMPLEMENTATION_GAP_REVIEW.md · RESEARCH_COMPLETION_STATUS.md
 
 ## Purpose and scope limit
-This file extracts named fields and field groups explicitly recorded in B17–B38 addenda and maps them to candidate ClearFlow concepts. It is deliberately **source-qualified**: an upstream column name, enum, sentinel, unit or behavior is not automatically a universal requirement or a final ClearFlow column. A table family below is only as complete as the cited addendum/API/EHI dictionary reviewed. The original source addenda remain the evidence location for URLs and detailed notes.
+This file extracts named fields and field groups explicitly recorded in B17–B38 and B37A addenda and maps them to candidate ClearFlow concepts. It is deliberately **source-qualified**: an upstream column name, enum, sentinel, unit or behavior is not automatically a universal requirement or a final ClearFlow column. A table family below is only as complete as the cited addendum/API/EHI dictionary reviewed. The original source addenda remain the evidence location for URLs and detailed notes.
 
 Status labels: **Observed** = explicitly named in the reviewed source; **Candidate** = normalized concept proposed; **Source-specific** = vendor encoding/status/enum/unit must be preserved and mapped; **Pending** = exact source DDL, clinical validation, runtime behavior or legal applicability remains unresolved.
 
@@ -149,7 +149,7 @@ Status labels: **Observed** = explicitly named in the reviewed source; **Candida
 | Stock/financial values (B20, B23, B27, B33) | Ledger movements and immutable issued snapshots are authoritative; balances are projections | Retry/reversal/reconcile/duplicate webhook and concurrent mutation tests produce exactly one effect |
 
 ## 6. Explicit source-to-target limitations
-- This maps every major field family called out in the B17–B38 research addenda, but it does **not** enumerate every individual column in every underlying vendor table. Any implementation-target field not listed here must be backed by another pinned source extraction or explicitly marked as a ClearFlow candidate.
+- This maps every major field family called out in the B17–B38 plus B37A research addenda, but it does **not** enumerate every individual column in every underlying vendor table. Any implementation-target field not listed here must be backed by another pinned source extraction or explicitly marked as a ClearFlow candidate.
 - Open Dental's full schema docs are deeper than API docs. Several B27 rows are API-field families, not full DDL. A later schema pass should pin a release/commit, record all exact column names/type/nullable/default/index/relationship/enum, and distinguish fields actually observed from inferred candidates.
 - Open Dental LabCases/Laboratories API extraction remains unverified; laboratory product/material/shade fields cannot be called confirmed API columns without a directly verified source.
 - FHIR/ABDM profile maps must be validated against the official published package at integration build time. Do not infer compliance from resource name similarity.
