@@ -562,3 +562,118 @@ Working rules:
 - Once research consolidation is sufficient, produce a traceable canonical schema proposal and validation plan rather than extending discussion indefinitely. Do not claim clinical/legal approval or runtime readiness without evidence.
 
 This entry sets the collaboration method; it does not freeze a physical schema or claim the implementation is complete.
+
+
+## 24. Architecture boundaries and module-wise implementation plan
+**Discussion date:** 2026-10-28  
+**Status:** Recommended system blueprint; stack/runtime choices and interfaces must be verified in a small technical foundation phase before feature implementation.
+
+The owner requires a clear separation of responsibilities among PWA, Appwrite, Windmill and the application backend, plus a structural module-by-module implementation plan to prevent overlapping responsibilities and unsequenced development.
+
+### A. Component ownership
+
+**PWA (mobile-first web application)**
+- Owns presentation: navigation, forms, cards, timelines, upload interaction, accessible feedback, client-side draft state, live UI updates, and progressive AI text/voice presentation.
+- May do lightweight presentation validation, but is not authoritative for business rules, permissions, clinical approval, tenant scoping or persisted calculations.
+- Calls authenticated backend operations for sensitive business mutations. Appwrite Realtime may notify the PWA of authorized changes; sensitive records should be fetched through an authorized path rather than exposing them through event payloads.
+- One installable PWA; no separate native Android/iOS apps in the current scope.
+
+**Application backend (recommended Java/Spring Boot baseline, to be verified)**
+- Owns the trusted application API and business-operation boundary.
+- Validates authenticated identity, tenant membership, role/scope, professional authority where relevant, parent-child relationships, record lifecycle transitions and all sensitive mutations.
+- Coordinates transactional or consistency-sensitive operations, idempotency, audit/provenance, authorization checks, and calls to Appwrite/Windmill/AI providers.
+- Keeps secrets and privileged credentials off the PWA; never trusts client-supplied tenant IDs or role claims without server-side verification.
+- Provides stable contracts to the PWA and to background execution.
+
+**Appwrite**
+- Owns authentication/platform identity integration, database persistence, file/object storage and platform realtime services where appropriate.
+- Use server-side permissions and tenant-scoped data constraints as defence in depth; do not rely on UI filters or client-provided IDs for isolation.
+- Keep database relationships and schema constraints explicit to the extent supported by the selected Appwrite version; enforce additional relational/business invariants in the trusted backend.
+- Confirm exact SDK/API/version behavior and permission semantics in a non-production test project before relying on them.
+
+**Windmill**
+- Owns reusable Python functions and controlled asynchronous/background execution: deterministic domain utilities, document/file processing, import/export jobs, scheduled reminders/reports, indexing/reindexing, and AI orchestration where justified.
+- Does not become a second public application API or independently bypass tenant authorization. Each job receives a validated, minimal, tenant-scoped payload; sensitive reads/writes use defined service contracts and auditable service identity.
+- Jobs must be idempotent, retry-safe, observable and explicit about failure/dead-letter/reconciliation behavior.
+- Prefer deterministic Python when it solves the task; use AI only when language understanding or other probabilistic capability is genuinely needed.
+
+**AI / model providers**
+- AI is a capability invoked behind controlled service boundaries, not an authority over the database.
+- AI may retrieve authorized context, summarize, classify when explicitly requested, or prepare proposed actions/drafts. It must not independently approve/sign clinical records, issue prescriptions, or perform consequential writes/deletes without the required human authorization and confirmation.
+- Ground clinical outputs in source-linked data; distinguish original, draft/extracted and approved records. Minimize PHI sent to models and prevent unauthorized cross-tenant retrieval.
+
+**External services**
+- Use explicit adapters/contracts for messaging, voice/streaming and future integrations. Direct diagnostic-centre/laboratory integrations are deferred; initial support is referral documentation and manual report upload.
+
+### B. Cross-cutting rules applied to every module
+- Tenant isolation and server-side authorization on every read/mutation.
+- Server-side relationship validation and professional authority checks where applicable.
+- Audit/provenance, versioning/correction and retention rules appropriate to record type.
+- Idempotency, concurrency control, safe retries, observability and automated tests.
+- Original files preserved; simple 3–4-section clinical JSON by default, with source metadata and no automatic line-by-line extraction.
+- No horizontal-scroll-first UI; mobile-first card-oriented PWA.
+- Realtime events are notifications, not the source of truth; refetch authorized state and reconcile after reconnect.
+- Do not claim a feature is secure/complete until tests against the actual selected platform versions produce evidence.
+
+### C. Structural implementation sequence
+**Phase 0 — Research and architecture freeze candidate**
+- Map existing research to requirements, decisions, gaps and acceptance tests.
+- Produce a component responsibility matrix, API/event contracts, data ownership map, threat model and MVP/later scope.
+- Verify Appwrite version, auth flow, permissions, storage, realtime and backend integration in a non-production sandbox.
+- Confirm Java/Spring Boot hosting and PWA framework with a small vertical prototype, including mobile form, authenticated request, Appwrite realtime notification and streaming AI text.
+
+**Phase 1 — Engineering foundation**
+- Repository/branch strategy, environments/secrets, CI, configuration, logging/metrics, error contracts and test harness.
+- Appwrite authentication integration and backend session/token validation.
+- Tenant context and authorization middleware; role/membership model.
+- Shared audit/provenance, idempotency, background-job contract and security test fixtures.
+- No clinical feature work until the tenant/authorization path is demonstrated by two-synthetic-tenant negative tests.
+
+**Phase 2 — Organization and access**
+- Tenant, legal entity if needed, clinic/branch, user identity, staff profile, membership, role/scope and professional credential references.
+- Branch assignment/access and revocation.
+- Admin setup and initial owner onboarding.
+
+**Phase 3 — Patient and document foundation**
+- Patient identity/search/contact links and duplicate-candidate workflow.
+- Upload flow with source classification (current clinic, previous clinic record, external provider, unknown/other), file integrity checks, receipt events and duplicate handling.
+- External historical records and report uploads without direct diagnostic-centre integration.
+- Patient timeline and secure document viewing.
+
+**Phase 4 — Scheduling and clinical encounter**
+- Appointment booking/status lifecycle, walk-ins, cancellation/rescheduling/no-show.
+- Encounter lifecycle and relationship to appointments.
+- Simple draft/approved clinical JSON, linked original documents, provenance and traceable amendments.
+- Medical/dental history and the already-agreed basic classification; avoid duplicating previously settled discussions.
+
+**Phase 5 — Dental clinical workflows**
+- Optional odontogram/charting with regional tooth numbering, findings, treatment plan and performed procedures.
+- Ensure planned care is distinct from performed care; preserve historical state.
+- Follow-up recommendations, recall and reminders as separate concepts.
+
+**Phase 6 — Documents, external referrals and governance**
+- Referral/request record, external provider metadata when known, manual returned-report upload and clinician review.
+- Audit views, consent evidence where applicable, privacy/retention workflows and export/access request handling.
+- No direct external lab/diagnostic API integrations in MVP.
+
+**Phase 7 — Communications and background automation**
+- Windmill job registry/contracts, schedules, reminders and report jobs.
+- Messaging provider integration only after consent/preferences, recipient lifecycle, delivery results and idempotency are tested.
+- Operational monitoring, retries and reconciliation tools.
+
+**Phase 8 — AI and vector retrieval**
+- Start with read-only, tenant-authorized retrieval and source-grounded summaries.
+- Add tenant-scoped derived index with version-aware synchronization, deletion/correction invalidation and rebuild support.
+- Add streaming text/voice UI and conversational business actions behind explicit tool schemas and confirmation for consequential operations.
+- Test prompt injection, data minimization, source citations, authorization revocation, stale index and cross-tenant negatives.
+
+**Phase 9 — Optional modules and rollout**
+- Evaluate billing/payments, inventory, workforce/payroll, insurance and other modules independently; do not assume all are MVP.
+- Run migration rehearsals, accessibility/mobile tests, load/reliability tests, backup/restore, incident drills, clinical acceptance and qualified legal/regulatory review.
+- Pilot before broader release; do not label production-ready without evidence.
+
+### D. Implementation discipline
+- Implement one vertical slice at a time: requirements → data/API contract → backend rules → PWA UI → background job if needed → tests → documentation.
+- Keep module boundaries explicit and shared infrastructure reusable; do not duplicate authorization, audit, upload or job logic in each feature.
+- Maintain a module status matrix (not started / in progress / implemented / tested / validated) and record evidence, blockers and deferred scope.
+- The sequence is a recommended plan, not a claim that all stack choices or features have been implemented or production-approved.
