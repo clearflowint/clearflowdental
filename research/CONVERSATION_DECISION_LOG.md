@@ -389,3 +389,10 @@ Rules:
 - Do not add a new section or field taxonomy unless a demonstrated clinical, security, interoperability or regulatory need justifies it.
 - Review/approval should be consolidated at the appropriate record level where allowed; preserve necessary distinctions for separately regulated artifacts such as issued prescriptions and signed amendments.
 - This is a design direction, not a finalized JSON schema or legal/clinical approval.
+
+
+## 15. Avoid reopening previously discussed patient medical context
+**Discussion date:** 2026-10-28  
+**Status:** Acknowledged; existing discussion retained.
+
+The owner pointed out that patient medical context had already been discussed in prior project conversations, including reported versus verified information, medication history, allergies, provenance, and historical/external records. Do not present this as a new unresolved topic or ask the owner to repeat decisions already covered. Continue the database roadmap from the next genuinely open topic, using prior conversation and repository research as context.
