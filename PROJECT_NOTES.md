@@ -1735,3 +1735,48 @@ ClearFlow normalizes payer/plan/subscriber/member/coverage. Plan-level fee and C
   
 ### Batch 22 requirements
 Distinct gross receipts, allocations, on-account/unearned credits and reallocation; financing agreements and installment history; catalogue concepts with code-system/version/treatment area; payer plan vs subscriber vs covered-person relation; documents vs binary/mount/attachment; referral directory vs referral order/response. Third-party documentation mirror warning remains.
+
+
+---
+
+## Batch 23 — Open Dental periodontics, lab turnaround, claim status history, statements and audit (2026-10-27; third-party API-doc mirror)
+
+Reference paths under https://github.com/rbarfinezhadfeli0/open_dental/tree/25d68236cda608bd699296dfaeed9caee2bb9372/docs/www.opendental.com/site: apiperioexams.html, apiperiomeasures.html, apilabturnarounds.html, apilabcases.html, apiclaimtrackings.html, apirecalltypes.html, apistatements.html, apipaymentplancharges.html, apiadjustments.html, apisecuritylogs.html. Mirror is secondary evidence; recheck vendor’s official current documentation before final decisions.
+
+### Periodontal examination model
+- PerioExam stores examination ID, patient, exam date, provider, last measurement edit timestamp and note. POST can create exam and per-tooth/surface data via UpperFacial/UpperLingual/LowerLingual/LowerFacial strings; integer 0–9 represents probing measurement and following flags b/s/p/c represent bleeding, suppuration, plaque and calculus. This is an import/input encoding, not a suitable canonical storage representation.
+- PerioMeasure stores exam ID, sequence type, tooth number (vendor-specific 1–32 notation), tooth-level value, six surface values MB/B/DB/ML/L/DL and edit timestamp. Sequence types include Mobility, Furcation, GingMargin, MGJ, Probing, SkipTooth and BleedSupPlaqCalc. -1 denotes unmeasured; 0 or other number is a clinical value and must remain distinct from missing. Type selects which tooth/surface value ranges are permitted; surface measurement types require at least one value. The API compares new rows with existing measures to prevent duplicate sequence-type per tooth in that exam.
+- ClearFlow should define a canonical periodontal exam/snapshot plus observation rows, tooth-notation scheme, site code, metric, numeric/text value, unit, presence/absent/unknown semantics, provenance, examiner and measurement time. Preserve raw imported strings during migration and parsed structured measurements beside them. Model recalculation rules and methodology version for indices; never equate “not measured” with zero.
+
+### Laboratory turnaround and case workflow
+- LabCase stores patient/lab, actual and planned appointments, due/created/sent/received/quality-checked times, responsible provider, instructions, lab fee, invoice reference and audit time.
+- LabFee is documented as informational and not used in any calculation. Do not treat a lab-case estimate/invoice reference as an accounts payable posting; actual supplier invoice, approval, payment and cost allocation are separate financial events.
+- LabTurnaround is configuration per laboratory + work/service description, published turnaround days vs actual turnaround days. It is not an individual case promise nor evidence of delivery.
+- ClearFlow lab candidate graph: lab/vendor master and capabilities → turnaround/service config → lab case → case procedures/tooth roles/material/shade/instructions + source scan/impression → sent/received/QC/try-in/seated status history → remake/rework → supplier invoice/payable. Preserve estimated vs actual timestamps and costs separately. Add vendor performance analytics from cases, not manually maintained counters.
+
+### Claim status history and insurer corrections
+- ClaimTracking rows store claim, tracking type (e.g. status history), actor, timestamp, note, status definition and error definition. A preference controls whether None status is allowed. This is a tracking event separate from current claim status; error code is distinct from status.
+- ClearFlow should retain all claim submit, acknowledgment, rejection, rejection reason, corrected/resubmitted, pending attachment, status check, adjudication, appeal and closed events with payer/clearinghouse correlation and raw response artifacts. Current status is a projection; never overwrite the old event when a claim is resubmitted.
+
+### Recall rule vs patient recall vs contact/delivery
+- RecallType config contains description, default interval, appointment time pattern, linked procedure codes and whether to append to special instructions.
+- A patient recall record separately has next due/previous date, interval, status, note, disabled flag, type, disable-until-balance/date, scheduled date, priority and time-pattern override.
+- Keep rule version/config, due-care obligation, attempted contact, delivery-provider result and resulting appointment distinct. A provider may mark a letter “sent” without delivery confirmation; CRM outreach is not itself evidence the patient received notice or completed care.
+
+### Statement, adjustment and financing event distinctions
+- Statement stores patient/guarantor account, date sent/range, notes, mode/channel, hide-payment/single-patient/intermingled flags, sent state, associated document, receipt/invoice-copy flags and snapshot balances/insurance estimates. The API explicitly says statement creation displays it in the account ledger but does not affect billing. Model as a generated communication/document snapshot; it must not post or mutate a receivable.
+- Adjustment stores patient, adjustment type, signed amount/date, provider, note/reason, procedure if applicable, clinic, actor, entry/edit timestamps. Examples include negative cash discount or positive finance charge. Adjustment is not a payment and should not be hidden in free-text account notes.
+- PayPlanCharge stores payment-plan date, patient/guarantor, principal, interest, note, provider/clinic, debit/credit charge type, related procedure, statement association, generic link type/key, offset marker and audit timestamps. Schedule/charge ledger rows are separate from the financing agreement, actual receipt and allocation.
+
+### Security log as operational provenance
+- Open Dental SecurityLog example stores event permission/type, user, log timestamp, text, subject patient, client computer and source (API). API permission surface separately reports enabled API capabilities such as read-all/other modules/communications/documents/queries.
+- ClearFlow audit requires subject + actor + effective permission, source (human, AI, API, job, integration), client/correlation, time, purpose, operation/result and stable target IDs. Do not rely on a human-readable text log as the only audit form. Secrets must never appear in audit payloads. Add field-level before/after diff and immutable clinical/financial amendment chain where applicable.
+
+### Batch 23 requirements and evidence labels
+1. Canonical periodontal observations need a typed “not measured” representation distinct from numeric zero; preserve tooth notation and measurement taxonomy.
+2. Lab turnaround SLA/config vs actual case timeline vs vendor billing must remain distinct.
+3. Claim status event history/errors/responses need a durable event stream and raw evidence.
+4. Recall rule, due-care recall, outbound attempt, provider delivery and completed appointment are separate.
+5. Statement snapshots and adjustments are not receipts; financing agreement and PayPlanCharge schedule rows are not cash movement.
+6. API/security audit captures source and permission scope; retain structured audit in addition to display text.
+These are source-derived candidates from a third-party mirror. Verify with official docs and/or source/runtime tests. Schema research continues.
