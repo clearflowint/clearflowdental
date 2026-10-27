@@ -244,3 +244,31 @@ After reviewing the research pack and the discussions already captured above, th
 This is an agenda, not a set of final schema decisions. The owner and assistant should discuss one topic at a time, distinguish owner-approved decisions from proposals, record open questions, and update this log when a decision is made. Do not freeze the canonical schema until relevant clinical/legal review and the required runtime tenant-isolation tests are complete.
 
 **Immediate next topic:** tenant → clinic/branch → user membership/role/authority relationships, because these boundaries affect almost every other table and permission rule.
+
+
+## 9. Database design approach — derive standard enterprise relationships
+**Discussion date:** 2026-10-28  
+**Status:** Agreed working approach; canonical schema remains subject to research and validation.
+
+The project owner clarified that routine enterprise relationships should be derived by the assistant from established enterprise architecture patterns rather than presented as a series of basic questions for the owner to decide. The owner’s time should be reserved for decisions that are genuinely product-specific, clinical, operational, legal, commercial, or materially affect user experience.
+
+Use established patterns as the baseline and validate them against the ClearFlow Dental Clinic research, tenant isolation, clinical provenance, and operational needs. Do not copy another product’s schema uncritically and do not claim a proposal is frozen until validated.
+
+Default principles to apply:
+- **Tenant isolation:** tenant-owned data and every relationship/mutation must be tenant-scoped and enforced server-side/database-side, not only in the UI.
+- **Organization hierarchy:** model the tenant/customer organization separately from legal entities where needed and from its clinics/branches.
+- **Identity and authorization:** keep authenticated identity distinct from staff/person records, tenant memberships, roles/permissions, professional credentials, and branch scope. A role label alone must not imply clinical authority.
+- **Patient continuity:** allow a patient to be served at multiple branches within a tenant, while maintaining branch/encounter provenance and appropriately scoped access.
+- **Clinical provenance and lifecycle:** retain source documents, record authorship, approval/signature state, corrections, versions, and audit history where applicable; capture does not equal clinical approval.
+- **Referential and transactional integrity:** use backend/database constraints and validated service operations for relationships, concurrency, idempotency, and sensitive mutations.
+- **Extensible product scope:** separate core entities from optional modules; do not make every clinic adopt every workflow or module.
+- **Explicit boundaries:** cross-tenant patient sharing/referrals, legal-entity arrangements, retention obligations, and other material exceptions must be represented deliberately rather than inferred from shared phone numbers or similar identifiers.
+
+Workflow for future database design discussions:
+1. Derive a recommended baseline from established enterprise patterns and the current research.
+2. Identify only material alternatives and their trade-offs.
+3. Clearly label decisions as established project requirements, recommended defaults, unresolved questions, or validated implementation facts.
+4. Ask the owner only when a real product/business/clinical policy choice is needed.
+5. Append new decisions to this log and update relevant research documents as the project progresses.
+
+This agreement changes the discussion method; it does not itself approve a final physical schema, grant cross-tenant access, or authorize changes to live infrastructure.
