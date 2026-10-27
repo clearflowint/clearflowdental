@@ -2065,3 +2065,13 @@ The research pack now has these linked layers: source-specific evidence addenda 
 - Workforce attendance/payroll is enterprise-domain research, not a confirmed MVP requirement. Indian labour, overtime, leave and statutory payroll configuration remain legal/HR review pending.
 
 The current documentation set therefore covers B17–B38 plus the explicitly named B37A companion. Keep the source sequence and B37A link in the index; do not merge its source-specific payroll assumptions into an Indian canonical model without validation.
+
+
+## 35. Cross-system comparison and workforce integration (B37A, 2026-10-27)
+
+- `PROJECT_NOTES_ADDENDUM_B37A.md` documents DentalPin source observations for append-only staff attendance punches, clinic/professional schedule templates, date-range overrides, the distinction between availability windows and actual free slots, and role-restricted payroll period/profile/entry lifecycles. This is a comparator, not an Indian payroll implementation; keep the workforce domain optional until scoped and separately validate Indian statutory rules.
+- `CROSS_SYSTEM_COMPARISON.md` consolidates the main coverage differences across DentalPin, Open Dental, OpenEMR EHI, ABDM/FHIR and the preserved ClearFlow prototype. It compares source strength, lifecycle distinctions and prototype gaps and explicitly notes that the comparators are not universal schemas.
+- `TRACEABILITY_MATRIX.md` is now v0.4, with B38 radiation/waste/facility/tax items and a B37A workforce attendance/scheduling/payroll section. `SOURCE_FIELD_MAPS.md` and `FIELD_LEVEL_INVENTORY.md` include B37A source-qualified field groups; `SOURCE_COVERAGE_REGISTER.md` records B37A source/test evidence and country-scope limitations.
+- The prototype remains a three-table clinic/patient/visit slice and the reviewed frontend uses direct Appwrite TablesDB operations. The matrix does not assert these controls are implemented. The private row permission vs listRows behavior and forged parent-ID defenses still require a two-account, synthetic-data sandbox run before any patient-data pilot.
+
+**Research assembly status:** the core comparison, source-specific batch index, field-family maps, traceability matrix and implementation gap report are now connected. The research-documentation work is assembled through B38 plus B37A; full physical-source-column extraction, legal/clinical review, live security tests and schema implementation remain explicit gates.
