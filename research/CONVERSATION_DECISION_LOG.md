@@ -396,3 +396,21 @@ Rules:
 **Status:** Acknowledged; existing discussion retained.
 
 The owner pointed out that patient medical context had already been discussed in prior project conversations, including reported versus verified information, medication history, allergies, provenance, and historical/external records. Do not present this as a new unresolved topic or ask the owner to repeat decisions already covered. Continue the database roadmap from the next genuinely open topic, using prior conversation and repository research as context.
+
+
+## 16. Dental-specific clinical data — recommended enterprise baseline
+**Discussion date:** 2026-10-28  
+**Status:** Recommended baseline for source mapping; not a frozen schema.
+
+Continue the database roadmap with dental-specific clinical structures. Derive from established dental information models and researched comparator systems, without imposing unnecessary structured entry.
+
+Recommended conceptual boundaries:
+- **Odontogram:** patient-specific chart over time, using a recognized tooth numbering convention configurable for the clinic's region. Chart state should not silently erase prior clinically relevant state.
+- **Findings/observations:** findings may be associated with a tooth, surface, periodontal area, or broader oral region when appropriate. Support free-text notes and preserve provenance; do not require every finding to be converted into a rigid coded field.
+- **Treatment plan:** proposed/accepted/declined care is distinct from a procedure actually performed. Plan items may evolve and can be linked to relevant findings and teeth/areas.
+- **Procedure record:** represents care actually performed, linked to the encounter and relevant tooth/area when applicable, with responsible clinician and timing/provenance.
+- **Longitudinal history:** preserve clinically meaningful prior findings/procedure records and traceable corrections; avoid treating the latest chart as permission to overwrite history.
+- **Pragmatic structure:** optional structured charting should add value to a workflow; do not require every tooth, surface, or finding to be populated. Free-text clinical notes and original documents remain valid.
+- Keep original capture-first rules and the simple clinical JSON preference: do not force line-by-line extraction of handwritten notes or prescriptions. Structured dental charting is for deliberate clinical entry when useful, not automatic reclassification of every source document.
+
+Next validation: map these concepts and cardinalities to selected dental comparators and applicable tooth-numbering/clinical practice needs; distinguish well-supported patterns from product choices and unverified source coverage. No production schema is approved by this entry.
