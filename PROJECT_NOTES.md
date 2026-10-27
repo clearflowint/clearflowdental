@@ -1872,3 +1872,52 @@ Official MeitY Rules notification G.S.R. 846(E) is dated 13 November 2025. Rules
 CBIC's official tax-invoice rules page was found but could not be extracted successfully in this pass. Keep a versioned India GST/e-invoice adapter and snapshot the exact effective rule/registration eligibility used to issue each document. Invoice, credit note, tax line, tax code/system, taxable basis, jurisdiction/place of supply, issue series and compliance identifiers belong in a localized layer. Current invoice particulars, applicability thresholds, IRN/QR/signing and exemption details remain pending direct verification; do not encode one blanket rate into the clinical model.
 
 Continue research before finalizing schema: vendor-level table inventories are not sufficient without field/constraint/index and workflow comparison; country-specific legal and tax rules must be derived from effective official sources, not from generic EHR implementation patterns.
+
+---
+
+## Batch 26 — Open Dental family account, full appointment snapshots, document/mount storage and unearned payments (2026-10-27; third-party API-doc mirror)
+
+Reference paths in the mirror: apifamilymodules.html, apihistappointments.html, apiappointments.html, apipayments.html, apipaysplits.html, apidocuments.html, apistatements.html. Verify against current official documentation; the mirror is a secondary reference.
+
+### Family and insurance presentation are not the same relationship
+Open Dental FamilyModules insurance output is a denormalized view assembled from separate subscriber, patient-plan, carrier and insurance-plan records:
+- covered patient, subscriber patient, subscriber ID, patient override ID, relationship to subscriber, pending/incomplete verification flag, primary/secondary ordinal, plan/subscriber/patient-plan IDs.
+- carrier identity/name, group name/number, plan-specific and subscriber/family notes, practice fee schedule and copay schedule, plan type (percentage, PPO percentage, flat copay, capitation), employer and whether the plan is medical versus dental.
+- A patient may have no current coverage; discount-plan subscriptions are surfaced separately.
+ClearFlow must distinguish person/patient, legal guarantor, financial responsibility grouping, insurance subscriber, covered member, payer, plan, coverage period and discount membership. A family relationship does not automatically authorize someone to make clinical decisions or receive protected information. A payer plan note is not the same as member-specific note or consent evidence.
+
+### Appointment history as a versioned snapshot
+Open Dental documents HistAppointment as a historical copy created when an appointment is created, changed, missed, cancelled or deleted. One appointment number may have many history rows. Snapshot carries the historical appointment state, action, actor, timestamp, source, patient, appointment status, provider/hygienist, room/operatory, date/time, pattern, confirmation, planned order, clinic, arrival/seated/dismissed/asked-to-arrive times and other attributes.
+ClearFlow should have a canonical current appointment plus append-only transition/change records sufficient to reconstruct old state. A log entry with only action and current target is insufficient to reproduce appointment history. Capture actor, time, source/automation, changed fields, old/new values and correlation. Appointment status, confirmation communication state, patient flow timestamps and changes to schedule/resource are distinct dimensions. Avoid silently overwriting old timestamps or deleting a cancelled appointment.
+
+### Payment allocation policy: household, provider, procedure and unearned credit
+Open Dental Payments API behavior:
+- A gross payment header stores amount, patient, type/date, check/bank/note, clinic, deposit/receipt, entry/edit, payment source, processor state and recurring-card fields.
+- By default, payment allocation follows the clinic's allocation preferences and FIFO across outstanding charges; applicable patient payment plans may be paid first. Procedures can be explicitly selected; procedure allocations can follow procedure date FIFO.
+- The isPatientPreferred flag explicitly directs allocations to the individual patient rather than being split among family members. This is a policy input, not a cosmetic display preference.
+- If payment exceeds outstanding eligible charges, excess becomes unearned income/prepayment, represented by separate PaySplit allocation records. A prepayment can target a dynamic payment plan. Unearned funds later allocated to a procedure or plan must remain traceable.
+ClearFlow needs allocation-policy version, allocation targets, patient-vs-guarantor scope, split lineage, unapplied balance, reallocation, refund/void status and deterministic ordering. Every allocation must refer to a valid target in the appropriate tenant/family/account scope. A payment's gross amount is not the same as earned revenue or payment amount applied to an invoice/procedure.
+
+### Appointment creation details and integration semantics
+The API appointment creation requires patient, operatory and appointment time; supports status, pattern/time increments, confirmation definition, note, provider/hygienist, clinic, attached procedures/appointment type, source and scheduling metadata. Pattern is a five-minute increment string and is capped at nine hours. Open slots are computed using provider and operatory and can include room-specific gaps. Appointment time is not equivalent to clinical treatment date; actual procedures are separately recorded and may be attached to planned appointments.
+ClearFlow should model interval start/end explicitly rather than retaining only a pattern string, while optionally preserving imported/vendor pattern and its coding/version. Resource availability is a derived query across schedules, closures, rooms/equipment and current bookings. Validate overlap under concurrent create/reschedule/reassign requests.
+
+### Document, image/mount and binary file lifecycle
+Open Dental document API states:
+- Document metadata includes document number, description, creation date, category, patient, filename, image type, tooth numbers, provider, print heading and timestamp.
+- Patient media can be inserted by watched patient folder, URL, API upload or SFTP. List/get responses may be metadata only; binary retrieval is a distinct transfer endpoint. Storage modes include local/AtoZ, database and cloud. SFTP download can overwrite an existing target filename, so secure exports need generated names and explicit target handling.
+- A single patient document list can mix document rows and mount rows. Mount does not have all document fields (e.g. file path, tooth numbers and timestamp); mount is a grouping/printable view over images, not necessarily an independent source binary.
+ClearFlow must distinguish patient document record, stored binary/object version, generated derivative, image series/mount/group and attachment/clinical tooth association. Keep capture time vs upload time, storage backend, hash, MIME/size, uploader, originating encounter/provider, explicit clinical relation and access history. Document list metadata must not be mistaken for possession of actual bytes.
+
+### Statement reiteration
+The 25.3.26 statement API describes a statement record displayed in the Account Module ledger and explicitly says it does not affect billing. Statement is a communication/snapshot (range, note, mode, sent state, attached document, balance/insurance estimate, receipt/invoice-copy flags), not an invoice, payment, adjustment or AR posting.
+
+### Batch 26 requirements
+1. Add financial-responsibility/guarantor grouping separate from family/person and insurance relationships; keep permission to receive information/authorize treatment separate.
+2. Historical appointment snapshots must reconstruct state at the time of every create/change/missed/cancel/delete operation.
+3. Payments support individual vs household allocation policies, FIFO, selected procedure targets, payment-plan allocation and unearned prepaid balances. Preserve allocations and reallocation history.
+4. Appointment patterns from vendors must be mapped to explicit start/end and resources while preserving source field/provenance.
+5. Distinguish document metadata, binary object, image/mount grouping and tooth/encounter/provider association.
+6. Statement record never posts financial movement; account snapshots are computed evidence, not ledger truth.
+
+Source note: these Open Dental behaviors are found in published API documentation preserved in a third-party mirror. Treat as vendor-pattern evidence, not universal law or permission to copy source code.
