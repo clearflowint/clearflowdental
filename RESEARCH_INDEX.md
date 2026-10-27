@@ -4,11 +4,11 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 
 ## Core notebook
 - [PROJECT_NOTES.md](./PROJECT_NOTES.md) — consolidated project goals, domain coverage, architecture principles, core source observations, invariants and next research steps.
-- [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) — v0.3 cumulative cross-batch requirements matrix with selected field-to-concept mappings, lifecycle/security tests, implementation evidence, and India-specific requirements.
-- [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) — field groups from B17–B38 mapped into candidate entities, preserving source semantics, units, missingness, provenance, authority and lifecycle distinctions.
+- [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) — v0.4 cumulative cross-batch requirements matrix with selected field-to-concept mappings, lifecycle/security tests, implementation evidence, and India-specific requirements.
+- [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) — field groups from B17–B38 plus B37A mapped into candidate entities, preserving source semantics, units, missingness, provenance, authority and lifecycle distinctions.
 - [IMPLEMENTATION_GAP_REVIEW.md](./IMPLEMENTATION_GAP_REVIEW.md) — read-only review of the preserved Vue/Appwrite prototype and current database metadata; includes P0 security test plan and current limitations.
-- [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) — per-batch evidence-class ledger for B17–B38, source confidence, evidence gaps and completion gates.
-- [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) — named source-field families mapped to candidate ClearFlow concepts, normalization rules, lifecycle constraints and acceptance tests; includes explicitly source-specific encodings and unverified gaps.
+- [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) — per-batch evidence-class ledger for B17–B38 plus B37A, source confidence, evidence gaps and completion gates.
+- [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) — named source-field families from B17–B38 plus B37A mapped to candidate ClearFlow concepts, normalization rules, lifecycle constraints and acceptance tests; includes explicitly source-specific encodings and unverified gaps.
 - [RESEARCH_COMPLETION_STATUS.md](./RESEARCH_COMPLETION_STATUS.md) — explicit completed/pending ledger separating completed documentation from legal/clinical sign-off, physical-column extraction, runtime tests and implementation work.
 
 ## Source-specific addenda
