@@ -1850,3 +1850,25 @@ Patient core in the reviewed source has a single phone/email plus do-not-contact
 - Media: original/derivative, upload/capture times, taxonomy, checksum, paired assets, scoped storage and owner-registry validation.
 
 Evidence classification: OpenEMR EHI export pages are dictionary evidence; DentalPin code/tests show implementation patterns that still require validation against current deployment and real provider integrations. Continue the Open Dental field comparison and authoritative India standards research before locking the schema.
+
+---
+
+## 23. Supplemental India-specific research (27 October 2026)
+
+The detailed, source-linked addenda are maintained alongside this notebook:
+- `PROJECT_NOTES_ADDENDUM_B25.md` — exact DentalPin patient clinical-history and clinic-managed medical-reference fields, active/archive behavior, clinical provenance and gaps in interaction/contraindication evidence.
+- `PROJECT_NOTES_ADDENDUM_B26.md` — official ABDM developer portal and NRCeS FHIR R4 v6.5.0 profile coverage; M2 care-context/HIP linking and eight Health Information Types; M3 consent request/artefact/revocation/date-range/transfer acknowledgement; official MeitY DPDP Act/Rules commencement and corrigendum; India tax-invoice localization boundary and unverified CBIC extraction.
+
+### 23.1 Integration contract vs canonical model
+ABDM's published FHIR Implementation Guide describes record/claim profiles, terminology and validation rules. The profile catalogue includes patient, practitioner/role, appointment, encounter, condition, allergy, care plan, procedure, service request, specimen, lab/imaging report, imaging study, medication, medication request/statement, observation, document reference/media, charge item, invoice and document bundle. Keep ClearFlow's richer normalized internal schema as source-of-truth and build versioned, validated FHIR projections from it. Pin profile package version; a newer preview version is not automatically a production baseline.
+
+### 23.2 India interoperability lifecycle
+If ABDM is enabled, model ABHA number/address as separately typed/linkable identifiers; store HFR/HIP/HIU role/configuration evidence, care contexts, request/transaction/callback IDs, bundle mapping and FHIR validation/export evidence. M2 care-context linking and final success are callback-driven; HTTP 202 is not success. M3 data requests require consent artefact scope, multiple artefact IDs, purpose, allowed HI types/care contexts/date range, expiry/revocation checks, secure transfer status and receiver acknowledgement. Do not treat ClearFlow as a Consent Manager merely because it implements HIU/HIP interactions.
+
+### 23.3 DPDP phase-in review
+Official MeitY Rules notification G.S.R. 846(E) is dated 13 November 2025. Rules 1, 2 and 17–21 took effect on Gazette publication; Rule 4 has the one-year phase-in date; Rules 3, 5–16, 22 and 23 have the 18-month phase-in date. The separate Act commencement notification phases substantive data-fiduciary sections at 18 months. Calculated from the notified dates, the one-year date is 13 November 2026 and the 18-month phase date is 13 May 2027; re-check official updates/legal counsel before reliance. The December 2025 corrigendum should be retained with the original Rules, not discarded. Rule 4 concerns Consent Managers and does not mean every clinic must itself operate as one.
+
+### 23.4 Tax localization boundary
+CBIC's official tax-invoice rules page was found but could not be extracted successfully in this pass. Keep a versioned India GST/e-invoice adapter and snapshot the exact effective rule/registration eligibility used to issue each document. Invoice, credit note, tax line, tax code/system, taxable basis, jurisdiction/place of supply, issue series and compliance identifiers belong in a localized layer. Current invoice particulars, applicability thresholds, IRN/QR/signing and exemption details remain pending direct verification; do not encode one blanket rate into the clinical model.
+
+Continue research before finalizing schema: vendor-level table inventories are not sufficient without field/constraint/index and workflow comparison; country-specific legal and tax rules must be derived from effective official sources, not from generic EHR implementation patterns.
