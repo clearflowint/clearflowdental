@@ -1,7 +1,7 @@
 # ClearFlow Dental Clinic — Requirement-to-Evidence Traceability Matrix
-**Version:** 0.1 — initial cross-batch matrix  
+**Version:** 0.3 — cumulative cross-batch traceability matrix  
 **Prepared:** 2026-10-27  
-**Scope:** Research batches B17–B36; dental SaaS on a tenant-isolated backend; India/Telangana applicability remains a separate review.  
+**Scope:** Research batches B17–B38; dental SaaS on a tenant-isolated backend; India/Telangana applicability remains a separate review.  
 **Status:** Working matrix, not a frozen schema or a legal/clinical compliance opinion.
 
 ## Purpose and reading rules
@@ -203,7 +203,7 @@ The DPDP Rules citation in B35/B37 was corrected to the verified MeitY-hosted G.
 
 # Traceability Matrix v0.3 — India operational compliance domains (B38)
 **Added:** 2026-10-27  
-**Companions:** SOURCE_FIELD_MAPS.md (section 7), SOURCE_COVERAGE_REGISTER.md, PROJECT_NOTES_ADDENDUM_B38.md.
+**Companions:** SOURCE_FIELD_MAPS.md (sections 7–8), SOURCE_COVERAGE_REGISTER.md, FIELD_LEVEL_INVENTORY.md, IMPLEMENTATION_GAP_REVIEW.md, RESEARCH_COMPLETION_STATUS.md, PROJECT_NOTES_ADDENDUM_B38.md.
 
 | Requirement ID / priority | Source evidence | Candidate entities/fields | Lifecycle and security boundary | Minimum acceptance test | Status |
 |---|---|---|---|---|---|
