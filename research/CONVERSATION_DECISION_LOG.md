@@ -695,3 +695,25 @@ The owner clarified that ClearFlow should not be burdened with heavy rules and i
 7. Preserve the essential safety floor while prototyping: no real patient data in an unvalidated prototype; no claim of production readiness; and no unsafe direct AI authority over clinical approvals or consequential writes/deletes. Production security gates must be passed before real patient data or external users are onboarded.
 
 This direction supersedes any interpretation of Phase 0/1 as requiring a fully hardened production architecture before a functional prototype can exist. The component boundaries and module roadmap remain useful guides, but implementation should be iterative, practical and responsive to evidence.
+
+
+## 26. Windmill Git-to-workspace synchronization bootstrap
+**Discussion date:** 2026-10-28  
+**Status:** Initial GitHub Actions workflow and repository scope committed; Windmill authentication and live sync remain unverified.
+
+The owner supplied the Windmill URL `https://clearflowwindmill.duckdns.org/workspace_settings?workspace=clearflow&tab=dev_workspace` and requested that a dental folder be created in Windmill, with automatic synchronization/deployment from Git commits.
+
+### Initial implementation
+- Created `.github/workflows/sync-windmill-dental.yml` on the repository's default branch. It runs on pushes to `main` that change `f/dental/**`, installs Windmill CLI, and invokes `wmill sync push` scoped to that folder.
+- Created `f/dental/README.md` as the initial source-controlled scope and documentation for dental Windmill assets.
+- The workflow expects GitHub Actions secret `WMILL_URL`, secret `WMILL_TOKEN`, and repository variable `WMILL_WORKSPACE`. Intended values from the supplied URL: `WMILL_URL=https://clearflowwindmill.duckdns.org`, `WMILL_WORKSPACE=clearflow`.
+- The workflow deliberately excludes Windmill resources and secrets from sync to avoid deploying credentials from Git. Compatible Windmill scripts/flows must be added under `f/dental/` before a commit will deploy functional automation assets.
+- GitHub commits: workflow `c6c9f5f2101b2850a1b30191748d5447e2a709ff`; dental scope README `e2ec106827dc1181a76a5a703aa3f003ba7af563`.
+
+### Blockers and verification
+- The connected Windmill tool token currently lists only workspace `clearflow-automations`; it explicitly rejects access to workspace `clearflow`. The URL's target workspace is therefore not yet accessible through this connection. A folder named `dental` was created in `clearflow-automations`, not verified in the URL's `clearflow` workspace.
+- No live GitHub Actions run or Windmill sync has been verified yet. A Windmill user API token must be created in the intended `clearflow` workspace and stored as the GitHub Actions secret `WMILL_TOKEN`; never commit it to the repository.
+- Before enabling the first successful sync, confirm the workspace access/identifier and validate the workflow on a commit containing a real Windmill-compatible script. Keep the sync scope limited to `f/dental/**`; do not configure a broad repository-wide push that could remove unrelated workspace assets.
+- This bootstrap uses GitHub Actions → Windmill CLI (Git → Windmill), not Windmill Enterprise's native Git Sync. Do not enable both deployment paths for the same branch because they can conflict.
+
+This records the setup attempt and known limitations; it does not claim that automatic deployment is active or production-validated.
