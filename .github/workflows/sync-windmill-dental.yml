@@ -1,11 +1,7 @@
-name: Sync dental automation assets to Windmill
+name: Validate dental Windmill sync
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "f/dental/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,8 +11,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync:
-    name: Sync dental folder to Windmill
+  validate:
+    name: Dry-run dental folder sync
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -30,7 +26,7 @@ jobs:
       - name: Install Windmill CLI
         run: npm install --global windmill-cli@1.682.0
 
-      - name: Sync only dental Windmill assets
+      - name: Validate configuration and preview dental sync
         env:
           WMILL_URL: ${{ secrets.WMILL_URL }}
           WMILL_TOKEN: ${{ secrets.WMILL_TOKEN }}
@@ -40,11 +36,18 @@ jobs:
           test -n "$WMILL_URL" || { echo "Missing GitHub Actions secret WMILL_URL"; exit 1; }
           test -n "$WMILL_TOKEN" || { echo "Missing GitHub Actions secret WMILL_TOKEN"; exit 1; }
           test -n "$WMILL_WORKSPACE" || { echo "Missing GitHub Actions variable WMILL_WORKSPACE"; exit 1; }
+
+          wmill folder add-missing --yes
+          wmill generate-metadata f/dental/sync_smoke_test.py --strict-folder-boundaries
+
+          # Dry run only: preview changes without modifying Windmill.
           wmill sync push \
             --base-url "$WMILL_URL" \
             --token "$WMILL_TOKEN" \
             --workspace "$WMILL_WORKSPACE" \
             --yes \
+            --dry-run \
+            --keep-deleted \
             --skip-secrets \
             --skip-resources \
             --includes "f/dental/**"
