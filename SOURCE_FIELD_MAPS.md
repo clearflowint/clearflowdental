@@ -157,3 +157,34 @@ Status labels: **Observed** = explicitly named in the reviewed source; **Candida
 - Prototype fields are recorded from live Appwrite metadata and backup code, but no live patient rows were queried and no cross-tenant runtime attack test was run. See IMPLEMENTATION_GAP_REVIEW.md.
 
 **Decision:** This file closes an important part of source-to-concept tracing, but completion of all physical-column mappings remains contingent on pinned full-schema extracts, real source fixtures and clinical/legal owners.
+
+
+## 7. Official India operational sources added in B38
+
+### 7.1 Dental X-ray equipment and radiation safety
+| Source evidence | Candidate field group | Normalization/lifecycle/security rule | Test/status |
+|---|---|---|---|
+| AERB FAQ says registration for operation of dental X-ray equipment is mandatory; AERB guide documents eLORA workflow; national categories and shielding considerations differ across intra-oral, OPG and CBCT | Device/equipment identity, modality/category, manufacturer/model/serial, origin, location/room, registration application/ID, authority, certificate/hash, issue/expiry/status, maintenance/QC/decommission events, operator/training records when applicable | Device registration is distinct from facility registration. Preserve source and verification time. The 2019 process screenshots are not treated as current UI specification; configure requirement by reviewed current device category. Restrict occupational-monitoring records | Unverified required registration blocks compliance-cleared status; old device history remains after replacement. Current device-specific regulatory review pending |
+| Open Dental/DICOM image provenance patterns (B36) linked with AERB device context | Source device ID, acquisition time, modality, image study/series/instance IDs when present | Never infer device serial or acquisition time from import. Original image distinct from processed rendition | Image import with missing DICOM/device metadata must retain missingness and source |
+
+### 7.2 Biomedical-waste authorization and collection
+| Source evidence | Candidate field group | Normalization/lifecycle/security rule | Test/status |
+|---|---|---|---|
+| CPCB/DGHS-hosted June 2018 healthcare-waste guideline describes authorization for non-bedded healthcare facilities and state Pollution Control Board/Pollution Control Committee role; current Rules/state directions require confirmation | Facility waste authorization/category/activity, authority, application/issue/renewal dates and status, CBWTF/operator link, waste stream/category under applicable version, collection/manifest/receipt, quantity/unit, handover actor/time, treatment/disposal evidence, incident/corrective action | Guideline date and subordinate status must be preserved; do not hard-code 2018 process as the full 2026 Telangana legal rule. Vendor authorization != per-pickup proof. Avoid unnecessary patient identifiers in manifests | Expired or unverified authorization flagged; schedule ≠ pickup; old pickup/authorization remains after provider replacement. Current TSPCB review pending |
+
+### 7.3 Facility standards checklist
+| Source evidence | Candidate field group | Normalization/lifecycle/security rule | Test/status |
+|---|---|---|---|
+| Government-hosted national dental-clinic minimum-standards template references service category, in-charge dentist credential, hours, infrastructure, fee display, safety signage, rooms, human resources and equipment | Facility category/scope, standard/template ID/version, checklist item, applicable/not applicable with reason, evidence, reviewer, verified time, deficiency/remediation/closure | Treat national template as reference unless current Telangana applicability is confirmed for a given facility category. Separate claimed, uploaded, verified, not-applicable and deficient states | Standard version change preserves old evidence and review result; clinic category/obligation mapping remains regulatory-review pending |
+
+### 7.4 GST tax invoice and bill of supply
+| Source evidence | Candidate field group | Normalization/lifecycle/security rule | Test/status |
+|---|---|---|---|
+| CBIC Rule 46 page identifies supplier legal name/address/GSTIN, unique serial number per financial year, issue date, recipient particulars, HSN/Accounting Code, description, quantity/unit for goods, supply value and additional applicable tax particulars; bill of supply has a distinct definition/particulars | Issuer/recipient legal identity snapshots, GSTIN/UIN if applicable, document type, fiscal-year serial series, issue date, goods/service code system/version/code, description, quantity/unit where applicable, discount, taxable basis, tax components, place-of-supply and reverse-charge fields where applicable, rendered snapshot/hash, credit/debit-note link | Tax invoice, bill of supply, advance receipt, payment, credit/debit note and refund are distinct objects. Keep an effective-dated tax adapter and professional-approved clinic-specific rule; no generic dental tax rate is inferred | Concurrent numbering collision prevented; issued artifact immutable; correct document type rendered; exact clinic/service taxability remains tax-professional review pending |
+
+## 8. Cross-domain mappings retained without forced merge
+- Facility registration, individual dentist credential, dental-mechanic credential and device registration are separate entities with separate authorities and lifecycle.
+- A dental X-ray image is a media asset; device registration is regulatory metadata; the image is not evidence that the device registration remains valid.
+- Waste authorization belongs to the facility/regulated activity. A pickup event has a separate recipient/operator and proof of handover/treatment.
+- Tax invoice and bill of supply are different document types; both link to financial service/line data but do not collapse to the payment receipt or clinical service.
+- A national standard checklist is not itself a certificate and cannot automatically assign legal obligation without jurisdiction/category mapping.
