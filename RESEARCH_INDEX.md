@@ -27,6 +27,7 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 - [Batch 35](./PROJECT_NOTES_ADDENDUM_B35.md) — India-specific primary-source evidence gate for dental records/retention, phased DPDP commencement, telemedicine context and AI prescription authorization.
 - [Batch 36](./PROJECT_NOTES_ADDENDUM_B36.md) — prosthetic lab cases and lab-slip lifecycle, plus continued research on odontogram provenance, periodontal exams/measurements, treatment-plan versioning, recall lifecycle, imaging asset metadata/DICOM, orthodontic records and traceability tests.
 - [Batch 37](./PROJECT_NOTES_ADDENDUM_B37.md) — current NDC prescription particulars and dental-mechanic registration notices, Telangana clinical-establishment rules, DPDP commencement timing, CDSCO Drugs Rules source and ABDM FHIR profile pinning.
+- [Batch 37A](./PROJECT_NOTES_ADDENDUM_B37A.md) — staff attendance punch events, clinic/professional schedule templates and overrides, availability vs actual free slots, and sensitive payroll-period lifecycle.
 - [Batch 38](./PROJECT_NOTES_ADDENDUM_B38.md) — AERB dental X-ray registration/safety sources, biomedical-waste authorization and collection, dental-clinic standards template, and CBIC invoice/bill-of-supply fields.
 
 ## Preservation and design rule
