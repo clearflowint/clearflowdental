@@ -172,3 +172,7 @@ The app preserved on `backup/before-project-notes-reset-2026-10-27` contains onl
 - A canonical schema proposal may be created only after field coverage, clinical validation, legal review, import/interop mapping, and P0 security tests are reviewed by named owners.
 
 **Decision:** The inventory is a working field coverage register, not the final canonical schema. Preserve the whole justified domain model; make the interface simpler.
+
+
+## 12. Source-qualified field map companion
+For named vendor/source field families and exact source names that were documented in B17–B37, see [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md). That file provides explicit source → candidate concept → normalization → lifecycle/security → test mappings and labels the gaps where a full DDL/API extract was not verified. Together, the field-level inventory and source-field map provide a wider review surface, but not an assertion that every physical field in every vendor schema has been individually transcribed.
