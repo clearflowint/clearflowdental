@@ -1,6 +1,6 @@
 # ClearFlow Dental Clinic — Field-Level Domain Inventory
 **Version:** 0.2 · **Reviewed:** 2026-10-27 · **Purpose:** Source-to-candidate mapping before schema design  
-**State:** A structured inventory of fields and data groups found in Batches 17–38. It is not a frozen schema, a complete clinical terminology set, or a legal compliance declaration.
+**State:** A structured inventory of fields and data groups found in Batches 17–38 plus B37A. It is not a frozen schema, a complete clinical terminology set, or a legal compliance declaration.
 
 ## How to interpret this file
 
@@ -179,7 +179,7 @@ The app preserved on `backup/before-project-notes-reset-2026-10-27` contains onl
 | Legal/compliance evidence review | B35–B38 | authority, source URL/version/date, applicable facility/provider/device category, verified by/time, status, exception/reason, evidence hash, next review date | “Uploaded” is not “verified”; “not applicable” is not “missing”; policy/version changes preserve historical decisions. |
 
 ## 13. Coverage limitations / completion gate
-- B17–B38 research is summarized here by entity family. This is not yet a source-to-target row for every physical field in every vendor table/API. The next expansion should mine exact field names, type/nullable/enum/relationship/constraint behavior from each source addendum and original documentation, avoiding invented canonical fields.
+- B17–B38 plus B37A research is summarized here by entity family. This is not yet a source-to-target row for every physical field in every vendor table/API. The next expansion should mine exact field names, type/nullable/enum/relationship/constraint behavior from each source addendum and original documentation, avoiding invented canonical fields.
 - Direct Open Dental LabCases/Laboratories API field extraction remains unverified. Product/material/shade candidates must not be called confirmed vendor schema fields.
 - India-specific legal status and clinic applicability require counsel/regulatory owner sign-off. Current NDC public notices M-2749 and M-2662 are included in B37 with testable product requirements.
 - The actual app is currently a small three-table prototype on the preserved backup branch, not an implementation of this entire inventory. See IMPLEMENTATION_GAP_REVIEW.md; no production-readiness claim is made.
@@ -189,7 +189,7 @@ The app preserved on `backup/before-project-notes-reset-2026-10-27` contains onl
 
 
 ## 12. Source-qualified field map companion
-For named vendor/source field families and exact source names that were documented in B17–B38, see [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md). That file provides explicit source → candidate concept → normalization → lifecycle/security → test mappings and labels the gaps where a full DDL/API extract was not verified. Together, the field-level inventory and source-field map provide a wider review surface, but not an assertion that every physical field in every vendor schema has been individually transcribed.
+For named vendor/source field families and exact source names that were documented in B17–B38 plus B37A, see [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md). That file provides explicit source → candidate concept → normalization → lifecycle/security → test mappings and labels the gaps where a full DDL/API extract was not verified. Together, the field-level inventory and source-field map provide a wider review surface, but not an assertion that every physical field in every vendor schema has been individually transcribed.
 
 
 ## 14. Workforce, attendance, schedules and payroll (Batch 37A)
