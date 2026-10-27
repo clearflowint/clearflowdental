@@ -1204,3 +1204,168 @@ Sources:
 10. AI job proposed by autonomous agent cannot execute until authorized confirmation; artifacts stay drafts; confirmed/rejected per-finding review does not overwrite raw output. Record the exact model/weight version and license; inference failure creates durable state.
 11. Two concurrent prescription-issue calls cannot both issue; issued script cannot edit/delete; cancel-and-reissue preserves prescriber and compliance snapshots.
 12. Catalogue rename/retire does not rewrite existing prescriptions; prescription item has a frozen medication string/form/strength snapshot.
+
+
+---
+
+## 20. Batch follow-up: inventory/procurement, recall, schedules, relationships, staff, finance and lead intake (27 October 2026)
+
+### 20.1 Inventory ledger and procurement details
+
+**Observed inventory ledger**
+- InventoryItem: clinic, name/category/unit, stock_quantity and min_quantity as Numeric(12,2), nullable unit_cost, active flag, notes and creator.
+- StockMovement: clinic/item, signed delta, reason/note, loose reference type/ID, actor/time. Rows are append-only. A DB CHECK prevents negative stock quantity; every update uses SELECT FOR UPDATE and writes movement in the same transaction.
+- Consumption idempotency is backed by a partial unique index on reference_type + reference_id + inventory_item_id for reason='consumption'. Duplicate treatment events do not deduct twice.
+- A reference-specific policy uses clamp_at_zero for automatic treatment consumption: if stock is insufficient, it floors stock at zero and records only the applied delta. This avoids blocking clinical care but does not provide full material traceability by itself. The unmet amount must be recorded as a shortage/exception and reconciled. ClearFlow must not silently treat the requested quantity as fully consumed.
+- Opening stock and absolute corrections are represented by ledger movements. Items with movement history are deactivated rather than deleted.
+- The reviewed current inventory model lacks lot/batch/expiry/location/serial fields. This is a coverage gap for stock needing batch traceability, expiry/FEFO, recall, cold chain or implant/device lot tracking. Stock quantity is a projection that must reconcile to movements.
+
+**Observed procurement**
+- Supplier is a 1:1 extension of a generic clinic Contact. Supplier fields include website, payment terms, lead-time days and preferred flag.
+- SupplierItem links supplier and inventory item with supplier SKU, quoted price, active flag and unique supplier/item pair. No price validity history, currency, MOQ, purchase pack size, conversion factor, expiry, taxes or delivery-quality history are shown in the reviewed model.
+- PurchaseOrder has supplier, status, expected date, notes, creator and received timestamp. Each PO line stores inventory item, ordered/received quantity and unit-price snapshot; one item per PO is allowed.
+- PurchaseReceipt and PurchaseReceiptLine represent partial delivery batches, receiver/time, quantity and good/rejected quality. Only good units increment line fulfilment and inventory. Rejected units stay in the receipt record for replacement. Receipt rows, stock movements and status transition commit/rollback together.
+- Status graph: draft to sent to confirmed to received, with cancellation paths. Received is reached only automatically when every line is fulfilled; no manual mark-received bypass.
+- Reorder suggestion policy is computed on demand. In the reviewed source it computes negative movement consumption over 90 days, average daily use, reorder point as max(minimum, ceil(daily usage × supplier lead time)), subtracts current stock plus open-order quantity, then suggests reorder point plus 30 days of cover. This is one policy, not universal: it omits seasonality, expiry, storage capacity, MOQ/pack size, service levels and purchasing budget.
+- ClearFlow candidate extensions: InventoryLot/Batch, stock location, stock movement unit cost and valuation policy, supplier/manufacturer lot, receipt/usage/expiry/recall, unit conversions, reserved vs available stock, shortage exception, physical count, returns/waste, supplier quote history, minimum order quantity, purchase pack/currency/tax, supplier invoice and PO/receipt three-way match. Record actual usage per treatment/session including real lot/location/quantity, actor/time, substitutions and recipe version.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/inventory/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/inventory/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/inventory/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/purchase_orders/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/purchase_orders/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/purchase_orders/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/suppliers/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/supplier_items/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/inventory_reorder/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treatment_consumables/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treatment_consumables/service.py
+
+### 20.2 Recall and recall-reminder workflow
+
+- Recall fields: clinic/patient, due_month normalized to the first day of month, optional precise due date, reason/reason_note, priority, status, recommended-by/assigned professional, contact attempt count/last attempt, linked appointment, optional loose treatment ID/category snapshot, completed time.
+- Reason vocabulary includes hygiene, checkup, orthodontic review, implant review, post-op, treatment follow-up and other. Statuses include pending, contacted-no-answer, contacted-scheduled, contacted-declined, done, cancelled and needs-review.
+- RecallContactAttempt is append-only with server timestamp, actor, channel (phone/WhatsApp/SMS/email), outcome (no answer/voicemail/scheduled/declined/wrong number) and note. A staff phone call is different evidence from an automated message delivery.
+- RecallSettings holds reason interval map, category-to-reason map and automation toggles per clinic. Seed intervals in the reference are examples only, not universal clinical rules.
+- Duplicate guard for active recall for same patient+reason updates the existing pending row rather than inserting another. Consider concurrency-safe uniqueness and history for due date/priority/note changes.
+- Patient archive moves active recalls to needs_review, not delete. Active call lists exclude archived and do-not-contact.
+- Auto-link of a scheduled appointment only occurs if exactly one eligible recall for the patient/month; ambiguous matches do not silently link. Appointment completion marks recall done; cancellation unlinks and may reopen it.
+- recall_reminders is glue: transactional recall-created event enqueues through NotificationGateway; consent/channel/template handling belongs to gateway; outbox worker sends after transaction commit. Recall record != message sent; enqueue != delivered.
+- Reference module downgrade drops recall history despite being optional; ClearFlow needs a retention/backup plan that does not accidentally purge important patient follow-up history when disabling a module.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/recalls/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/recalls/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/recalls/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/recall_reminders/CLAUDE.md
+
+### 20.3 Patient relationships vs contact/authority graph
+
+- DentalPin PatientRelationship connects two patient records with a directed relation type (parent, child, spouse, sibling, guardian, ward or other); inverse label is derived on read. It has clinic scope and a unique ordered pair, but service validates both patients belong to the clinic and rejects self-relation/duplicates.
+- Patient-to-patient social relationship is not a contact who is not a patient, guarantor, payer subscriber or legally authorized person. OpenEMR contact_relation records authority and effective dates. ClearFlow must keep social relationship, emergency contact, billing guarantor, insurance subscriber and legal authority distinct.
+- If inverse relation is derived, establish allowed inverse mappings, symmetrical type behavior, direction/canonicalization and race-safe duplicate prevention. A single uniqueness constraint on ordered pair does not alone prevent concurrent insert of inverse pair.
+- Never infer legal consent authority solely from a relationship label; store legal basis, scope, evidence, validity and revocation separately.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patient_relationships/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patient_relationships/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patient_relationships/CLAUDE.md
+- https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/contact_relation.html
+
+### 20.4 External contacts and media attachments
+
+- Generic Contact is a simple clinic directory for external labs/suppliers/delegates/other with name, one phone/email/address/notes and active flag; Supplier extends it 1:1. ClearFlow should support multiple endpoints and addresses, legal identity, roles/capabilities, service areas, licences, contracts and external IDs; supplier-specific payment information needs restricted permission.
+- Document separates file metadata and storage pointer from patient/document purpose: original filename, MIME, size, media kind/category/subtype, capture time, pair to another document, tags, extra metadata, uploader and status. File bytes stay outside DB and service creates thumbnails/medium derivatives. Tenant-scoped storage and MIME validation are important.
+- MediaAttachment links document to polymorphic owners using owner type/ID and a registry. Service resolves owner under clinic, verifies it belongs to same patient as document, and deduplicates links. Polymorphic owner IDs lack FKs because optional modules may be removed; the registry must be strongly typed, tenant-aware, tested and audited. For highly queried/high-risk owners, explicit relation tables may be better.
+- Before/after pair needs atomic bidirectional update and tests for reassignment/unpair concurrency and archive/delete.
+- Attachment does not itself prove consent or clinical relevance. Preserve checksum, upload provenance and source/derived lineage. Issued/signed documents need exact artifact bytes, template/issue context and signatures.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/contacts/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/media/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/media/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/media/CLAUDE.md
+
+### 20.5 Schedules: normalized weekly templates and date overrides
+
+- ClinicWeeklySchedule unique per clinic; ClinicOverride is a date range (closed/custom_hours) with end >= start. ProfessionalWeeklySchedule is unique per clinic/user; ProfessionalOverride records date range unavailable/custom_hours.
+- ScheduleShift has four nullable candidate parent FKs (clinic weekly, clinic override, professional weekly, professional override) with DB CHECK exactly one parent. Another CHECK requires weekday XOR specific shift date. Checks validate weekday range and end_time > start_time.
+- Availability resolver combines working windows and date overrides; free-slot resolution subtracts actual appointments and returns contiguous gaps rather than arbitrary fixed slots.
+- Need tests for same-tenant professional membership, overlapping shifts, split/overnight shifts, DST, provider leave, clinic closure, rooms/equipment, appointments extending beyond close, and exact policy for cross-midnight intervals.
+- The module depends on agenda, while agenda can function with a fallback if optional schedules is disabled. Actual appointments are source of truth; occupancy is a derived view.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/schedules/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/schedules/CLAUDE.md
+
+### 20.6 Staff attendance, payroll, treasury and expenses are distinct
+
+**Attendance**
+- AttendanceEvent is immutable clinic/user in/out punch with time/note and actor who recorded it. Consecutive same-kind punches are rejected; correction is an opposite punch rather than rewrite. Attendance is separate from planned shifts, overtime and payroll.
+
+**Payroll**
+- PayrollProfile stores pay type, base amount/currency, encrypted bank/tax IDs, active and country.
+- PayrollPeriod unique by clinic + YYYY-MM; draft -> closed -> paid.
+- PayrollEntry stores period/user, gross/deductions/net, notes and unique period/user; net validated as gross minus deductions. Closed/paid periods read-only; changes only in draft. Admin-only/no AI tools; no country statutory calculations in this reference.
+- Secret values are write/replace only, responses expose masked last4/has-value flags, and logs/events contain IDs rather than amounts/secrets. Rotating encryption key requires a re-encryption plan. Time-sheet facts are not automatically salary facts.
+
+**Treasury**
+- TreasuryAccount is named clinic cash/bank account with opening balance and active flag.
+- TreasuryEntry is append-only with amount-positive, kind (opening, transfer out/in, correction in/out), timestamp, actor/memo. Transfer legs share group ID; balance derives from opening plus signed entry ledger.
+- Reference lacks automatic payment/expense posting, bank-statement reconciliation, multi-currency accounts, recurring transfer and overdraft prevention. ClearFlow should model receipt, processor settlement, bank deposit and statement matching separately.
+
+**Expenses**
+- Simple row with clinic/category/amount/date/free-text description/creator and categories rent/utilities/salaries/supplies/equipment/insurance/maintenance/other. CSV import dry-run default; admin-only due sensitivity.
+- Not a full accounts-payable process: no supplier invoice/line/tax, approval, recurrence, payment/bank posting, credit note, attachment, accrual period/cost center or reversal model appears in the reviewed schema. Keep this distinction explicit.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/staff_attendance/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/staff_attendance/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/payroll/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/payroll/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treasury/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treasury/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/expenses/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/expenses/CLAUDE.md
+
+### 20.7 Leads, duplicate prevention and untrusted public intake
+
+- Lead is for an inbound enquiry that did not match a current patient. Fields include full name, phone, email, motive/description, preferred days and time-of-day, state new/contacted/converted/discarded, linked patient on conversion and conversion timestamp.
+- LeadIntakeKey stores per-clinic SHA-256 hash and visible prefix, not plaintext; plaintext is returned once at rotation. Daily intake cap/counter in settings (reference default 200, range 0–5000, 0 unlimited) and request body has bounded size. Public intake authenticates through X-Lead-Key rather than clinic JWT and does not trust caller-supplied tenant context.
+- One routing function handles public and staff intake. If phone OR email matches a non-archived patient, the enquiry routes to a recall rather than creating duplicate lead/patient. Phone/email alone need canonicalization, shared-family safeguards and uncertainty/confirmation policy.
+- Free-text motive/description is an untrusted prompt-injection/sensitive-data surface. Reference hides it from ordinary AI summaries and exposes only through a redaction-flagged tool. Key rotation is deliberately not an AI tool because it can break the clinic website.
+- ClearFlow should also retain source/campaign/referral, channel, submission/request ID, consent/policy notice, timestamp/timezone, spam decision, duplicate-match evidence, follow-up history and conversion mapping. Ambiguous candidate must stay pending for staff review rather than silent merge.
+
+Source:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/leads/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/leads/service.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/leads/CLAUDE.md
+
+### 20.8 Patient timeline and segments are projections/grouping only
+
+- Patient timeline is a chronological projection fed by about 22 cross-module events. It is append-only; deletion/archive results in a “removed” event rather than deletion. It deduplicates on event_type + source_id. It depends only on patient core; missing optional source module stops that event feed.
+- Timeline is not canonical source of truth or replacement for financial/clinical audit. Mark tables/views as authoritative source, history, cache/projection, reference, raw payload or telemetry. Uninstalling optional functionality must not purge clinical/financial history absent explicit retention approval.
+- Patient segments are clinic-local free labels and a separate patient membership link. Segment is grouping only; it does not establish marketing permission/consent.
+- These patterns should be reflected in the ClearFlow entity map: canonical object and lifecycle event are primary; timeline/segment summaries are derived.
+
+Sources:
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patient_timeline/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patient_timeline/CLAUDE.md
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patient_segments/models.py
+- https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patient_segments/CLAUDE.md
+
+### 20.9 New acceptance tests implied by this batch
+
+1. Inventory concurrent consumption/manual adjustment: ledger total reconciles to stock; duplicate event does not deduct twice; requested vs actually applied quantity and shortage are visible.
+2. Partial PO receipts with rejected units, retried request and mid-transaction failure produce no duplicate inventory or partial receipt.
+3. Supplier price, pack size or lead time update does not rewrite existing PO unit-price/terms snapshots; reorder suggestions recompute from current demand and open-order quantities.
+4. Expired/recall batch traces to procedures/patients/sessions that consumed that lot; FEFO/lot-selection policy deterministic.
+5. Multiple recalls for one patient are never auto-linked arbitrarily; ambiguous association waits for staff and all outreach paths honor do-not-contact/archive status.
+6. Recall creation retries do not duplicate active rows; due-date/reason-note changes are audited.
+7. Inverse patient relationship insertion concurrently cannot create two representations; social relation does not confer consent authority.
+8. Paired before/after documents remain symmetric under reassignment/unpair; tenant and same-patient checks run on all link paths.
+9. Schedule resolution handles overlapping shifts, split/overnight hours, DST, leave, clinic closure and resource capacity explicitly.
+10. Payroll/treasury/expenses stay role restricted and excluded from AI tools unless an explicit typed policy permits safe projections. Bank/tax secrets never leak.
+11. Public lead intake key rotation/revocation, concurrency-safe limits and untrusted prose redaction work as designed.
+12. Disabling an optional module cannot purge legally/operationally retained history without a confirmed retention policy.
