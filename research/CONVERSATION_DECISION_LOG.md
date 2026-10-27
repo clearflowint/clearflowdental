@@ -414,3 +414,36 @@ Recommended conceptual boundaries:
 - Keep original capture-first rules and the simple clinical JSON preference: do not force line-by-line extraction of handwritten notes or prescriptions. Structured dental charting is for deliberate clinical entry when useful, not automatic reclassification of every source document.
 
 Next validation: map these concepts and cardinalities to selected dental comparators and applicable tooth-numbering/clinical practice needs; distinguish well-supported patterns from product choices and unverified source coverage. No production schema is approved by this entry.
+
+
+## 17. Appointments, follow-ups and recall — enterprise-derived baseline
+**Discussion date:** 2026-10-28  
+**Status:** Recommended baseline from enterprise healthcare/dental patterns; exact implementation scope remains to be validated.
+
+The owner asked that these relationships be derived from established enterprise logic rather than invented ad hoc. The baseline is informed by HL7 FHIR Appointment and ServiceRequest concepts and dental recall workflows in Open Dental. These are reference patterns, not a requirement to implement every FHIR resource.
+
+### Conceptual relationships
+- **Patient** is the stable identity.
+- **Appointment** represents a planned booking with scheduled time, patient, clinic/location and relevant provider/resource assignments. Rescheduling and cancellation should preserve appropriate history.
+- **Encounter** represents a clinical interaction, not the booking itself. An appointment may result in zero or more encounters according to workflow; an encounter may occur without a prior appointment.
+- **Treatment request/plan** represents proposed, requested or accepted care and is not evidence that a procedure was performed.
+- **Procedure/performed care** records actual delivered care and links to the relevant encounter when appropriate.
+- **Follow-up recommendation** records a clinician's recommended next action/timing when known; it is not itself a booked appointment.
+- **Reminder/communication** records communication intent and delivery/attempt outcomes separately from appointment or clinical status.
+- **Recall** represents a future-due repeat/periodic service or review, with due date, basis/rule where applicable, contact history and any linked scheduled appointment. A recall becoming due does not mean an appointment exists or that the patient attended.
+
+### Lifecycle and integrity rules
+- Keep appointment status, encounter status, treatment status, reminder delivery status and recall/contact status separate; avoid a universal status field that conflates them.
+- Do not infer attendance or completed care from a booking, reminder delivery, or treatment-plan entry.
+- Do not automatically calculate clinical follow-up intervals from AI inference. Use explicit clinician-entered instructions or validated, configured rules where applicable; preserve the basis and date used.
+- Repeated reminders should be duplicate-safe/idempotent and respect authorization, communication preferences, contact validity and relevant privacy rules.
+- Handle cancellation, rescheduling, no-show, walk-in, partial attendance, multi-visit care and appointments involving provider/resource constraints without erasing prior events.
+- Tenant and branch authorization must be checked on every read and mutation; booking conflicts and concurrent scheduling require trusted backend validation.
+- Keep the initial implementation simple while preserving separate concepts and their relationships. Do not require every clinic to use recall or automated reminders.
+
+### Reference mapping
+- HL7 FHIR Appointment defines a planned healthcare meeting and notes that it may result in one or more encounters: https://fhir.hl7.org/fhir/appointment.html
+- HL7 FHIR ServiceRequest distinguishes a proposal/plan/order for a service from the performed procedure or resulting observation/report: https://hl7.org/fhir/servicerequest.html
+- Open Dental Recall distinguishes recall due dates, scheduled recall appointments and recall communication status: https://www.opendental.com/manual/recall.html
+
+This entry records a recommended model, not a finalized physical schema, automatic clinical scheduling policy, or production-readiness claim.
