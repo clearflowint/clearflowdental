@@ -19,6 +19,7 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 - [Batch 33](./PROJECT_NOTES_ADDENDUM_B33.md) — OpenEMR prescriptions, medication inventory/sales, procedure orders/results, reminder obligations, immunization and signature hashes.
 - [Batch 34](./PROJECT_NOTES_ADDENDUM_B34.md) — OpenEMR patient demographics, observations/vitals, medication statements vs prescriptions, forms and signature linkage.
 - [Batch 35](./PROJECT_NOTES_ADDENDUM_B35.md) — India-specific primary-source evidence gate for dental records/retention, phased DPDP commencement, telemedicine context and AI prescription authorization.
+- [Batch 36](./PROJECT_NOTES_ADDENDUM_B36.md) — prosthetic lab cases and lab-slip lifecycle, plus continued research on odontogram provenance, periodontal exams/measurements, treatment-plan versioning, recall lifecycle, imaging asset metadata/DICOM, orthodontic records and traceability tests.
 
 ## Preservation and design rule
 The original app is preserved on branch `backup/before-project-notes-reset-2026-10-27`. `main` is intentionally research-notes-only after the user-requested reset. Keep the large workspace dossier `ClearFlow_Dental_Enterprise_Schema_Research_Dossier.md` and complete workspace copy `ClearFlow_Dental_PROJECT_NOTES_Complete.md` alongside the GitHub notes; they contain the unstructured working research. Never claim the local workspace artifact is committed to Git unless a repository file confirms it.
