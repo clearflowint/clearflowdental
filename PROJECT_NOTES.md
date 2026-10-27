@@ -426,3 +426,59 @@ Sources: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export
 5. Encounter is a clinical/operational anchor, not a reason to flatten every related domain into one row.
 6. Document metadata must include hash, MIME/size, storage IDs, revision, logical date, context, expiry, encryption, import validation, signature/review and retention.
 7. A wide legacy patient table is a source for field discovery, not a design target.
+
+
+## 12. Batch follow-up: DentalERP relationship and lifecycle review; license verification
+
+### DentalERP relationship-level observations
+Source: https://github.com/abinauv/dental-erp/blob/main/prisma/schema.prisma
+The current inspected Prisma schema has 81 models and uses MySQL. Selected models reveal both useful breadth and risks that ClearFlow must not copy blindly.
+
+**Hospital / tenant configuration.** Hospital fields include name/slug, email/phone/alternate phone, address/city/state/pincode, logo, registration/GST/PAN numbers, website/tagline, locale/country/currency/timezone, subscription plan/expiry, patient/staff/storage limits, active/onboarding state, email-verification tokens, working hours and bank details. This is a broad operational onboarding record. Sensitive bank/account data and verification tokens should be separated/protected, and subscription limits should not be mixed into clinical facts. Country-specific defaults must not hard-code the whole tax model.
+
+**Patient.** Fields include hospitalId, local patientId, first/last name, DOB and separate age, gender/blood group, primary/alternate phone, email/address/city/state/pincode, Aadhaar number, occupation/referrer, emergency contact name/phone/relationship, locale, AI summary/summary time, active flag and timestamps. Relations connect medical history, appointments, treatments/plans, dental chart, prescriptions, invoices, documents, lab orders, risk scores and insurance policies.
+Design cautions:
+- Age duplicates DOB and becomes stale; compute age at the relevant clinical date or preserve a deliberately recorded age only when the source requires it.
+- Aadhaar and other sensitive identifiers require purpose limitation, restricted access, masking/encryption and retention decisions.
+- An AI summary is a derived projection with provenance/time/version, not a replacement for source clinical records.
+- The emergency contact flattened into patient columns cannot support multiple contacts, validity periods or decision authority.
+- Tenant ownership on parent and child rows does not by itself enforce same-tenant relations. Composite tenant keys/constraints or trusted DB-level controls are needed.
+
+**Appointment.** Fields include clinic-local appointment number, patient, doctor, scheduled date plus a string scheduledTime, duration, optional chair, appointment type/status/priority, check-in/out times, wait time, chief complaint, notes, cancellation time/reason, virtual flag and video consultation relation. The model uses a date plus string time rather than a canonical zoned interval, and indexes but no interval exclusion constraint were visible in the schema excerpt. ClearFlow should represent start/end as unambiguous instants with clinic timezone semantics, maintain a separate local display context where needed, and enforce overlap/capacity under concurrency. Check-in/out and wait-time may be derived/recorded operational facts and need clear definitions.
+
+**Dental chart.** DentalChartEntry has hospital/patient, tooth number and notation, individual mesial/distal/occlusal/buccal/lingual flags, condition/severity/notes, diagnosed/resolved dates and timestamps. This is a useful explicit surface model but may omit other surface systems, tooth/arch states and temporal chart history. Do not assume all tooth types share the same surfaces; version the notation/terminology and preserve change history.
+
+**Treatment plan.** Header has plan number, patient, title/description/status, estimated cost/duration, start/expected end/completed dates, consent flag/date, notes and timestamps. Items have procedure, optional string toothNumbers, priority, estimated cost, status and notes. A string list of tooth numbers loses referential integrity, roles, surfaces and per-tooth details. ClearFlow should use normalized item-to-tooth/surface relationships, explicit consent evidence and price snapshots, and separate estimate from actual charges.
+
+**Invoice and payment.** Invoice includes subtotal, discount type/value/amount, taxable amount, CGST/SGST rates and amounts, total, paid amount, balance, status, due date, insurance claim/amount, notes/terms and timestamps. Payment links directly to one invoice and stores amount/method/date, transaction/bank/cheque/UPI details, status, refund amount/date/reason and gateway/order/payment/status fields. This is convenient but can create competing authorities: invoice paid/balance values duplicate payment state; a payment tied to one invoice cannot natively allocate a single receipt across multiple invoices; refund fields embedded on payment are less expressive than separate refund/reversal events. ClearFlow should preserve provider attempts, provider IDs, settlement/reconciliation and independent refund records, then derive/reconcile balances from allocations.
+Tax columns named CGST/SGST reflect a specific domestic tax pattern. Tax calculation should be jurisdiction/effective-date driven rather than assuming these exact two components universally. Verify current Indian GST invoicing rules with official sources before implementation.
+
+**Insurance.** PatientInsurance records payer/provider, policy/member/group, subscriber name/relationship, effective/expiry, coverage type, annual maximum/used/remaining amount, deductible/met flag, copay percentage, active and last verification state/time. Storing used and remaining amounts as mutable fields risks divergence from adjudicated claim/benefit events; treat as verified snapshots/projections with source/time. PreAuthorization stores procedures as JSON, estimate, status, approved amount/date, expiry and denial reason. JSON can preserve an original request payload, but canonical procedure lines, decision lines, attachments and status history need relational representation for auditing and reporting.
+
+**Inventory.** InventoryItem stores currentStock alongside InventoryBatch and StockTransaction tables. StockTransaction records type/quantity/previous/new stock, batch, supplier, reference type/ID, from/to locations, unit/total price, performer and time. Maintaining currentStock plus transaction ledger can be useful for performance, but it is a projection that must be updated atomically and reconciled. The free-form referenceType/referenceId pair is weakly typed; use typed links for core purchase, receipt, waste and treatment-consumption sources. Batch quantities and item stock need a defined unit of measure and concurrency-safe movements.
+
+**Lab.** LabOrder has patient/vendor, work type, description, tooth numbers as string, shade, order/expected/sent/received/delivered times, estimated/actual cost, status/priority, quality-check status/notes, special instructions, creator, deletion time and relations to status history and documents. LabOrderHistory records status-from/to, actor, note and timestamp; LabOrderDocument links documents. This is a valuable lifecycle pattern. Extend it with structured tooth/arch/material/shade systems, remake lineage, external IDs, QC criteria/results, vendor communications and reconciliation of estimated versus actual cost where required.
+
+**Audit and AI.** AuditLog stores tenant, user, action, entity type/ID, old/new values as text, IP/user-agent and timestamp. Free-text serialized old/new values may be hard to query and validate; consider typed audit envelopes with structured JSON diffs, request/correlation IDs and integrity controls. AIConversation stores messages/context as JSON and resolved state; AISkillExecution stores skill/input/output JSON, status, duration, token count, cost, error and timestamp. This makes AI execution observable but may retain large amounts of sensitive patient data. Separate conversation content from operation evidence, minimize raw PHI, capture provider/model/operation/schema versions, approval state, redaction/retention policy and verified result references.
+
+**Forms.** FormTemplate stores field definitions as JSON; FormSubmission stores data as JSON, patient/appointment, signature and signed time, IP, status, reviewer and review notes. This supports dynamic forms but requires a versioned template snapshot and schema validation at submission time. Otherwise a template edit can make old submissions ambiguous. Signatures should bind to the exact submission/template/data hash and signer identity/capacity.
+
+**Payment plans.** PaymentPlan and PaymentPlanSchedule represent total/down payment, installment count/frequency/rate, status/start/next due, and per-installment amount/due/paid date/amount/payment ID/status. A schedule is a useful independent obligation record; define recalculation rules, partial payments, missed installments, rescheduling, fees/interest legality, cancellation and payment allocation. Do not let the schedule's paid amount become an unverified duplicate of payment allocations.
+
+**Sterilization.** SterilizationLog includes instrument, cycle number, method, machine, temperature, pressure, duration, operator, result, biological/chemical indicators, notes, start/end times. This is only a log skeleton: production traceability may require machine calibration/maintenance, load and instrument-set membership, indicator batch/expiry, release authorization, failed-cycle remediation, and links to patients/procedures where legally required.
+
+### License/maturity check updates
+- LibreDental LICENSE was directly fetched and confirms Apache License 2.0: https://github.com/Cojekt/LibreDental/blob/main/LICENSE. This is a permissive license, but license compliance and attribution obligations still apply if code reuse is ever considered.
+- OpenDentist LICENSE was directly fetched and confirms MIT: https://github.com/clawnify/OpenDentist/blob/master/LICENSE. Its license is permissive, but the inspected financial schema remains too simple to be an enterprise completeness benchmark.
+- License permissiveness is not an endorsement of clinical correctness, security or production maturity. Keep architecture reuse separate from code reuse.
+
+## 13. New ClearFlow safeguards implied by this batch
+- Avoid redundant mutable facts such as age, invoice paid/balance, insurance remaining benefits and stock balance unless clearly designated projections with reconciliation.
+- Every projection needs an authoritative source, update transaction, stale-data behavior, reconciliation job and discrepancy alert.
+- Store canonical appointment start/end instants and clinic timezone; don't model time as an unvalidated string.
+- Replace string tooth lists with normalized tooth/surface relations; use JSON only for source payload preservation or genuinely flexible extension data.
+- Dynamic forms require versioned templates and immutable submission snapshots.
+- Payment plans are schedules of obligations, not proof of payment; payment allocations remain authoritative.
+- AI conversation storage must have PHI minimization, access controls, retention and provider/model/version provenance.
+- Audit records should be structured and tamper-resistant enough to answer who changed what, when, why, under which tenant/context, and which operation/result was involved.
+- Lab and sterilization workflows need full history and QC/release evidence, not just a status column.
