@@ -1,237 +1,382 @@
-# ClearFlow Dental Clinic — Project Notes & Unstructured Research Findings
+# ClearFlow Dental Clinic — Project Notes & Enterprise Research Notebook
 
-**Status:** Active evidence notebook; not the final canonical schema. Keep appending findings as research continues. No business rule is to be invented merely to fill a gap.
+**Last updated:** 2026-10-27  
+**Status:** Living research notebook; source observations and design questions, not a final schema.  
+**Repository reset:** At the user's request, the existing working files on main are being replaced by this notes file. A backup branch named backup/before-project-notes-reset-2026-10-27 preserves the previous application tree.  
+**Research preservation:** Full long-form notes remain preserved in the workspace as ClearFlow_Dental_Enterprise_Schema_Research_Dossier.md and ClearFlow_Dental_Enterprise_Schema_Research_Batch_01.md. This notebook consolidates their findings for the repository. Continue appending new batches; do not overwrite earlier evidence.
 
-## Product intent and non-negotiables
+---
 
-ClearFlow Dental Clinic needs a complete enterprise-grade dental domain model. A simple mobile-first interface is not a reason to omit backend fields, relationships, history, compliance evidence or operational controls. The AI is meant to perform structured data entry and business operations that staff perform in conventional dental software: understand natural-language intent, retrieve authorized context, map documents/conversation to typed fields, resolve known identifiers, detect ambiguity, validate and propose operations, request missing details or confirmation, execute through trusted deterministic functions, and verify actual outcomes.
+## 1. Product intent and principles
 
-AI must not have unrestricted direct write/delete authority. Deterministic Python/Windmill functions enforce schema validation, business rules, permissions, tenant boundaries, transactionality, idempotency and result verification. Background reads and bounded background tasks are acceptable. Consequential writes require approval according to operation policy. Use deterministic code whenever generative reasoning is not genuinely needed to reduce cost, latency and variability. The frontend is mobile-first, card-based, task-oriented and has no horizontal scrolling; simplify interaction, not the data model.
+ClearFlow Dental Clinic is a multi-tenant dental clinic SaaS. The user interface should be mobile-first, task-oriented, conversational and easy for clinic staff. That simplicity must not be obtained by reducing backend data coverage, history, relationships, controls or transactional safety.
 
-Product is the primary boundary. Tenants and identities are product-scoped. Never trust a client-supplied tenant ID without resolving it through trusted authentication/authorization. Reference repositories are research sources, not code to copy without a separate license review.
+The product goal is for AI to act as a competent structured-data operator: understand instructions and source documents, retrieve relevant context, extract candidate fields, validate constraints, detect ambiguity/conflict, ask questions and call deterministic business operations. The system—not probabilistic language generation—must own tenant authorization, validation, accounting, clinical-state transitions, concurrency, audit, idempotency and durable writes.
 
-## Research method
+Operating principles:
+1. Preserve justified enterprise domain breadth before narrowing the UI.
+2. Research schemas, migrations, API contracts, application services, lifecycle rules and tests—not just product feature lists or table names.
+3. Label observed source facts, interpretations, ClearFlow recommendations and unresolved questions separately.
+4. Do not invent clinical, operational, fiscal or legal rules. Record jurisdiction and authoritative source.
+5. Separate current state from immutable history; original payload from normalized facts; planned care from performed care; estimates from issued fiscal documents; payments from allocations and refunds.
+6. Use relational constraints where they can enforce correctness. Service validation supplements rather than replaces database guarantees.
+7. Use exact decimal/minor-unit representations for money, explicit currency and effective-dated pricing/tax rules.
+8. AI proposes and interprets; deterministic code validates and executes. Privileged/destructive actions require appropriate authority and, where configured, explicit human confirmation.
+9. Every AI-assisted write should retain the supervising user, source request/artifact, extraction/model version, candidate changes, validation results, approval, idempotency key, result and failure/correction history.
+10. Public repositories are domain references by default, not code to copy. Review licence, terms, maturity, security and fit separately.
 
-Inspect source DDL/ORM models, migrations, service/workflow code, permissions, transaction boundaries, events, idempotency, official documentation, interoperability standards, tests and license/maturity. For each candidate entity/field record source URL and pinned version, exact name/type/nullability/default, PK/FK, checks/unique/indexes, meaning, lifecycle, tenant scope, sensitivity, provenance, history, adoption decision and rationale. Label source facts, interpretations and ClearFlow proposals separately.
+## 2. Architecture assumptions (not all final)
 
-Keep distinct: authoritative fact; current-state projection; derived value; historical snapshot; external-source value; AI suggestion; user-confirmed fact; immutable evidence/audit event. JSON is appropriate for raw payloads and extension metadata, but should not hide core fields needed for joins, integrity, permissions, lifecycle or reporting.
+- Deployment goal: multi-tenant SaaS.
+- Backend exploration: Appwrite for app data/auth/platform; Windmill/Python for deterministic business functions and jobs; n8n for integrations/communications/schedules; provider-neutral AI adapter/LLM gateway.
+- Python should perform deterministic work whenever possible to reduce cost, latency and unnecessary model use.
+- AI handles natural-language interpretation, extraction and dialogue. Deterministic services own calculations and validated execution.
+- The front end should not own business calculations; it should display canonical saved state and deterministic projections.
+- Data tenancy, transaction support, backup, migration, access policies, query capability and vector storage must be tested before finalizing backend choice.
+- Mobile-first: no horizontal scrolling; focused cards and task flows are fine, but they should not eliminate backend detail.
+- Interoperability should use explicit mappings/adapters for FHIR/vendor/country APIs, rather than forcing every internal table into an external resource shape.
 
-## Reference systems and observed evidence
+## 3. Reference systems inspected
 
-### Open Dental — strongest dental-specific breadth reference
-Official data dictionary: https://www.opendental.com/OpenDentalDocumentation26-2.html
-Official references: https://www.opendental.com/site/apitreatplans.html ; https://www.opendental.com/site/apipayments.html ; https://www.opendental.com/site/apiclaims.html ; https://www.opendental.com/site/apiprocedurecodes.html
-Use for broad discovery across patients, family/guarantor relationships, scheduling, providers, operatories, tooth/procedure history, procedure-code catalog, treatment plans, insurance estimates/claims, payments, adjustments, documents, recall, prescriptions, lab cases, communications and audit. Proprietary system: documentation/reference use is separate from code reuse. Continue field-level review of high-risk domains.
+### Open Dental
+Official, versioned dental-practice data dictionary; primary established dental reference for treatment plans, procedure codes, payments, claims, recall, charting, scheduling, imaging, labs and operations. Confirm the documented version before finalizing a field inventory. Commercial/proprietary reference; do not assume code reuse rights.
+- Main data dictionary: https://www.opendental.com/OpenDentalDocumentation26-2.html
+- Treatment plans: https://www.opendental.com/site/apitreatplans.html
+- Payments: https://www.opendental.com/site/apipayments.html
+- Claims: https://www.opendental.com/site/apiclaims.html
+- Procedure codes: https://www.opendental.com/site/apiprocedurecodes.html
 
-### OpenEMR — mature general EHR and practice-management reference
-Repository: https://github.com/openemr/openemr
-Table-by-table export documentation: https://github.com/openemr/openemr/tree/master/Documentation/EHI_Export/docs/tables
-The main SQL file is very large; table-specific EHI documentation is practical for targeted review. GPL license means reference-only unless legal review approves reuse.
-Inspected table docs include patient_data, form_encounter, billing, ar_activity, ar_session, lists, insurance_data, contact, contact_relation, contact_telecom, contact_address, addresses, person, person_patient_link, notification_settings, notification_log, automatic_notification, rule_reminder, rule_action, rule_filter, esign_signatures, document_template_profiles, patient_access_onsite, uuid_mapping and uuid_registry.
-Findings:
-- Contact relations can encode relationship/role, active period, priority, primary/emergency flags, authority to make medical decisions and permission to receive medical information, plus notes and creator/updater metadata.
-- Telecom/address entries support multiple ranked values, primary selection, active periods, inactivation reasons and audit fields. One phone/email/address field on the patient is not enough for all enterprise cases.
-- Person identity can be separated from patient identity and linked with linked date/by, link method (manual, auto-detected, migrated, import), notes and active flag.
-- E-signatures can record signed target table/row, signer, timestamp, lock/amendment, signed-data hash and signature hash. Preserve exact signed version/artifact rather than only a signed boolean.
-- Notification logs preserve message content, channel/provider-related metadata, appointment/patient context, scheduled event date/time and actual send time. Separate communication intent, attempts, provider receipt and final delivery state.
-- UUID mapping/registry supports durable external resource IDs and import/export mappings.
-- Clinical rules are decomposed into filters, actions and reminders; consider rule versions, execution results and evidence.
-- Portal credentials belong in a separate auth surface, not ordinary patient demographic payloads.
+### OpenEMR
+Mature EHR/practice-management reference with a broad current EHI-export table dictionary and application services. Useful for identity/contact graph, encounters/forms, orders, observations, claims and AR activity, prescriptions, documents/signatures, access controls, notifications, audit and exchange identifiers. GPL-licensed; reference by default unless code reuse is separately approved.
+- Repository: https://github.com/openemr/openemr
+- Table dictionary: https://github.com/openemr/openemr/tree/master/Documentation/EHI_Export/docs/tables
+- Exact schemas inspected include patient data, encounter, SOAP notes, vitals, observations, questionnaires, forms, appointments, patient-flow tracker, claims, AR activity/sessions, contact graph, notification logs/settings, signatures, document-template profiles and UUID mappings/registry.
 
-### DentalPin — modern modular dental reference; commercial-use limitation
-Repository: https://github.com/dentalpin/dentalpin
-Inspected models/migrations/workflow docs across patients, patients_clinical, medical_reference, agenda, odontogram, treatment_plan, catalog, budget, billing, payments and clinical_notes. Its BSL 1.1 license contains a commercial SaaS restriction that may apply when the service's primary value derives substantially from DentalPin; reference only until legal review.
-Core/tenant findings:
-- Clinics, users, memberships, roles, permissions, role-permission mappings, module-default permissions, clinic overrides and refresh-token rows are separate entities.
-- Membership role and professional/agenda eligibility are distinct. An administrator can also be a treating professional.
-- Clinic timezone and ISO currency are explicit configuration, not server-locale assumptions.
-- Refresh-token family and per-token revocation are separate; token version can support global revocation.
-- Permissions are granular. Medical history has stricter access than ordinary demographics.
-Patient/medical findings:
-- Patient fields include name, phone/email, DOB, status, do-not-contact, gender, national identity type/value, profession/workplace, language, address, photo URL, plus billing name/tax ID/address/email.
-- Billing identity may differ from patient identity; invoice identity is snapshotted so later patient edits do not rewrite history.
-- Patient archival is soft and restorable; clinical/financial history must not be orphaned.
-- Medical JSON blobs were normalized into medical context, allergies, medications, systemic diseases, surgical history, emergency contact and legal guardian.
-- Medical context includes pregnancy/lactation, anticoagulants/medication/INR/date, smoking/alcohol, bruxism, anesthesia adverse reactions/details, last-updated time/by.
-- Allergy records have name/type/severity/reaction/notes/reference/status; medication records name/dosage/frequency/start date/notes/reference/status; systemic disease records type/diagnosis date/controlled/critical flags/medication notes; surgery records procedure/date/complications/notes.
-- Reference catalogs include allergies, medications, diseases, surgeries, medication-medication interactions and disease-medication contraindications. Retire references rather than erase items used in historical records.
-- Some optional-module reference IDs intentionally have no database FK to preserve modularity; this trades away referential integrity and must be a deliberate decision.
-- Do-not-contact must suppress recall/outreach. A single boolean may be insufficient for channel, purpose, consent/legal basis, evidence and timestamp.
-Dental anatomy/treatment:
-- Tooth records capture patient, FDI tooth number, dentition type, general condition, per-surface JSON state, notes and orthodontic displacement/rotation. Unique patient+tooth.
-- A treatment is one clinical act and may affect one or many teeth, whole mouth or arch. Fields include clinical type/scope/arch, catalog link, planned/performed status, recorded/performed time, performer, price/duration/tax snapshots, budget-item link, notes, source module and soft-delete time.
-- Treatment-tooth children capture tooth, role (e.g. bridge pillar/pontic) and surfaces. Avoid assuming one procedure equals one tooth.
-- Odontogram history stores change type, surface, old/new condition, note, actor and timestamp. Current state alone cannot explain clinical history.
-- Scope checks constrain allowed values and require an arch for global-arch scope; cardinality rules may need transactional validation or DB triggers.
-- Both tenant and patient IDs on a row do not prove they refer to the same tenant; enforce cross-tenant integrity.
-Treatment plans:
-- Plan header includes clinic/patient, plan number/title, status, closure reason/note/time, confirmed time, optional one-to-one budget, assigned professional, creator, diagnosis/internal notes and deletion time.
-- Documented states include draft → pending → active → completed → archived, plus closed with a reason; reactivation to draft is allowed by documented workflow.
-- Plan items link treatment uniquely to plan, have order/status, completion without appointment, completed time/by, assigned professional snapshot and notes.
-- Planned item sessions represent billable/executable steps with sequence, label, amount, status, completion metadata and notes. Catalog session templates are copied at plan creation; catalog edits do not rewrite existing plans. Completed session label/amount are immutable.
-- Plan-level clinician reassignment does not automatically cascade to every item unless explicitly requested. Such lifecycle rules belong in a rule catalogue.
-- Clinical act, plan item, appointment and charge are related but not identical. Review whether ClearFlow needs flexible relationships where a finding is handled by multiple plans/episodes.
-Catalog/pricing:
-- Categories are hierarchical, localized, clinic-owned and ordered. Catalog items include internal code, category, localized names/descriptions, default price/cost, duration, appointment requirement, tax type, pricing strategy/config, tiered surface prices, scope, diagnostic flag, surface requirement, billing mode, material notes and active/system/deleted flags.
-- Strategies include flat, per-tooth, per-surface and per-role pricing; support multi-session templates.
-- Catalog session amounts must sum to item price within documented tolerance; plan instances snapshot sessions.
-- VAT/tax is centralized and historical rates are versioned. One inspected VAT rate uses float even though prices use NUMERIC; ClearFlow should use exact decimal for money/rates.
-- Catalog seed must be idempotent. System item identity fields may be locked while clinic-owned prices/names/tax/duration can be overridden.
-- Distinguish omitted field from explicit null for fields that can be cleared. Soft-deleted catalog codes may be reused under a partial unique index; policy requires an explicit decision.
-Billing/payments:
-- Invoice series holds clinic, prefix/type/description/current number/year-reset config/active/default. History stores changes, actor, prior/new state and notes.
-- Invoice snapshots patient/billing identity, number/series, budget, credit-note reference, status, issue/due dates, terms, subtotal/discount/tax/total NUMERIC, currency, notes, compliance metadata, document hash/previous hash, creator/issuer and deletion time.
-- Paid/balance values are derived from payment records rather than competing mutable invoice authorities.
-- Payment is gross patient cash-in with clinic/patient, exact amount, currency snapshot, method/date/reference/notes/idempotency key and recorder. Methods include cash, card, bank transfer, direct debit, insurance, UPI, netbanking and other.
-- Payment allocations split one receipt across budgets or on-account credit. Target-type/ID consistency is checked and allocation sum must equal payment amount; budget must belong to same clinic.
-- Refund is a separate reversal record; cumulative refunds cannot exceed payment. Refund method can differ from original method; reason, actor/time are preserved.
-- Idempotency key is unique per clinic. Workflow handles concurrent retry via DB uniqueness/savepoint, not only a pre-check.
-- Payment history stores old/new state and actor. Events are published transactionally so downstream billing failure rolls back the payment.
-- Invoice-payment bridge belongs to billing to avoid circular module dependency; modules coordinate through transactional events.
-- Reports include patient ledger, aging, collection method/provider and refund reporting. Some agent tools intentionally omit receivable/balance outputs; tool exposure should be permission/context-specific, not a mirror of every query.
-- Check allocation reallocation history, credit-note rules and local legal numbering.
-- OpenDentist's simpler amount_paid field and floating-point amounts are not an enterprise financial reference.
+### DentalPin
+Modern modular dental application using PostgreSQL, SQLAlchemy/Alembic and distinct modules. Useful for implementation-level state machines, idempotency, event behavior, snapshots, payments, odontogram scope, multi-session care and fiscal-compliance hooks. Its BSL 1.1 licence has a commercial-use restriction relevant to dental-clinic SaaS; treat as research only unless a suitable separate licence is obtained.
+- Repository: https://github.com/dentalpin/dentalpin
+- Modules inspected: patients, patients_clinical, medical_reference, agenda, odontogram, treatment_plan, catalog, budget, billing, payments, clinical_notes, media/documents, India GST and Veri*Factu.
 
-### LibreDental — supplemental schema/migration reference
-Repository: https://github.com/Cojekt/LibreDental
-Inspected SQLite patients/clinical/billing/providers schema and migration. Verify current LICENSE before relying on earlier indication of Apache-2.0.
-- Patient has preferred name, DOB, sex, contact, emergency contact, guarantor, insurance/subscriber, reminders, preferred provider, referral source, address, medical alerts/allergies JSON, notes, version and status.
-- Appointment has patient/provider/operatory, start/end, status, reason/notes, timestamps and version; indexes by patient, provider+start, operatory+start and date interval.
-- Dental condition has patient/tooth/surfaces JSON, ADA code, description/status/fee, optional insurer and pricing-source metadata.
-- Claim header contains patient/provider/appointment, insurer/policy/group, date of service, status, notes, JSON line items and payer ID. Compare with normalized service lines, diagnosis, adjustments and adjudication entities.
-- Payments use integer minor units and may link to claim; define currency exponent rather than assuming all currencies have two decimals.
-- Procedure code uses country+code composite key. Fee schedule has provider-level and practice-level overrides through partial unique indexes.
-- Provider has role/specialty/license/contact/hourly rate/NPI/taxonomy. Timecards snapshot hourly rate, track clock-in/out and minutes/pay, and allow only one active clock-in via partial unique index.
-- Version fields suggest optimistic concurrency for stale updates.
+### LibreDental
+SQLite/Go dental project, useful for country-scoped procedure codes, practice/provider fee overrides, insurance/subscriber data, appointments, claims/payments and reminder migrations. Its maturity is that of an early implementation; use for concept discovery, not as a proven enterprise reference.
+- Repository: https://github.com/Cojekt/LibreDental
+- Inspected patient, clinical, billing and provider schemas and migrations for clearinghouse IDs, reminders, reminder retries and payer-specific fee overrides. Re-check its current licence and maturity before any reuse.
 
-### DentalERP — broad India-oriented discovery source
-Repository: https://github.com/abinauv/dental-erp
-Prisma schema: https://github.com/abinauv/dental-erp/blob/main/prisma/schema.prisma
-At inspection the schema declared 81 models. Candidate domains include patients, appointments, treatment plans/items, dental chart entries, medical history, invoice/items, payments, insurance/claims/preauthorization, inventory batches/stock movements/purchase orders, lab orders/history/documents, sterilization, communications, payment plans/schedules, forms/submissions, AI conversation/skill execution logs, data-import jobs and audit logs.
-Use as breadth checklist, not proof of enterprise integrity. Audit relations, unique/check constraints, tenant enforcement, transaction services, history and tests. Validate India-specific GST, numbering, payer/TPA, UPI/bank/card reconciliation, prescriptions, privacy/consent, professional registration and retention against current official sources.
+### DentalERP
+MIT licence stated in its package/license. Its Prisma schema declares 81 models and offers broad feature discovery: hospital/tenant, users/staff, appointments/reminders, medical history, dental chart, treatment plans/procedures, prescriptions, invoices/payments, insurance/preauthorization, inventory/purchase orders, labs, communications/CRM, sterilization, devices, audit, forms, imports and AI task/insight records.
+- Repository: https://github.com/abinauv/dental-erp
+- Schema: https://github.com/abinauv/dental-erp/blob/main/prisma/schema.prisma
+- Broad coverage is not proof of design correctness; cross-tenant relationships, JSON claim details, duplicated balances/stock and audit/source history require further inspection.
 
-### OpenDentist — early/small feature reference
-Repository: https://github.com/clawnify/OpenDentist
-Inspected schema: https://github.com/clawnify/OpenDentist/blob/master/src/server/schema.sql
-Observed patients, appointments, providers, treatment plans, invoices, payments, insurance plans, lab cases, recall items, waiting lists and appointment blockouts. The reviewed invoice uses amount_paid and floating-point values; it is a feature-discovery source, not a complete financial design. Verify license and maturity before reuse.
+### OpenDentist
+MIT-licensed, smaller React/Hono/Cloudflare D1 project. Its DDL includes operatories, practitioners, treatment types, patients, appointments (including break/lunch/block), plan items, clinical notes, tooth conditions, invoices/items, waiting list, insurance plans, lab cases and appointments-to-make/recall.
+- Repository: https://github.com/clawnify/OpenDentist
+- Schema: https://github.com/clawnify/OpenDentist/blob/master/src/server/schema.sql
+- Useful for spotting UX/features, but not an enterprise clinical/financial schema. It uses REAL for fees/balances, invoice-header amount-paid, simple plan items and basic patient safety fields.
 
-### Other candidates
-- ROLA Dental: https://github.com/manfares/rola-dental — Go/Vue/Postgres/Redis, RLS and audit concepts; reported alpha/not production-ready.
-- GNU Health dentistry: https://www.gnuhealth.org/
-- Official standards to validate: FDI tooth notation; ADA CDT where relevant/licensed; SNODENT; ICD-10/ICD-11 where relevant; HL7 FHIR; DICOM where relevant; ISO 8601; ISO 4217; country-specific invoicing/privacy/consent/prescription rules.
+### Standards and jurisdictional workstream
+- FHIR: https://hl7.org/fhir/
+- Code systems/terminology data need explicit version and licence review.
+- India-specific areas to verify with current official sources: GST/e-invoicing, privacy/data protection and consent, clinical-record obligations, ABDM/health-information exchange, gateway/payment records and applicable dental council requirements. Do not set legal dates or retention periods based only on comments inside a repository.
 
-## Full candidate domain inventory
+---
 
-### Tenant, clinic and people
-Product/tenant, legal entity, branches/locations, operating hours, timezone/locale/currency/country, tax/billing settings, departments, chairs/operatories, rooms/equipment/resources; users/auth identities, memberships, professionals, specialties/credentials/licenses, assistants, contractors, roles/permissions/grants/overrides, service identities, working hours/leave/timecards; tenant lifecycle, suspension, closure, export and retention.
+## 4. Enterprise domain inventory — preserve breadth
 
-### Patient identity and contacts
-Patient/MRN/local number, identifiers by type/issuer/country, external IDs, match/merge candidates and merge history; legal/preferred name, DOB/precision, clinically/legal relevant demographics, language and accessibility; multiple phone/email/telecom records with type/use/rank/verification/consent/period; multiple addresses with type/use/period/history; guardian, guarantor, family, caregiver, emergency contact, billing party, parent/minor and medical decision authority with validity dates/evidence; referral source, communication preferences, channel/purpose opt-outs, portal/proxy access and revocation.
+This is a coverage register, not an instruction to put everything in one giant table. Normalize by ownership, cardinality, security, lifecycle and query needs.
 
-### Clinical record and safety
-Medical context/history, conditions/diseases, allergies with severity/reaction/source, current/historical medications with dose/route/frequency/start/end/prescriber, surgery history, pregnancy/lactation, anticoagulants/INR, anesthesia risks, smoking/alcohol and vitals where needed; versioned medical reference catalogs, medication interactions and contraindications with authority/review date; odontogram and tooth/surface history; periodontal chart with probing depth, recession, bleeding, mobility, furcation, plaque/calculus, gingival margin/attachment level, indices and exam/provider; diagnoses/findings/differential/rationale/severity/onset/location/evidence; clinical notes/templates/attachments/author/signature/attestation/amendment/addendum/lock/correction; encounter/visit with reason/history/exam/diagnosis/procedure/medication/instructions/follow-up; imaging/radiographs/photos/scans/DICOM object refs/acquisition metadata/location/series/annotations/report/hash; prescriptions, pharmacy, dose/route/frequency/duration/refills/transmission/cancellation/acknowledgement/allergy check/signature; forms/questionnaires/templates/submissions/answers/scoring/signature/version; alerts, review acknowledgements, incidents/adverse events.
+### 4.1 Tenancy, facilities and administration
+- SaaS tenant/account, clinic/practice, legal entity, branch/location, address, registration/licence IDs, locale, timezone, currency, fiscal settings and working hours.
+- User/authentication subject, external identity/provider links, clinic membership, role, permission, grants/overrides, staff/employment profile, clinician qualification/licence/specialty/scope, custom roles, invites and session/refresh-token revocation.
+- Keep separate: who can log in, who belongs to a tenant, who is a clinician, who is employed, which role they have, and whether they may perform a specific operation.
+- Audit/access event: actor, tenant, action/object identity, before/after changes, occurrence time, request/correlation ID, reason, client/network metadata where justified, source and result.
+- Tenant IDs alone are not enough. Parent and child references must be proven to belong to the same tenant using composite keys/FKs, equivalent database enforcement or carefully tested database policies.
 
-### Consent, privacy, signatures and governance
-Consent type/purpose/version/language/patient or representative/signer capacity/method/witness/time/expiry/revocation/scope; privacy notice/legal basis where applicable; e-signatures tied to immutable record version and signed hash; access audit with actor/tenant/patient/record/action/reason/time/outcome/source; append-only history with old/new values/reason/actor/AI source/correlation/import provenance; record-class retention, legal hold, export/redaction/anonymization/erasure request and exceptions; AI suggestions, source evidence, model/provider/version, human approval/rejection and execution outcome. AI confidence is not clinical truth.
+### 4.2 Person identity, patient identity and relationships
+- Person is not always a patient; patient is not a portal login, guarantor, emergency contact, insurance subscriber or referring clinician.
+- Name fields: title, first/middle/last/suffix, preferred/display name, aliases/former names, language, birth/death dates and justified demographic attributes.
+- Multiple phone/email channels with use (home/mobile/work), primary/rank, verification, preferred communication, active/inactive period and reason.
+- Multiple addresses and address purposes (home, postal, billing, work), rank, effective interval, return/delivery status, normalized components, country and source.
+- Identifiers: type, issuer/system, value, validity, verification, provenance, duplicate/merge handling and external-source ID. Do not assume name/email/phone is globally unique; families can share contact details.
+- Related-person graph: contact/target, role, relationship, priority, primary/emergency flags, authority to make medical decisions, authority to receive medical information, effective period, status, notes and audit actors.
+- Guardian/representative has legal basis, authority scope, identity verification, validity and revocation. Kinship alone is not authority.
+- Patient registration fields: clinic-local patient number, referral source/type/identity, registration source, status/archive, do-not-contact and communication preferences.
+- Duplicate detection requires candidate clusters, evidence, score/rules, operator decision, merge survivor/source IDs, moved related-record counts, retained identifiers, conflicting values and reversible merge history.
+- Portal authentication uses an auth provider and explicit subject→person/patient entitlement, proxy scope, dates and revocation. Do not put portal credentials in the clinical patient row.
+- OpenEMR source fields: person title, first/middle/last/preferred names, gender, DOB/death date, language/communication needs, active/inactive reason/date, notes; contact relation roles/authority/effective dates; telecom/address usage/rank/period; person-patient link method; UUID crosswalks.
 
-### Scheduling and operations
-Appointment/status history, patient/provider/operatory/visit type/reason/start/end/timezone/buffer/recurrence/booking source/notes/reminders/confirmation/cancellation/no-show/reschedule reason; provider schedule/leave/holidays, room/equipment availability, blocking events, capacity; appointment-procedure/treatment-plan bridge; waitlist/open slots/recall/overdue recall work/suppression; walk-in/emergency slot/queue/check-in/waiting/roomed/started/completed; notification template/version/channel/provider/attempt/provider ID/accepted/sent/delivered/read/failed/bounced/opted-out/retry/idempotency. Overlap is an interval/concurrency problem, not just unique equal start times.
+### 4.3 Patient safety, history and consent
+- Structured medical context: conditions/diseases, allergies/adverse reactions/severity/reaction, current/prior medications, anticoagulants and INR/date, pregnancy/lactation where relevant, tobacco/alcohol, bruxism, anesthesia reactions, surgery history, prior dental work, family history, anxiety and last dental visit/review time.
+- Separate current patient-reported medication statement, medication reference/catalogue, prescription order, prescription line and medication administration/dispense where in scope.
+- Reference catalogues retain codes/system/version/effective period/status; retirement must not erase history.
+- Drug-drug interactions and disease-medication contraindications are distinct relations with source/version, severity, evidence and review date. A rule-generated warning is not automatically a confirmed diagnosis.
+- Forms: template + version, field definitions, display rules, submitted answers, score/result, patient/encounter association, completion/attestation, signature and immutable submitted snapshot.
+- Consent is purpose-specific/versioned: purpose, policy version, legal basis/authority, granted/denied/withdrawn, signer/representative, channel/time, scope, language, evidence, expiry and revocation. Treatment consent, communications, marketing and data exchange are separate purposes.
+- Sensitive clinical writes require fine-grained permissions and audit. Each field may need provenance (patient report, staff observation, imported document, prior record or AI extraction), recorded/reviewed by, valid period and uncertainty.
 
-### Catalog, codes and pricing
-Hierarchical categories, localized labels, code system/version/jurisdiction/effective dates/billing eligibility/clinical meaning/required tooth-surface-arch-role/diagnostic/billable/duration; fee schedule by practice/branch/provider/payer/procedure/effective period/currency/source/override precedence; flat/per-tooth/per-surface/per-role/multi-session strategies, materials/lab costs, discounts/packages, tax category/legal note; versioned catalog, retirement, aliases/synonyms/search terms/import mappings and audit; snapshot price/duration/code description/tax/fee at quote, acceptance, service and invoice as appropriate.
+### 4.4 Scheduling, resources and actual encounters
+- Appointment, actual encounter/visit, procedure/treatment act, schedule rule, one-off exception, provider availability, leave/holiday, operatory/chair, equipment/resource booking, break/block, waiting list and recall due item are different entities.
+- Appointment fields observed: patient, provider, room/cabinet, appointment type/reason/chief complaint, planned start/end/duration, status, confirmation, priority, notes, virtual/video relationship, wait time, checked-in/out/cancelled timestamps and cancellation reason.
+- Keep status-event history (from/to, actor/time/note), not only the current status. Patient-flow/room tracker is its own event sequence.
+- Prevent interval overlaps, not merely duplicate start timestamps. Validate provider and room/equipment conflicts with concurrency-safe operations. Document double-booking exceptions.
+- Date/time: store instants consistently, retain IANA clinic timezone, distinguish local wall-clock values from absolute instants, resolve DST ambiguity and preserve clinic business date for reports/numbering.
+- Public check-in tokens need expiry/signature/source claim/rate limits, anti-prefetch behavior, valid time window and the canonical state machine.
+- Availability is a deterministic projection from schedules, effective dates, leave, blocks, appointments and resources; it is not a permanently editable fact.
+- Reference state set: scheduled, confirmed, checked_in, in_treatment, completed, cancelled, no_show. Allowed transitions must be explicit and tested.
 
-### Treatment plans, procedures and laboratory
-Plan header/version, items, alternatives, sequence/dependencies, acceptance/rejection/expiry/closure, assigned provider, visits and completion evidence; session templates and immutable completed session snapshots; performed procedure with teeth/surfaces/roles/provider/times/materials/lot/anesthesia/findings/outcome/complication/follow-up; lab case/order/provider/work type/tooth/arch/shade/material/impression/scan/sent/due/received/status history/correspondence/attachments/remake/cost/invoice/QC/acceptance; specialty-specific implant, orthodontic, prosthodontic, endodontic, periodontal and surgical detail where needed; postoperative care and outcomes.
+### 4.5 Clinical findings, dental charting and care delivery
+- Longitudinal condition/current state differs from a point-in-time finding, assessment/diagnosis, treatment plan and performed clinical act. Preserve the timeline and correction provenance.
+- Tooth chart: notation system, tooth number, dentition, general condition, surface conditions, tooth position/rotation/displacement and notes. Identify FDI/Universal/etc.; do not mix notation systems implicitly.
+- Treatment act supports single-tooth, multi-tooth, whole-mouth and arch scope. Child rows capture tooth number, role (e.g. bridge pillar/pontic), surfaces and notes. Some treatments have no teeth; some span multiple teeth.
+- Odontogram history: tooth/surface, old/new condition, change type, actor/time and reason/source.
+- Clinical finding: patient/encounter, authored/effective/recorded times, status, code/system, value/unit, body site/tooth/surface, severity/interpretation, method/source and related questionnaire/imaging/document.
+- Notes have type and owner (patient, diagnosis, treatment, plan, appointment clinical/admin), author, date, signed/locked/amended state and attachments. Notes are not the only representation for structured clinical facts.
+- Planned and performed treatment are separate and linked explicitly to appointment/encounter/plan items.
+- Multi-session care needs first-class sessions: sequence, label, amount snapshot, status, completion time/actor, notes and visit/treatment link. Snapshot catalogue template/price at plan creation; catalogue changes must not rewrite accepted plans. Completed session details are immutable except controlled correction.
+- Terminology needs source/code/version/category/effective dates/deprecation/replacement and language mappings.
 
-### Insurance and claims
-Payers/insurers/plans/policy/member/group/subscriber/relationship/coverage dates/coordination priority; eligibility request/response/time/limitations/exclusions/deductible/copay/coinsurance/annual maximum/source/version; preauthorization request/procedures/diagnoses/attachments/estimate/decision/authorized amount/validity/limitations/status history/correspondence; claim header/normalized service lines/date/provider/code/diagnosis/tooth/surface/fee/allowed/billed/adjustments/attachments/control number/status; submission batch, acknowledgements, rejection, corrected/resubmitted lineage, EOB/ERA/adjudication, denials/appeals/write-offs/patient responsibility; insurer remittance separate from patient receipt, allocated to claim lines and reconciled to bank.
+### 4.6 Treatment plan, estimate/budget and acceptance
+- Plan parent: patient/clinic, stable number, status/version, title, professional, creator, diagnosis/internal/patient notes, creation/confirmation/closure dates and closure reason/note.
+- Planned item: procedure/treatment, tooth/surface/arch, order, responsible professional, status, expected duration/price, quantity/scope, appointments, completion actor/time and sessions.
+- Budget/estimate: parent version, number/version/status, validity, creator/professional, line/global discounts, subtotal/tax/total, internal vs patient notes, acceptance/rejection channel, signer/signature, public-link access attempts/lockout, status history and reason.
+- A resent budget is a new version; prior accepted quote/version must remain reproducible. Record exactly what was offered and which version was accepted, by whom, channel and evidence.
+- DentalPin observed state flow: draft → pending → active → completed; closed with reason (rejected_by_patient, expired, cancelled_by_clinic, patient_abandoned, other) and controlled reactivation. Reference only; not an automatic ClearFlow rule.
+- Plan/budget acceptance, treatment completion and session completion can emit events for follow-up/recall and earned ledger. Idempotency must prevent duplicate side effects.
+- Plan, estimate, preauthorization, invoice and actual treatment execution are not interchangeable.
 
-### Financial subledger
-Quote/estimate/budget versions and acceptance; service-to-charge; invoice header/lines/tax/discount/deposit/credit note/refund/void/number series; immutable issued document snapshots/hash/issuer; patient receipt/payment method/provider/reference/idempotency; allocation to one/many invoices/charges, on-account credit/reallocation history/refund/reversal; payer remittance, journal postings, adjustments/write-offs, bank/gateway settlement, chargeback/dispute; period close and posting/reversal authority. Exact Decimal/NUMERIC or integer minor units, explicit currency, historical fee/tax snapshots. Do not keep competing mutable totals as authority. Enforce allocation sums, refund caps, same-tenant references, positive/nonnegative values, state transitions, atomicity and concurrency-safe idempotency.
+### 4.7 Catalogue, procedure codes, pricing and materials
+- Catalogue includes category hierarchy, internal/external codes, localized names/descriptions, default price/cost, currency, duration, tax reference, scheduling requirement, tooth scope, diagnostic/surface flags, billing phase and active/system/retired status.
+- Pricing strategies seen: flat, per tooth, per surface/tier, per role (e.g. bridge pillar/pontic); optional session templates distribute treatment value across visits. Validate session sum within rounding tolerance.
+- Fee schedules include country+procedure defaults, practice override, provider override, payer/insurance override and effective dates/versions. Historical quote/treatment/invoice prices and taxes must be snapshotted.
+- Tax is jurisdiction-specific: category/rate, exemption/legal note/classification, place of supply, party IDs and issue-time profile.
+- Material consumption should link to inventory movements where appropriate, rather than remain an unstructured material note.
+- Inventory item: SKU/type/category/units, manufacturer, storage location/conditions, reorder/min/max thresholds, suppliers and tax/codes.
+- Batch/lot: lot number, quantity/remaining, acquisition cost, supplier, received/manufacture/expiry dates and traceability. Stock movements include receive/issue/use/transfer/adjustment/waste/expiry/return, quantity, batch/location, before/after balance, reference document/treatment, actor/time/cost/reason.
+- Stock quantity is a derived/maintained projection from movement history, not a manually editable separate truth.
+- Purchasing: suppliers, supplier-item relationship, order/lines, requested/received quantities, partial receipts, tax/discount, status, receipt batches and returns.
+- Sterilization fields: instrument, cycle number, machine, method, operator, temperature, pressure, duration, start/end, indicators, result and notes. Device telemetry is separate from clinical observations and needs device/type/unit/time/source/validation.
 
-### Inventory, procurement and sterilization
-Items/SKU/UOM/batch/lot/expiry/serial/storage/supplier/reorder threshold/regulatory status; immutable stock movement for receipt/use/waste/transfer/return/correction with quantity/cost/source/actor/reason; purchase requisition/order/vendor/lines/ordered/received quantities/tax/price/delivery/invoice/payment matching; material/lot linked to treatment where traceability required; sterilization cycle/instrument/equipment/load/operator/indicators/test/start/end/release/failure/maintenance/calibration/patient-procedure traceability. Balance is a projection over movement evidence.
+### 4.8 Imaging, documents, referrals, orders and laboratory
+- Document metadata: patient/tenant/owner, type/media kind/category/subtype, title/description, original filename, object storage key/path, MIME type, file size, checksum, captured/created time, uploader, status/archive, tags, consent/retention and source/derived links.
+- Imaging needs modality, capture/series/study, tooth/site, orientation, device/source, captured time, type, status and links between original/rendered/thumbnail; an attachment alone is not enough.
+- Document types include clinical photos/X-rays, reports, consent, insurance and lab artifacts. Before/after pairing can be a self-relation.
+- Generated documents preserve template version, data snapshot, renderer/version, language, author/approver/signature, issue time and checksum, plus correction/void/superseded relation. Do not recreate historical issued documents from current mutable data.
+- Referral source/person/business, referral order, sent referral and returned report are separate concepts.
+- Orders need type, patient/encounter, intent, line items, priority/status, required/expected dates, external IDs, instructions, documents/results and status history.
+- Lab cases require vendor, work type, teeth/roles, shade/material, instructions, estimated vs actual cost, sent/due/received/delivered/seated dates, quality check and failure/rework history. Lab order history records from/to status, actor/time/note.
 
-### Documents, communications, integrations and imports
-Document metadata/object URI/MIME/size/hash/owner/classification/consent/uploader/source/version/signature/retention/access audit; communication templates and versions, inbound/outbound messages, channel/participants/purpose/content/attachments/provider IDs/attempts/delivery; external ID mappings by system/resource/local entity/sync/error/idempotency/reconciliation; import jobs/source/upload hash/mapping/dry-run/row outcomes/duplicate candidates/errors/approver/commit summary; event outbox/inbox/webhooks/retries/dedupe/callbacks/dead-letter/replay; rules with trigger/filter/action/version/execution log/output/review.
+### 4.9 Insurance, eligibility, preauthorization and claims
+- Coverage is effective-dated and subscriber-centric. Keep patient/dependent separate from subscriber/policy holder; capture payer/carrier and payer ID, member/group/policy ID, subscriber demographics/contact/address, relationship, effective/termination dates, priority, benefits, deductible, annual maximum, coverage status and last verification.
+- Eligibility verification is a dated observation, not a permanent guarantee. Store payer/request/response IDs, transaction status, verified benefits, exclusions, request/response payload as appropriate, failure method and stale/expiry semantics.
+- Preauthorization: request/coverage, proposed plan/procedure lines normalized, amount/units requested/approved, dates/auth number/expiry, status/denial reason and attached evidence.
+- Claim: payer/billing-provider IDs, patient/subscriber/policy snapshots, service date, diagnosis/procedure coding, service lines, units, fee/allowed/paid/deductible/coinsurance/adjustments, attachments, submission version, clearinghouse tracking, state history, rejection/denial codes and appeal.
+- Don't bury claim lines in opaque JSON if independently queried/adjudicated. Keep outbound/inbound raw payload alongside normalized service-line data.
+- Secondary-payer coordination needs sequenced claims and remittance values. Distinguish submitted/allowed/insurer-paid/patient-responsibility/contractual adjustment/denial/write-off from actual cash received.
+- Fee schedules need payer/plan/provider/jurisdiction scope and effective dates.
 
-### AI and deterministic execution
-Conversation/session metadata separate from clinical record; actor/tenant/channel/context/source refs/retention; typed intent/operation request and schema version; missing-field prompts, validation errors, matched records and ambiguity candidates; proposed changes/diffs/evidence, approval/rejection actor/time; execution function/version/idempotency/correlation/start/end/status/input hash/result refs/validation/errors/retries/verified outcome; model/provider/version/token/cost/latency; privacy-aware prompt/PHI minimization. Tool catalog exposes approved operations and narrow DTOs. Never invent IDs, diagnoses, rules, prices or successful writes.
+### 4.10 Billing, receivables, payments, refunds and accounting
+- Quote/budget, invoice, fiscal document, credit note, claim, payment, allocation, refund, payment attempt, remittance and settlement are different entities.
+- Invoice header: legal seller/clinic, recipient, issue/due dates/terms, unique series/number/fiscal year, status, totals/subtotal/discount/tax/currency, compliance payload, creator/issuer, and issue-time snapshot of billing name/tax ID/address/email.
+- Invoice line: procedure/product/description snapshot, code, tooth/surfaces/service date, quantity/unit price, discounts, tax type/rate/base/tax, payer/claim link and total.
+- Invoice numbering needs transactional counters plus DB unique constraint on appropriate series/fiscal-year/sequence dimensions; avoid SELECT then increment. Use clinic-local business date.
+- DentalPin reference invoice states: draft → issued; issued/partial → paid or cancellation path; void only before issuance; post-issue correction through legal credit note/reversal instead of silent mutation. Jurisdiction-specific rules remain open.
+- Credit notes reference original invoice and obey a creditable-amount ceiling including existing non-void drafts, protected by row lock/transaction. Preserve original and credit-note documents.
+- India GST module observed: supplier GST profile, SAC defaults, CGST/SGST/IGST split per issued line, place-of-supply and party snapshots, FY-scoped sequence separate from calendar-year series, and e-invoice applicability/submission status. It splits already-authoritative line tax rather than independently recomputing it.
+- Veri*Factu reference uses append-only fiscal records, SHA-256 hash chains, exact XML/response payload, encrypted certificate metadata and attempt snapshots. Accepted records are immutable; rejected records can be corrected under a state-specific flow while preserving the previous attempt.
+- Payment is a gross money-received event with method/currency/date/external reference/recorder/idempotency key. It is not an invoice or allocation.
+- Allocation applies receipt to one/more budgets/invoices/on-account credit. DentalPin invariants: payment amount > 0; allocations sum exactly to gross payment; target budget belongs to same clinic; refunds sum ≤ payment. A unique DB idempotency key prevents race duplicates.
+- Refund is a separate record with amount, payment, method (can differ from collection method), reason, actor/time, provider refund reference/state. Refund, void, chargeback and credit note differ.
+- Separate payment initiation/attempt/provider callback/receipt posting/allocations/settlement/bank reconciliation/cash drawer. Failed or unknown attempts must not fake a receipt.
+- Receivables/balances are derived from authoritative invoice lines, allocations, refunds, adjustments and credit notes. A mutable paid/balance field is not the sole truth; caches must be recomputable.
+- Use DECIMAL/NUMERIC or integer minor units, never floating-point REAL for monetary authority. Currency exponent, rounding, discount allocation, totals and tax reconciliation must be deterministic.
+- Reports must state whether they reflect invoice/accrual, receipt/cash, refunds, settlement or bank reconciliation, and which timezone defines the period.
 
-## Cross-cutting lessons
+### 4.11 Communications, reminders, CRM and integration
+- Communication preference: channel, purpose, language, consent/legal basis, opt-out, preferred contact point, quiet hours and timestamps. Marketing consent differs from care reminders.
+- Reminder rules/settings: relative offset, channel/provider, template/version, enabled state, send window, timezone and effective dates.
+- Delivery log: recipient snapshot, channel/provider/external message ID, template/version, message/content hash where suitable, appointment version/time, reminder kind, queued/sent/delivered/failed/skipped/bounced/unknown statuses, provider error, timestamps, correlation/idempotency key.
+- A reminder is not proof of delivery. Persist provider result and attempt history. Retry after a fixable skipped error without a duplicate successful send.
+- LibreDental example partial unique key: appointment_id + appointment_start + reminder_kind + channel, where reminder_kind is not null and status is not skipped. Scheduled start in key permits another reminder after reschedule.
+- Separate appointment reminder, clinical recall, waitlist/earlier-slot request, treatment follow-up and marketing campaign.
+- Integration records need tenant/provider/environment/API version, secure credential reference, connection state, inbound/outbound event, correlation ID, raw payload or hash where needed, attempts/retry, webhook signature verification and manual reconciliation.
+- AI conversations/skill executions store tenant/user/agent session, purpose, context/source references, structured outcome, model/version, status, duration/cost, errors and linked approved operation. Restrict sensitive text; do not use conversation logs as canonical clinical truth.
 
-1. Patient is more than name/phone: contacts, historic addresses, guardians/guarantors, decision authority, language and consent can be independent/time-bound.
-2. Current odontogram is not clinical history; retain observations and old/new changes with author/time.
-3. A procedure can affect multiple teeth or a whole arch/mouth; model explicit relationships and roles.
-4. Plan, clinical act, appointment and charge are different objects and have separate lifecycles.
-5. Snapshots preserve historical truth when patient/catalog/tax/provider data changes.
-6. Gross payment, allocation, on-account credit, invoice allocation, insurer remittance, refund and adjustment are distinct.
-7. Cross-module events that affect financial consistency need transactionality or a reliable outbox/reconciliation design.
-8. Idempotency must be safe under concurrent retries, not only preflight queries.
-9. Tenant ownership is relational: composite FKs/unique keys and DB policies are safer than trusting repeated tenant IDs.
-10. Sensitive clinical, signature, portal, financial and AI data require separate permissions/audit.
-11. Soft delete is not universal; choose archival, amendment, reversal or erasure per record class and legal requirements.
-12. Every status needs a transition matrix, allowed actors, required fields, side effects and reversal behavior.
-13. JSON should not hide entities needed for joins, integrity, authorization, lifecycle and reporting.
-14. Clinical/billing codes are jurisdiction/version-aware; preserve the code meaning used at service time.
-15. Frontend must not be the rule engine; validation, pricing, scheduling, permissions and financial integrity execute in trusted services/DB.
-16. A huge schema alone does not create AI capability. Field semantics, populated data, provenance, approved operation contracts and explicit confirmation policies do.
+### 4.12 Operations, forms, imports and analytics
+- Staff profile separate from account; shift templates separate from actual availability; leave/holiday are dated exceptions; attendance/timecard is observed work. Payroll/bank/national identifiers require stricter access.
+- Waitlist stores patient, desired procedure/provider, preferred days/times, priority/flexibility/validity, contact attempts, match result and booking.
+- Import job stores file name/hash, source, tenant/user, entity, mapping/version, preview, row-level validation issues, duplicates, accepted/rejected counts, sign-off, status/retry/errors and rollback/reconciliation.
+- Form: template/version, submission snapshot, patient/appointment/encounter, completion and sign-off, actor, score, amendments and output document.
+- Audit log is not the AI execution log, workflow event log, clinical note or fiscal ledger; their security, retention and mutability differ.
+- Risk score/insight/report is derived data with algorithm/version, input cutoff/as-of time, factors/explanation and expiration/recalculation state.
 
-## Preliminary design hypotheses — not approved
-- Normalized relational tables for first-class clinical, financial, scheduling, insurance, lab, inventory, consent and audit entities.
-- Immutable internal IDs plus human-friendly clinic-local identifiers.
-- Tenant context on owned records and same-tenant composite relationships.
-- Exact numeric money/rates, explicit currency and timezone.
-- Current-state projection separated from append-only events/history; corrections/amendments/reversals preserve original evidence.
-- External ID mapping for import/export/interoperability.
-- AI operation logs separate from clinical record and linked to evidence/results.
-- Transactional outbox/inbox and idempotency for external integrations.
-- Raw source payload supplemental to typed canonical fields.
-- Schema/business rules versioned and controlled by ClearFlow; AI cannot implicitly alter schema.
+---
 
-## High-priority open questions
+## 5. Important exact source findings
 
-**Security/tenant:** classify global reference data vs tenant catalogs; enforce same-tenant FKs everywhere; decide Appwrite permissions vs trusted Windmill authority; scope/revoke service identities; field-level clinical restrictions.
+### OpenEMR identity/contact and portal
+- contact has ID plus foreign table name/id and can point to patient_data or person.
+- contact_relation has contact_id, target table/id, active, role, relationship, priority (1 highest), primary/emergency flags, authority to make medical decisions, authority to receive medical information, start/end dates, notes, created/updated actors and times.
+- contact_telecom has rank, system, use, value, active/inactive, primary, effective period and inactivation reason.
+- contact_address associates contact with address and stores priority, type/use, status/primary, validity dates and inactivation reason. Address includes line1/line2/city/state/zip/plus-four/country/district.
+- person stores title, first/middle/last/preferred names, gender, birth/death dates, language/communication needs, active/inactive reason/date and notes; SSN comments call out application encryption.
+- person_patient_link stores person/patient, linked date/by, link_method (manual, auto-detected, migrated, import), notes and active flag.
+- patient_access_onsite has portal username/password hash status/login username/one-time key/time. Use dedicated auth rather than copying legacy credential fields.
+- uuid_mapping/uuid_registry show resource/table/path/UUID crosswalks.
+- form_soap has subjective/objective/assessment/plan plus patient/date/user/authorization.
+- form_vitals captures BP, height/weight/temperature with unit conventions, pulse/respiration, BMI/status, waist/head circumference, O2 saturation/flow and pediatric percentiles; units must be explicit.
+- form_observation stores code/value/unit/description/system, status/result/reason, date range, parent observation hierarchy, category/type, questionnaire linkage, documentation target, UUID and encounter.
+- questionnaire_response stores questionnaire identity/content, patient/optional encounter, creator/audit user, version/status, submitted answers, scores and timestamps.
+- patient_tracker_element is sequenced room/status/user flow history.
+- claims + ar_activity/ar_session distinguish claim/billing state from posted payment/adjustment activity.
+- notification_settings/automatic_notification vs notification_log separate rules/config from attempted message evidence.
+- esign_signatures link signature to form/encounter, signer/time/lock/amendment and data/signature hashes.
+- document_template_profiles can link template/profile to active/recurring event-triggered generation/notification.
+- OpenEMR has legacy/general structures; inspect semantics and service behavior rather than clone everything.
 
-**Clinical:** tooth notation and vocabularies; mixed dentition/implants/pontics/edentulous/supernumerary teeth; periodontal structure/units; code systems and licensing; uncertain/provisional/corrected diagnosis; note signing/amendment; prescription rules and clinician review.
+### DentalPin normalized clinical and dental model
+- Patient core includes name, phone/email/DOB/notes, active/archive and do-not-contact; extended demographics, national ID/type, language, address and separate billing identity/address/tax ID/email are represented.
+- Medical history was normalized from JSON blobs into medical context, allergies, medications, systemic diseases, surgical history, emergency contacts and legal guardians.
+- Medical reference includes allergies, medications, surgery, systemic diseases and explicit medication-medication interactions/disease-medication contraindications with active/retired state.
+- ToothRecord has FDI number, dentition/type, general condition, surface state, notes and position flags. Treatment has patient, clinical type, scope (tooth/multi_tooth/global_mouth/global_arch), arch, planned/performed state, times/actor, optional catalogue link, price/duration/tax snapshots, notes and soft-delete. TreatmentTooth links each affected tooth with role and surfaces; OdontogramHistory records old/new condition and actor/time.
+- Treatment plans have number/status/closure metadata/confirmed time/budget linkage/professional/creator. PlannedTreatmentItem has one treatment FK, order/status/completion actor/time/assigned professional; session rows have unique sequence, snapshotted label/amount/status/completion metadata. AppointmentTreatment bridges planned item and appointment.
+- Catalog includes category hierarchy, localized names, internal code, price/cost, duration, tax type, pricing strategy/config and surface tiers, treatment scope, diagnostic/surface/billing flags, active/soft-delete. Optional session template is copied to plan; completed session label/amount are immutable.
+- Appointment status and cabinet assignment both keep append-only histories. UTC stored instants and clinic-local display/input semantics need care. Unique index on exact start timestamp does not replace overlap detection.
+- Payment has currency snapshot, positive gross amount, method/date/reference/recorder/idempotency key; allocation targets budget/on_account with CHECK enforcing valid target columns. Service invariants enforce allocation sum = payment and refund sum ≤ payment. Partial unique idempotency index is the concurrency backstop.
+- Billing issuance snapshots billing identity; invoice sequential uniqueness is series+fiscal-year+number; credit-note ceiling locks original invoice; payment state is derived from allocations/refunds, not simply a stored paid amount.
+- GST and Veri*Factu examples demonstrate tax snapshots, jurisdiction-specific numbering, hash chain, exact payload retention, failed-attempt history and correction rules.
 
-**Scheduling:** interval overlap under concurrency; recurrence/time zones/DST; booking-to-completion status transitions; recall calculations and suppression; consent-aware notifications and delivery retries.
+### LibreDental / OpenDentist / DentalERP quality signals
+- LibreDental procedure code identity is country_code + code. Fee schedule uses separate partial unique indexes for practice override (provider_id NULL) and provider override; payer override is insurance provider + country + code. Some amounts use integer minor units.
+- LibreDental claims line_items JSON may limit normalized line-level adjudication; subscriber data was expanded through migration with payer ID, subscriber name/DOB/sex/relationship/address and provider NPI/taxonomy fields.
+- LibreDental reminder key includes appointment version/time, rule and channel, and excludes skipped attempts to allow retry after the error is fixed. Delivery status/result is separate from reminder rule.
+- OpenDentist defines appointment kind patient/break/lunch/block; plan item fields are patient/treatment/tooth/surface/fee/status; tooth condition is current chart state; invoice stores REAL total/amount_paid; insurance plan has carrier/member/group/subscriber/effective/termination/copay/deductible/annual maximum; lab case stores vendor/type/tooth/shade/fee/sent/due/received/seated/status.
+- DentalERP has 81 declared models: Hospital, Subscription/SubscriptionPayment, User/Account/Session, Staff/Attendance/StaffShift/Leave, Patient/MedicalHistory, Appointment/AppointmentReminder, DentalChartEntry, Procedure/TreatmentPlan/TreatmentPlanItem/Treatment, Prescription/PrescriptionMedication/Medication, Invoice/InvoiceItem/Payment, InsuranceClaim/InsuranceProviderMaster/PatientInsurance/PreAuthorization, PaymentGatewayConfig/PaymentLink/PaymentPlan/PaymentPlanSchedule, inventory categories/items/batches/stock transactions/suppliers/purchase orders, LabVendor/LabOrder/LabOrderHistory/LabOrderDocument, Document, Notification/SMS/Email logs and communication preferences, Survey, BulkCommunication, AuditLog, FormTemplate/FormSubmission, AIConversation/AISkillExecution/AIInsight/PatientRiskScore, Device/DeviceDataLog, Instrument/SterilizationLog, CalendarIntegration, Waitlist, Referral/LoyaltyTransaction, DataImportJob and more.
+- DentalERP candidates for deeper inspection: age duplicated with DOB; claim line items/documents JSON/string; invoice paid/balance denormalization; inventory currentStock plus movement ledger; some FK relations link by individual IDs without tenant-composite enforcement; insurance used/remaining/deductible counters may lack history. Confirm code/tests before calling these bugs.
+- Source maturity/license matter: DentalPin BSL restrictions; OpenEMR GPL; OpenDentist and DentalERP MIT as declared in source; LibreDental licence must be rechecked; Open Dental is proprietary. No source code reuse assumed.
 
-**Financial/payer:** India tax/invoice/credit note rules; rounding/currency policy; allocation/reallocation; claim adjudication/remittance granularity; reconciliation/chargeback/dispute; period close and reversal permissions.
+---
 
-**Operations:** inventory lot/expiry/material traceability; lab remake/QC/cost; sterilization traceability; HR/timecard scope; document retention/signature; import/export/patient merge; reporting/event retention.
+## 6. Lifecycle inventory to formalize
 
-**AI:** operation schemas and confirmation thresholds; role requirements; provenance without treating confidence as truth; timeout/unknown write outcomes; PHI minimization/provider terms; deterministic Python coverage and cost per completed operation.
+These are categories and reference examples, not final ClearFlow states. For each lifecycle specify valid transitions, permissions, side effects, immutable fields, cancellation/reversal, retries, event publication, timezone semantics and tests.
 
-## Next batches — continue without prematurely finalizing
-1. Systematically enumerate Open Dental data dictionary tables/fields and inspect treatment plans, procedures, claims, payments, insurance, scheduling, recall, lab, imaging, prescriptions and audit.
-2. OpenEMR: inspect clinical forms, medication/prescriptions, procedures, billing/AR, insurance/claims, documents/signatures, contacts, rules, audit, portal and interoperability; compare schema with service behavior.
-3. DentalPin: budget lifecycle, agenda conflict checks, clinical note signature/attachments, patient merge/import, prescriptions, document/media, recall, inventory/lab, audit and event/outbox rules. Record shortcomings too.
-4. LibreDental: verify LICENSE; complete schema/migration/tests, especially claims/insurance/inventory.
-5. DentalERP: map all model relationships, tenant boundaries, constraints, services, audit and AI logging; distinguish field breadth from proven maturity.
-6. OpenDentist/ROLA: verify license, tests and maturity.
-7. Official interoperability and India jurisdiction sources: FHIR, terminology, tax, privacy, consent, prescriptions and professional obligations.
-8. Produce source comparison matrix and entity catalogue with evidence.
-9. Produce field-by-field candidate schema: type/nullability/default/PK/FK/check/index/lifecycle/provenance/sensitivity/rationale.
-10. Produce relationship and tenant-isolation diagram, state matrices, business-rule catalogue, transaction/idempotency model and AI operation contract.
-11. Only after review, create canonical migrations, seeds, deterministic operation implementations and adversarial tests.
+- Patient: intake/prospective → active; archive/restore. Do-not-contact gates outreach. Legal retention is not equivalent to app archive.
+- Identity resolution: candidate → reviewed/matched/rejected → linked/merged; keep source IDs and reversible merge history.
+- Appointment: scheduled → confirmed → checked-in → in-treatment → completed; cancellation/no-show separate terminal routes; reschedule event invalidates/recreates reminder occurrence.
+- Encounter: started/in-progress/completed/signed/amended; support walk-in/urgent care independent of appointment. Signed notes/attested encounter cannot be silently rewritten.
+- Finding/diagnosis: provisional/confirmed/resolved/entered-in-error as appropriate; preserve history.
+- Treatment plan: draft/pending acceptance/active/completed; close with reason and controlled reactivation/versioning.
+- Preauthorization/claim: draft → ready → submitted → acknowledged/in process → adjudicated (paid/partial/denied) → appealed/closed; preserve submission and response attempts.
+- Invoice: draft → issued; issued/partial → paid or valid correction path; draft void differs from post-issue credit note/cancellation.
+- Payment: initiation/attempt → provider confirmed/failed/unknown; only confirmed receipt posts money. Allocation/reallocation/refund separate; use idempotency.
+- Message: queued/sending/sent/provider accepted/delivered/failed/skipped/bounced/unknown. Provider evidence and retries are durable.
+- Lab order: created → sent → acknowledged/in progress → received → quality check → delivered/seated or remake/cancelled. Store every transition.
+- Inventory: every quantity change is a movement. Lot/expiry/transfer/return/waste/adjustment need distinct reasons/source links.
+- Document/signature: draft/template version → generated/issued/signed/locked/amended/superseded/archived; retain hash and issued artifact.
+- Import/AI task: queued → running → needs review/failed/completed; task/row idempotency, validation report, source evidence, sign-off and rollback/reconciliation.
 
-## Evidence limitations
-This notebook preserves research collected so far; it does not claim every table in each system has been inspected. Pin source commits/releases before formal comparison. Reverify paths, licenses, service behavior and country-specific requirements. Do not call a candidate a legal requirement without authoritative jurisdiction evidence. Do not infer production maturity from README or model count. Keep assumptions visible as open questions.
+## 7. Platform-wide invariants
 
-## Source index
-- Open Dental data dictionary: https://www.opendental.com/OpenDentalDocumentation26-2.html
-- Open Dental treatment plans: https://www.opendental.com/site/apitreatplans.html
-- Open Dental payments: https://www.opendental.com/site/apipayments.html
-- Open Dental claims: https://www.opendental.com/site/apiclaims.html
-- Open Dental procedure codes: https://www.opendental.com/site/apiprocedurecodes.html
-- OpenEMR EHI docs: https://github.com/openemr/openemr/tree/master/Documentation/EHI_Export/docs/tables
-- OpenEMR: https://github.com/openemr/openemr
-- DentalPin: https://github.com/dentalpin/dentalpin
-- LibreDental: https://github.com/Cojekt/LibreDental
+1. Every tenant-owned row and every parent-child relation must be tenant-consistent.
+2. Internal primary keys are separate from display numbers and external IDs; business numbers are namespaced by tenant/module/series/fiscal year/code system.
+3. Monetary authority uses exact decimal or minor units, currency snapshot and deterministic rounding.
+4. Valid time (“when true”) is distinct from recorded time (“when known/entered”); preserve author/source/correction.
+5. Derived values are recomputable; don't maintain unverified independent copies of balance, stock, status summary or analytics.
+6. Enforce important state/domain invariants with DB CHECK/unique/partial unique/FK/exclusion constraints when feasible; service rules complement these.
+7. Use idempotency keys and unique provider/event IDs for retries. A unique DB constraint plus safe conflict handling is required for concurrent duplicate requests.
+8. Multi-row operations affecting money, claims, bookings, document issuance and stock must be transactional; define row-lock order. Use a transactional outbox/durable event handling where needed.
+9. Historical snapshots are not overwritten when catalogue, patient, tax profile or template changes. Correction is an amendment/version/reversal with traceability.
+10. Hard deletion/cascade for clinical/fiscal history must be exceptional; separately define archive, purge, legal hold, anonymization, retention and backup deletion.
+11. Audit every write path including background jobs, integrations and AI tools; actor and correlation are not optional.
+12. Secrets/certificates/tokens must be managed/encrypted outside ordinary clinical fields and redacted from prompts, logs and exports.
+13. Access is purpose-sensitive: clinical history, allergy, note write/sign, billing, HR/payroll, representative authority, marketing, export, deletion and permission changes require specific grants.
+14. Keep UI projections simple while preserving full data through APIs and canonical relations.
+
+## 8. AI-assisted data-entry contract
+
+AI input is a proposal, not a write. Model this workflow separately:
+1. Raw source/message/document with stable URI/hash and tenant/user.
+2. Extraction run: model/tool/version, extracted candidate fields, source spans, confidence/uncertainty and alternatives.
+3. Validation report: required field missing, duplicates, wrong tenant, invalid code/ID, inconsistent dates/units, absent consent/authority, clinical ambiguity.
+4. Clarification task and answers with provenance.
+5. Authorized approval of the exact proposed changes where policy requires.
+6. Typed deterministic operation with current permission check, object version/preconditions and idempotency key.
+7. Result: created/updated IDs, side effects/events, errors/retries/reconciliation and audit.
+8. Downstream outputs linked to source operation (document, reminder, invoice, claim).
+
+Read tools are tenant-scoped, permission-filtered, PII-minimized and auditable. Write tools use proposal → validation → approval where required → atomic execution → result. Revalidate authorization and record version at commit. Identity merges, fiscal issue, deletion/purge, refunds, signatures/locks, claim submission and permission changes are high-risk/irreversible operations. AI cannot grant itself permissions. Vector search/cache must follow the same authorization, retention and provenance boundaries as relational data. Separate AI telemetry from business audit.
+
+## 9. Open decisions — do not guess
+
+- Tenant topology and Appwrite scoping/transaction/migration semantics.
+- Global person vs tenant-local person; shared family contact and duplicate merge design.
+- Encounter vs appointment vs treatment execution and unscheduled/emergency care.
+- Dental notation and terminology/coding systems plus licensing/versioning.
+- Jurisdiction-specific India fields/rules first, future jurisdiction plug-ins later.
+- Insurance scope for India/private payers versus US electronic claims formats, preauthorization, remittance and eligibility APIs.
+- Imaging/object storage/DICOM metadata/derivatives and PHI controls.
+- Guardian/proxy/consent/portal/communication and marketing preferences.
+- Audit retention, amendment/signature requirements, legal hold and deletion/anonymization.
+- DB engine/migration strategy after testing Appwrite transaction, row-level access, query/relation constraints, vector and export/migration behavior.
+- Module ownership, stable service APIs, outbox/events and avoiding dependency cycles.
+
+## 10. Research method and acceptance checklist for future batches
+
+For every source/domain, preserve source URL, release/commit/access date, licence/maturity, exact field/entity names, types/nullability/defaults/constraints/indexes, keys and FK targets, tenant scope, lifecycle behavior from services/tests, transaction/idempotency/rollback behavior, uncertainty and known shortcomings. Mark each point as observed, inferred, ClearFlow candidate requirement or undecided.
+
+Eventually deliver:
+- Field inventory matrix: canonical field/meaning/type/cardinality/sensitivity/authority/source/valid time/recorded time/FK/nullability/constraints/index/query/snapshot/retention.
+- Entity relationship/ER model and cross-system coverage/mapping grid, including lossy mapping warnings.
+- Lifecycle transition matrices, business-rule catalogue, authorization matrix, integration map, provenance matrix and retention matrix.
+- Full canonical migrations with types/constraints/indexes, deterministic Python service layer and tests after the evidence pass.
+- Every excluded concept gets a stated reason and an integration/migration plan.
+
+Do not define completeness by table count. Reconcile clinical, financial, operational, interoperability and governance domains.
+
+## 11. Research batches and ongoing work
+
+The detailed workspace dossier contains longer-form evidence and source notes for:
+- Batch 1: source landscape, patient/clinical context, scheduling, treatment and financial integrity.
+- Batch 2: periodontics, imaging, medications, referral identity, terminology and jurisdictional questions.
+- Batch 3: invoice issuance/numbering, credit notes, allocation/refund concurrency, payment attempts, pricing/tax and clinic-local dates.
+- Batch 4: user/member/role/permission separation, person/patient authority and contact, communications and normalized clinical history.
+- Batch 5: interoperability, FHIR and durable asynchronous work.
+- Batch 6: inventory, procurement, laboratory, specialty treatment and recall.
+- Batch 7/8: source-level claims/payment/audit, eligibility, fee schedules, patient-flow tracking, medication provenance and document evidence.
+- Batch 10: OpenEMR patient, issue, medication, care-team, scheduling and order fields.
+- Batch 11: FHIR dental mapping, longitudinal condition vs finding, referral order, terminology and source maturity.
+- Batch 12: notification/delivery, rule-driven reminders, signatures and template automation.
+- Batch 13: identity, contact authority, telecom/address validity, portal separation, staffing, shifts, waitlists, forms and imports.
+- Further source passes: DentalERP's 81-model inventory; OpenDentist DDL; DentalPin patient clinical, odontogram, plan/session, catalog, appointment history, payments/refunds, India GST/Veri*Factu; LibreDental reminder/claim/fee schedule details; OpenEMR contact graph, notes/observations/questionnaires, AR activity, notifications and e-signature schema.
+
+### Next research batches
+1. Continue Open Dental table-by-table comparison for treatment plan/tooth/claim/payment/recall/imaging/lab/consent/staff/appointment resource entities and confirm current field definitions.
+2. Deep-read OpenEMR migrations/services around claims, payment posting, insurance, prescriptions/refills, document amendments, audit and permissions; identify what is legacy and what is enforced in code/tests/DB.
+3. Continue DentalPin tests/service logic for tenant-FK safety, appointment interval overlap, plan/quote acceptance/versioning, refund/reallocation and issuance.
+4. Verify LibreDental and DentalERP maturity, migrations and constraints; map relationships and test findings before calling them reliable models.
+5. Review current Indian official sources; separate law/standards from optional product functionality.
+6. Create complete cross-system entity/field matrix and domain-coverage grid before committing to the final ClearFlow schema.
+7. Only then write canonical migration/ERD, types/nullability/defaults/keys/indexes, lifecycle and authorization matrix, deterministic services and test suites.
+
+### Additional source links
+- OpenEMR contact relationships: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/contact_relation.html
+- OpenEMR person: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/person.html
+- OpenEMR telecom: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/contact_telecom.html
+- OpenEMR address associations: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/contact_address.html
+- OpenEMR questionnaire: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/questionnaire_response.html
+- OpenEMR observations: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/form_observation.html
+- OpenEMR signatures: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/esign_signatures.html
+- OpenEMR notifications: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/notification_log.html
+- DentalPin patient model: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/patients/models.py
+- DentalPin odontogram: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/odontogram/models.py
+- DentalPin plan model: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/treatment_plan/models.py
+- DentalPin payment workflow: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/payments/workflow.py
+- DentalPin billing workflow: https://github.com/dentalpin/dentalpin/blob/main/backend/app/modules/billing/workflow.py
+- DentalPin India GST: https://github.com/dentalpin/dentalpin/tree/main/backend/app/modules/india_gst
+- DentalPin Veri*Factu: https://github.com/dentalpin/dentalpin/tree/main/backend/app/modules/verifactu
+- LibreDental billing: https://github.com/Cojekt/LibreDental/blob/main/internal/storage/sqlite/schema/billing.sql
+- LibreDental reminder migrations: https://github.com/Cojekt/LibreDental/tree/main/internal/storage/sqlite/migrations
 - DentalERP schema: https://github.com/abinauv/dental-erp/blob/main/prisma/schema.prisma
 - OpenDentist schema: https://github.com/clawnify/OpenDentist/blob/master/src/server/schema.sql
-- ROLA Dental: https://github.com/manfares/rola-dental
-- GNU Health: https://www.gnuhealth.org/
 
-**Rule for every batch:** preserve findings here first, continue research, and do not declare the schema complete until source comparison, field inventory, relationships, constraints, lifecycles, permissions and open questions have been reviewed.
+**Research is not complete.** This is a durable source-backed notebook and handoff. Append new observations, link each fact to evidence and never prune important fields solely to make the interface simpler.
