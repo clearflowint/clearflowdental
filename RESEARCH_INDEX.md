@@ -9,6 +9,7 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 - [IMPLEMENTATION_GAP_REVIEW.md](./IMPLEMENTATION_GAP_REVIEW.md) — read-only review of the preserved Vue/Appwrite prototype and current database metadata; includes P0 security test plan and current limitations.
 - [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) — per-batch evidence-class ledger for B17–B37, source confidence, evidence gaps and completion gates.
 - [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) — named source-field families mapped to candidate ClearFlow concepts, normalization rules, lifecycle constraints and acceptance tests; includes explicitly source-specific encodings and unverified gaps.
+- [RESEARCH_COMPLETION_STATUS.md](./RESEARCH_COMPLETION_STATUS.md) — explicit completed/pending ledger separating completed documentation from legal/clinical sign-off, physical-column extraction, runtime tests and implementation work.
 
 ## Source-specific addenda
 - [Batches 17–22](./PROJECT_NOTES_ADDENDUM_B17_B22.md) — AI execution approval gate, tenant-scoped FKs, import integrity, prescriptions/orders/reports, agent approval/tooling, authoritative payments/refunds, invoice issue snapshots, inventory ledger, specialist dental modules, migration provenance.
@@ -26,6 +27,7 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 - [Batch 35](./PROJECT_NOTES_ADDENDUM_B35.md) — India-specific primary-source evidence gate for dental records/retention, phased DPDP commencement, telemedicine context and AI prescription authorization.
 - [Batch 36](./PROJECT_NOTES_ADDENDUM_B36.md) — prosthetic lab cases and lab-slip lifecycle, plus continued research on odontogram provenance, periodontal exams/measurements, treatment-plan versioning, recall lifecycle, imaging asset metadata/DICOM, orthodontic records and traceability tests.
 - [Batch 37](./PROJECT_NOTES_ADDENDUM_B37.md) — current NDC prescription particulars and dental-mechanic registration notices, Telangana clinical-establishment rules, DPDP commencement timing, CDSCO Drugs Rules source and ABDM FHIR profile pinning.
+- [Batch 38](./PROJECT_NOTES_ADDENDUM_B38.md) — AERB dental X-ray registration/safety sources, biomedical-waste authorization and collection, dental-clinic standards template, and CBIC invoice/bill-of-supply fields.
 - [Batch 37](./PROJECT_NOTES_ADDENDUM_B37.md) — current NDC prescription particulars and dental-mechanic registration notices, Telangana clinical-establishment rules, DPDP commencement timing and ABDM FHIR profile pinning.
 
 ## Preservation and design rule
