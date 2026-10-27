@@ -87,3 +87,9 @@ DPDP Rules link correction: use the MeitY-hosted G.S.R. 846(E) PDF (https://www.
 - Biomedical-waste guideline cited is dated June 2018; validate current central rules/amendments and TSPCB authorization, waste-category, CBWTF and recordkeeping instructions for the target facility.
 - National dental-clinic minimum-standards template is a reference document; do not assume it is binding on all Telangana clinic types without the applicable order/category mapping.
 - CBIC Rule 46 identifies invoice particulars, but clinic-specific GST registration, exemptions/taxability, issue deadlines, e-invoice applicability and later notifications need a qualified tax review. Do not hard-code one dental-service tax rate.
+
+
+## Cross-system comparison and reading guide
+[CROSS_SYSTEM_COMPARISON.md](./CROSS_SYSTEM_COMPARISON.md) consolidates what DentalPin, Open Dental, OpenEMR EHI, ABDM/FHIR and India official sources contribute by domain, plus the explicit absence/gap in the preserved ClearFlow prototype. Read each comparison cell alongside the source batch for its evidence class and version. Coverage does not mean a feature exists in ClearFlow, and a blank or partial source field family does not prove the upstream product lacks the feature.
+
+**Coverage version note:** B37A is a supplemental workforce batch between B37 and B38, not a renumbering of either batch. The current indexed pack covers B17–B38 plus B37A. It includes conceptual field maps and selected named source fields, but exact physical-column extraction remains pending for every source chosen for implementation.
