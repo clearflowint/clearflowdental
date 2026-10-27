@@ -22,14 +22,14 @@
 |---|---|---|
 | [PROJECT_NOTES.md](./PROJECT_NOTES.md) | Consolidated unstructured research and decisions | Updated; preserves earlier notes |
 | [RESEARCH_INDEX.md](./RESEARCH_INDEX.md) | Navigation to each research batch and core artifact | Updated through B38 |
-| [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) | Requirements, invariants, priority, lifecycle and acceptance tests | v0.3; initial matrix plus selected high-risk source mappings |
-| [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) | Source field families → candidate concept → normalization/lifecycle/test | B17–B38 coverage by major field families; not every physical column |
-| [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) | Consolidated domain/field-group inventory | Extended through B38; candidate requirements labeled |
-| [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) | Source classes, per-batch evidence and gaps | Extended through B38 |
+| [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md) | Requirements, invariants, priority, lifecycle and acceptance tests | v0.4; cumulative matrix with B37A workforce and B38 operational domains |
+| [SOURCE_FIELD_MAPS.md](./SOURCE_FIELD_MAPS.md) | Source field families → candidate concept → normalization/lifecycle/test | B17–B38 plus B37A coverage by major field families; not every physical column |
+| [FIELD_LEVEL_INVENTORY.md](./FIELD_LEVEL_INVENTORY.md) | Consolidated domain/field-group inventory | Extended through B38 plus B37A; candidate requirements labeled |
+| [SOURCE_COVERAGE_REGISTER.md](./SOURCE_COVERAGE_REGISTER.md) | Source classes, per-batch evidence and gaps | Extended through B38 plus B37A |
 | [IMPLEMENTATION_GAP_REVIEW.md](./IMPLEMENTATION_GAP_REVIEW.md) | Preserved Appwrite/Vue prototype facts, risks and safe tests | Read-only source/schema review; no live tenant attack test run |
 | [B35 — India legal gate](./PROJECT_NOTES_ADDENDUM_B35.md) | Initial India-specific retention/privacy/telemedicine/AI sources | Updated; counsel review remains pending |
-| [B37A — Workforce attendance and payroll](./PROJECT_NOTES_ADDENDUM_B37A.md) | Covers punch/shift/schedule/payroll distinctions; India employment/payroll policy pending.
 | [B36 — Dental longitudinal clinical data](./PROJECT_NOTES_ADDENDUM_B36.md) | Odontogram, periodontics, recall, imaging, orthodontics, lab cases | Expanded; clinical validation and direct lab API extraction pending |
+| [B37A — Workforce attendance and payroll](./PROJECT_NOTES_ADDENDUM_B37A.md) | Punch/shift/schedule/payroll distinctions | Saved; India employment/payroll policy pending |
 | [B37 — Dentist prescriptions, mechanics, DPDP, ABDM and drug source](./PROJECT_NOTES_ADDENDUM_B37.md) | Official-source operational/legal additions | Saved; applicability and rule mapping require professional review |
 | [B38 — X-ray, waste, facility standards and GST](./PROJECT_NOTES_ADDENDUM_B38.md) | Official-source operational research | Saved; current state/category/tax applicability requires review |
 
@@ -38,7 +38,7 @@
 ### A. Exact physical-column inventory
 Status: **Partially complete / source-by-source extraction still required.**
 
-The current inventory consolidates every major field family that was called out in B17–B38, and exact fields where the addenda recorded them. It is not a line-by-line copy of every column in every OpenEMR EHI table, full Open Dental database table, API payload, DentalPin model, or Appwrite schema. Some B27 items are API contracts rather than full DDL; Open Dental's direct LabCases/Laboratories API schema extraction remains unverified. It would be misleading to call all source columns exhausted.
+The current inventory consolidates every major field family that was called out in B17–B38 plus B37A, and exact fields where the addenda recorded them. It is not a line-by-line copy of every column in every OpenEMR EHI table, full Open Dental database table, API payload, DentalPin model, or Appwrite schema. Some B27 items are API contracts rather than full DDL; Open Dental's direct LabCases/Laboratories API schema extraction remains unverified. It would be misleading to call all source columns exhausted.
 
 **Closure criterion:** For each source table/API selected for implementation or migration, pin the source release/commit and extract exact name, physical type, nullability, default, enum, uniqueness, index, relation, delete/update behavior and known source encoding. Attach source URL and raw-to-normalized fixture tests. Keep non-selected sources as comparative evidence only.
 
