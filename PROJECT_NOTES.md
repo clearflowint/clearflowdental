@@ -1586,3 +1586,37 @@ Payer/provider enrollment and effective coverage; eligibility request/response/b
 Evidence note: OpenEMR EHI export pages document schema fields but do not prove all current DB constraints/runtime behavior. DentalPin fake gateway adapters test workflow, not a live provider. Label each finding Observed-DB, Observed-service, Observed-test, Interpretation, ClearFlow candidate or Decision pending.
 
 **Batch 18 status:** source fields extracted and targeted service/test comparison completed for this pass; overall schema remains under research. Next: Open Dental workflow comparison, OpenEMR medication/order/document amendment/security paths, and further DentalPin migrations/services.
+
+
+---
+
+## Batch 19 — OpenEMR medications, clinical orders/results, documents/signatures, patient flow (2026-10-27)
+
+### Prescription schema
+Source: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/prescriptions.html ; https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/drugs.html ; https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/drug_sales.html
+- OpenEMR prescription (49 documented fields) includes patient/pharmacy/prescriber/encounter, created/modified/filled dates, start/end dates, drug ID/RxNorm/free-text name, form, dosage, quantity, size/unit, route, interval, substitution, refills/per-refill, active state, notes/site, GUID/external ID, eRx source/upload/raw data, indication, PRN, usage category/request intent, detailed SIG, diagnosis/justification and creator/updater.
+- Drug catalogue includes NDC, form/size/unit/route, reaction text, reorder/max level, substitution/lot-combination flags, active/consumable/dispensable and timestamps. Drug sales links item/lot/prescription/patient/encounter, quantity/fee, bill state/date, price level, actor/time and transaction kind (sale/purchase/return/transfer/adjustment).
+ClearFlow should separate patient-reported medication, clinician medication-list assertion, prescription, transmitted eRx, dispense, administration and discontinued medication. Preserve structured dose/frequency/duration and exact original SIG. Prescription is not a stock or sales transaction. eRx needs idempotency, exact sent payload/version, external correlation, response state, retry and cancel propagation.
+
+### Clinical order and result schema
+Sources: https://github.com/openemr/openemr/blob/master/Documentation/EHI_Export/docs/tables/procedure_order.html ; procedure_order_code.html ; procedure_order_relationships.html ; procedure_report.html ; procedure_result.html
+- Order header: patient/provider/encounter, order and collection times, priority/status, instructions, lab/facility, specimen type/location/volume, transmission time, clinical history, external control ID, history-only flag, diagnosis, billing type, fasting/PSC hold, collector, account/facility, provider number, order type/intent, scheduled time interval, performer type and location.
+- Order line: code/name/sequence, original versus added after send, diagnosis, do-not-send, title/type, transport and reason date interval/status. Resource link uses typed FHIR resource + UUID + relationship/actor/time.
+- Report: order/line, collected/reported times and timezone offsets, source, specimen number, report status/review status and notes. Result line: value type, code/display, date/facility/unit/value/range/abnormality/comments/document and preliminary/final/corrected/incomplete result status.
+ClearFlow should normalize order lines and results with code system/version, value type, units, reference interval, interpretation, effective time and source. Order != result != clinician-reviewed/acknowledged result. Corrected result retains linkage to original. Preserve relevant source timezone. Dental lab workflows are similar in structure but require dental-specific validation; do not assume general medical labs are the same.
+
+### Document, legal template, signatures
+Sources: OpenEMR EHI dictionary tables documents, documents_legal_master/detail, esign_signatures, document_templates, document_template_profiles, clinical_notes_documents.
+- Document fields include UUID, storage type (URL/blob), size/MIME/pages, created/expiry, owner, revision, logical document/capture date, hash, category/name, storage backend/revision IDs, import status, encounter link, deleted state and optional foreign table/ID reference.
+- Legal template has category/subcategory, name/path, facility/provider, signature coordinates, filename, effective date/version, content, saved-signature/review flags and upload source. Instance records patient/facility/provider/encounter/template, signature status/time, signing person/stage, filled layout/PDF source, denial reason and patient comments.
+- E-sign record stores signed target row/table, signer, time, lock flag, amendment text, signed-data hash and signature hash. Templates/instances preserve profile/category/location/status/send/end dates/content/MIME; reusable profiles add active/recurring and event/notification trigger/period. Note-document junction records link actor/time.
+ClearFlow should store immutable source or object version/hash, derivative lineage, exact template version, merge-data snapshot, renderer version, language and issued artifact hash. Signature binds authenticated signer/representative authority to exact artifact/data hash, intent, method/time, sequence and signed/declined/unable state. A signature image or boolean alone is inadequate. Corrections reference original and preserve author/time/reason; no silent editing of signed records.
+
+### Patient flow and audits
+Sources: OpenEMR EHI dictionary tables patient_tracker, patient_tracker_element, audit_master, audit_details.
+- Patient flow event stores actual timestamp, appointment date/time, patient/encounter/event, original user and sequence expectation; child stores timestamp, room, status, sequence and user. This is different from appointment lifecycle.
+- Audit approval pattern records subject, approver, pending/approved/denied/cancelled state, comments, created/modified time, IP, event type/flags and changed table/field/value rows.
+ClearFlow should separate appointment state from timestamped queue/room flow events. Audit should capture before/after diff or version, actor, approver, reason, tenant, session/correlation, source (human/agent/job/integration), operation and result. Separate security, clinical amendment, finance/fiscal, workflow and AI execution audit types.
+
+### Batch 19 derived model additions
+Prescription lines/eRx reconciliation; clinical order/order lines/typed resource links/results/review/correction; immutable document object versions and hashes; versioned templates/rendered artifacts/signature authority/amendment; patient-flow events; field-level approval diffs. EHI table documentation confirms field inventory, not all runtime constraints—migrations, service code and tests remain needed. Research continues.
