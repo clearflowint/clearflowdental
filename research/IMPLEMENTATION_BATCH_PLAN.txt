@@ -1,0 +1,360 @@
+CLEARFLOW DENTAL CLINIC — MASTER IMPLEMENTATION BATCH PLAN
+Repository: clearflowint/clearflowdental
+Branch: main
+Status: PLANNING BASELINE — no implementation batch is marked complete by this document.
+Purpose: Convert the existing research into a staged, testable, tenant-safe implementation. Research files remain the evidence/source-of-truth set; this plan is the execution sequence.
+
+GOVERNING RULES
+1. Read and reconcile the existing research before implementing a feature. Key inputs include PROJECT_NOTES.md and its addenda, RESEARCH_INDEX.md, RESEARCH_COMPLETION_STATUS.md, SOURCE_COVERAGE_REGISTER.md, SOURCE_FIELD_MAPS.md, FIELD_LEVEL_INVENTORY.md, TRACEABILITY_MATRIX.md, CROSS_SYSTEM_COMPARISON.md, IMPLEMENTATION_GAP_REVIEW.md, and CONVERSATION_DECISION_LOG.md.
+2. Do not treat research documents as executable functions. Build actual frontend, backend/workflow assets, and tests from the approved requirements.
+3. Security and privacy are release gates, not later polish. Every read, create, update, deactivate, delete, export, background job, and cross-entity lookup must enforce authenticated tenant scope server-side.
+4. No clinical write, signature, prescription issuance, medication dispensing, or destructive action may be performed by AI without an explicit, informed user confirmation. AI can assist with retrieval/drafting only within the permissions and audit rules approved for that workflow.
+5. Use deterministic Python for supported business rules and validation wherever practical. Use AI only when a language/interpretation task genuinely requires it. Do not trust AI output as validated clinical truth.
+6. Never put admin/API secrets in the frontend, Git, logs, prompts, or client-visible errors. Do not sync secrets or resources from GitHub to Windmill.
+7. Keep source, schema, migrations, tests, deployment configuration, and operator documentation versioned. Prefer small, reversible changes with explicit acceptance criteria.
+8. No claim of live deployment or end-to-end verification without a recorded test result from the actual target environment.
+
+BATCH PLAN
+
+BATCH 00 — PLAN, RESEARCH FREEZE, AND TRACEABILITY
+Goal: Establish a shared implementation baseline before coding.
+Work:
+- Inventory all repository files and identify canonical research documents and addenda.
+- Reconcile conflicting or superseded decisions; preserve unresolved items as explicit questions.
+- Create/maintain requirement IDs linking requirement → evidence/source → data field/API → test → implementation batch.
+- Mark each requirement as confirmed, proposed, unresolved, or out of scope.
+- Define naming conventions, branch/PR conventions, test evidence format, and release gates.
+Acceptance:
+- This batch plan is committed.
+- Research index and status accurately describe available evidence and remaining research.
+- No unresolved clinical/regulatory decision is silently treated as approved.
+
+BATCH 01 — PRODUCT SCOPE, USERS, AND CLINICAL GOVERNANCE
+Goal: Agree on the first usable release and its authority boundaries.
+Work:
+- Define clinic/tenant, locations, users, roles, permissions, and supported user journeys.
+- Separate clinical records from operational, billing, inventory, and communications concerns.
+- Define patient consent, correction/amendment, record retention, export, audit, emergency access, and account offboarding policies for review.
+- Identify jurisdiction-specific regulatory requirements and obtain qualified clinical/legal review where required.
+- Define which features are explicitly excluded from the first release.
+Acceptance:
+- Scope and role matrix reviewed.
+- Each clinical workflow has an accountable human role and approval point.
+- Open regulatory decisions are tracked, not guessed.
+
+BATCH 02 — THREAT MODEL AND TENANT-ISOLATION SPECIFICATION
+Goal: Make tenant isolation and authorization testable before feature implementation.
+Work:
+- Document trust boundaries, actors, assets, attack paths, and sensitive-data flows.
+- Define server-side authorization policy for every resource and operation.
+- Prevent tenant IDs supplied by clients from being treated as proof of access.
+- Define least-privilege service identities, secret handling, session expiry/revocation, rate limits, and safe error behavior.
+- Define two-tenant negative tests for direct IDs, nested references, search, exports, attachments, background jobs, and indirect lookups.
+Acceptance:
+- Threat model and access-control matrix reviewed.
+- Every planned endpoint/job has an authorization rule.
+- Cross-tenant test cases exist before the corresponding endpoint is accepted.
+
+BATCH 03 — REPOSITORY, ENVIRONMENT, AND CI FOUNDATION
+Goal: Create a reproducible development and release path.
+Work:
+- Inspect the current GitHub repository and existing Windmill sync workflows before modifying anything.
+- Establish application structure, formatting/linting, type/static checks, unit-test runner, dependency lockfiles, and CI.
+- Define dev/test/staging/production configuration boundaries.
+- Add secret scanning and dependency/security checks where practical.
+- Keep Git-managed Windmill assets within the intended dental folder; do not overwrite unrelated workspace assets.
+Acceptance:
+- Clean checkout can install, lint, and run tests using documented commands.
+- CI fails on deliberate lint/test failure.
+- Existing research and sync configuration remain intact.
+
+BATCH 04 — APPWRITE BACKEND FOUNDATION AND AUTHENTICATION
+Goal: Build the approved Appwrite integration with explicit identity and tenant membership.
+Work:
+- Confirm Appwrite version, project/database/collection model, SDK usage, and environment configuration.
+- Implement real sign-in/session restoration/logout and revoked/expired-session handling.
+- Define how authenticated identities map to clinic tenant memberships and roles.
+- Ensure client-side hiding is never the sole authorization layer; privileged server-side operations validate identity and membership.
+- Document bootstrap/first-owner provisioning without exposing server credentials.
+Acceptance:
+- Login/logout/session tests pass.
+- Anonymous and unauthorized users cannot access protected data.
+- Tenant membership is established from trusted server-side records, not arbitrary client input.
+
+BATCH 05 — DATA MODEL, SCHEMA CONTRACTS, AND MIGRATION POLICY
+Goal: Convert the field inventory and source maps into explicit data contracts.
+Work:
+- Map patients, patient identifiers, contacts, appointments, encounters, clinical observations, diagnoses, allergies, medications, prescriptions, inventory, procedures, consent, documents, signatures, audit events, and operational entities only where supported by approved scope.
+- Record field type, requiredness, validation, provenance, sensitivity, tenant ownership, retention, and allowed mutations.
+- Define references, uniqueness, soft-delete/deactivation semantics, versioning, and concurrency behavior.
+- Define migration/versioning and rollback strategy; avoid assuming database features without checking the chosen Appwrite capability.
+Acceptance:
+- Schema/data dictionary is reviewed against source maps and traceability matrix.
+- Sensitive fields and all cross-entity relationships have tenant-bound access rules.
+- Migration and rollback tests cover representative records.
+
+BATCH 06 — SERVER-SIDE ACCESS LAYER AND TENANT-BOUND OPERATIONS
+Goal: Centralize authorization and validated data access.
+Work:
+- Implement reusable server-side helpers for identity, tenant membership, role checks, input validation, and tenant-scoped retrieval.
+- Require tenant-scoped authorization on every mutation and read; avoid insecure direct object references.
+- Enforce ownership checks on related records and nested resources.
+- Add idempotency and concurrency controls for retryable writes where required.
+- Ensure errors do not reveal whether another tenant's records exist.
+Acceptance:
+- Automated negative tests cover read, create, update, deactivate, delete, search, export, and nested references across two tenants.
+- No route or job can bypass the access layer without an explicit, reviewed exception.
+- Audit records are generated for security-sensitive operations.
+
+BATCH 07 — FRONTEND SHELL AND AUTHENTICATED MOBILE UX
+Goal: Create the responsive clinic application shell after the backend contract is stable.
+Work:
+- Build the mobile-first responsive frontend and navigation using the agreed framework and repository conventions.
+- Implement loading, empty, validation, offline/network-error, expired-session, and permission-denied states.
+- Use server-returned records as the source of truth; frontend calculations must not become authoritative clinical or financial logic.
+- Prevent stale tenant data from leaking across logout/login or tenant switching.
+Acceptance:
+- No horizontal scrolling at target mobile widths.
+- Session transitions clear tenant-specific client state.
+- Screens are usable with keyboard/accessibility basics and provide safe failure states.
+
+BATCH 08 — PATIENT REGISTRATION AND DEMOGRAPHICS
+Goal: Implement the first core patient workflow.
+Work:
+- Patient create/view/update with duplicate checks and approved identifiers.
+- Validate inputs and protect sensitive fields.
+- Add tenant-bound search and pagination with safe filtering.
+- Define patient merge/correction behavior only if approved; otherwise explicitly defer.
+Acceptance:
+- Positive workflow tests pass.
+- Duplicate, invalid, unauthorized, and cross-tenant cases fail safely.
+- Changes are auditable and preserve required history.
+
+BATCH 09 — APPOINTMENTS AND CLINIC OPERATIONS
+Goal: Implement appointment and basic clinic scheduling workflows.
+Work:
+- Define appointment status transitions, provider/resource assignment, cancellation/rescheduling, and conflict rules.
+- Handle time zones, date boundaries, retries, and duplicate submissions.
+- Keep reminder delivery separate from clinical authorization and track delivery results without leaking patient data.
+Acceptance:
+- State-transition and scheduling-conflict tests pass.
+- Duplicate requests are idempotent where appropriate.
+- Cross-tenant appointment IDs cannot be read or changed.
+
+BATCH 10 — ENCOUNTERS AND CLINICAL OBSERVATIONS
+Goal: Record clinical encounters and observations with provenance.
+Work:
+- Implement encounter lifecycle and approved clinical observation fields from the field inventory.
+- Validate units, ranges, timestamps, author identity, source, and correction/amendment rules as appropriate.
+- Distinguish patient-reported, clinician-entered, imported, calculated, and AI-suggested information.
+- Preserve previous versions where required; do not silently overwrite signed/locked records.
+Acceptance:
+- Clinical workflow and validation tests pass.
+- Provenance and author information are retained.
+- Signed/locked record behavior matches approved governance policy.
+
+BATCH 11 — DIAGNOSES, PROCEDURES, AND TREATMENT PLANS
+Goal: Implement clinically governed diagnosis and treatment workflows.
+Work:
+- Use approved terminology/reference sources and versioned mappings where applicable.
+- Separate clinician-entered decisions from suggested or imported content.
+- Define review, acceptance, amendment, and discontinuation transitions.
+- Ensure reference data cannot be edited by ordinary tenant users unless specifically authorized.
+Acceptance:
+- Terminology provenance and version are stored where needed.
+- No suggestion becomes a confirmed diagnosis/treatment without authorized clinician action.
+- Tenant and role tests pass.
+
+BATCH 12 — MEDICATIONS, PRESCRIPTIONS, AND DISPENSING SAFEGUARDS
+Goal: Implement medication-related workflows only after clinical and regulatory approval.
+Work:
+- Validate medication reference data, allergies, dose/route/frequency/duration fields, prescriber authority, and required warnings against approved sources and jurisdiction.
+- Separate draft prescription, clinician review/signature, issuance, cancellation, and dispensing/inventory actions.
+- Define interaction/contraindication support boundaries and escalation behavior; never represent incomplete checks as safety clearance.
+- Prevent AI from issuing prescriptions or dispensing medication autonomously.
+Acceptance:
+- Negative tests cover missing authorization, invalid fields, allergy conflicts, duplicate issuance, cancellation, and tenant crossing.
+- Human authorization is recorded for issuance/dispensing.
+- Qualified clinical review signs off before production use.
+
+BATCH 13 — MEDICATION INVENTORY AND STOCK MOVEMENTS
+Goal: Track medication stock with traceable, consistent movements.
+Work:
+- Define products, batches/lots, expiry, quantities, storage status, stock adjustments, receipts, dispensing, returns, and wastage as approved.
+- Use atomic/idempotent movement records where supported; prevent negative or duplicate stock movement.
+- Separate stock visibility and actions by tenant, location, and role.
+Acceptance:
+- Reconciliation and concurrency tests pass.
+- Every adjustment has actor, reason, timestamp, and audit reference.
+- Unauthorized or duplicate stock movement is rejected.
+
+BATCH 14 — DOCUMENTS, CONSENT, SIGNATURES, AND RECORD LOCKING
+Goal: Protect legally/clinically significant documents and signed records.
+Work:
+- Define document metadata, upload/download access, integrity checks, retention, and tenant-scoped storage.
+- Define consent capture/revocation and evidence of who consented, when, and to what version.
+- Implement signature intent, signer identity, signed payload/version, timestamps, and tamper-evident audit linkage according to reviewed requirements.
+- Define corrections/addenda after signature; do not silently edit signed content.
+Acceptance:
+- Unauthorized document access fails, including guessed attachment IDs.
+- Signed content changes are detectable.
+- Signature and consent design receives appropriate clinical/legal review before production reliance.
+
+BATCH 15 — AUDIT TRAIL, PRIVACY, AND DATA LIFECYCLE
+Goal: Make sensitive activity accountable and data lifecycle enforceable.
+Work:
+- Audit access and changes to clinical records, permissions, exports, signatures, prescription events, and inventory movements as appropriate.
+- Restrict audit-log viewing and protect integrity; do not expose unrestricted audit listings.
+- Implement retention, archival, correction, export, and deletion/de-identification procedures according to approved policy and law.
+- Minimize sensitive data in logs, notifications, telemetry, and AI prompts.
+Acceptance:
+- Audit events are attributable and tenant-scoped.
+- Users cannot alter or erase protected audit history through normal APIs.
+- Retention/deletion behavior is tested and policy-approved.
+
+BATCH 16 — SEARCH, REPORTING, EXPORTS, AND INTEROPERABILITY
+Goal: Provide useful reporting without weakening access controls.
+Work:
+- Implement tenant-scoped search, pagination, reports, and exports.
+- Apply row/field-level authorization to every report and export path.
+- Validate formats, escaping, time zones, and sensitive-data minimization.
+- Add interoperability/import/export mappings only for sources and formats established by the research and approved scope.
+Acceptance:
+- Export tests prove tenant isolation and permission filtering.
+- Large exports are bounded, observable, and safely retryable.
+- Data lineage and mapping limitations are documented.
+
+BATCH 17 — NOTIFICATIONS AND BACKGROUND AUTOMATION
+Goal: Add dependable reminders and background jobs.
+Work:
+- Define job payload contracts, tenant identity, idempotency keys, retry/backoff, dead-letter/manual-recovery process, and delivery audit.
+- Keep secrets in platform secret stores; never sync them from the repository.
+- Ensure jobs re-check tenant authorization and record state at execution time instead of trusting stale payloads.
+- Keep notification content minimal and avoid exposing clinical details on insecure channels.
+Acceptance:
+- Retry and duplicate-delivery tests pass.
+- A job for tenant A cannot act on tenant B data.
+- Failure, cancellation, and delivery outcomes are observable without sensitive log leakage.
+
+BATCH 18 — AI ASSISTANCE AND NATURAL-LANGUAGE EXECUTION GUARDRAILS
+Goal: Add AI only where it materially improves language-based tasks.
+Work:
+- Specify allowed use cases, data minimization, prompt/version management, model/provider routing, and tenant-scoped context retrieval.
+- Treat AI outputs as untrusted proposals; validate against deterministic schemas and approved business rules.
+- Separate read-only assistance, draft creation, and consequential actions.
+- Require explicit user review/confirmation before clinical writes, signature, prescription issuance, dispensing, destructive changes, or external communication when applicable.
+- Log model/version, request purpose, source references, human approval, and final action without retaining unnecessary sensitive prompts.
+Acceptance:
+- AI cannot directly bypass authorization or call unrestricted mutation tools.
+- Invalid, hallucinated, cross-tenant, and prompt-injection test cases fail safely.
+- AI functionality can be disabled without breaking deterministic core workflows.
+
+BATCH 19 — SECURITY, PRIVACY, AND CLINICAL SAFETY TEST SUITE
+Goal: Consolidate regression tests into release-blocking gates.
+Work:
+- Run two-tenant tests across all routes, jobs, storage objects, search, exports, and AI context.
+- Test authentication bypass, session revocation, privilege escalation, IDOR, injection, rate limits, secret leakage, replay, duplicate requests, and concurrency.
+- Test clinical safety edge cases and incomplete/missing reference data.
+- Add static analysis/dependency scans and document manual penetration-test requirements.
+Acceptance:
+- All P0/P1 findings are fixed or explicitly block release.
+- Test evidence is attached to commits/PRs or release records.
+- No cross-tenant leakage in the approved test suite.
+
+BATCH 20 — MIGRATION, FIXTURES, AND DATA QUALITY
+Goal: Safely seed and migrate data.
+Work:
+- Build synthetic, non-identifying fixtures for development and tests.
+- Define import validation, duplicate resolution, error reporting, and rollback.
+- Verify references, units, code-system versions, provenance, tenant assignment, and counts before/after migration.
+- Prohibit copying real patient data into development environments without a reviewed, approved process.
+Acceptance:
+- Repeatable migration and rollback are demonstrated on synthetic/staging data.
+- Reconciliation reports account for accepted, rejected, and transformed records.
+- Tenant ownership is verified for every imported entity.
+
+BATCH 21 — OBSERVABILITY, BACKUP, RECOVERY, AND OPERATIONS
+Goal: Prepare for safe operation and incident response.
+Work:
+- Add health checks, structured redacted logs, actionable error reporting, and operational metrics.
+- Define backup scope, restore procedure, recovery objectives, key rotation, incident response, and breach escalation.
+- Document dependency/service failure behavior and safe degradation.
+- Verify access to operational tools follows least privilege.
+Acceptance:
+- Restore drill and incident runbook are tested.
+- Alerts do not include unnecessary patient data.
+- Service failure does not cause duplicate or unauthorized clinical actions.
+
+BATCH 22 — END-TO-END, ACCESSIBILITY, AND DEVICE VALIDATION
+Goal: Verify real user journeys in the deployed test environment.
+Work:
+- Test registration → patient lookup → appointment → encounter → observation → reviewed/signature flow, plus approved medication/inventory flows.
+- Verify authorization transitions, logout, expiry, refresh, network failures, duplicate submissions, and concurrent edits.
+- Test mobile layouts, accessibility basics, browser compatibility, and performance on representative devices/networks.
+Acceptance:
+- End-to-end tests pass against a real test deployment.
+- Mobile usability and no-horizontal-scroll checks pass.
+- Known limitations and failed tests are documented; no unsupported pass claims.
+
+BATCH 23 — STAGING RELEASE AND CLINICAL USER ACCEPTANCE
+Goal: Release a controlled staging build for designated reviewers.
+Work:
+- Deploy pinned, reviewed artifacts to staging with isolated test data and secrets.
+- Conduct role-based acceptance sessions and record issues/decisions.
+- Obtain clinical, privacy, security, and legal approvals required for the intended jurisdiction and feature set.
+- Verify rollback and feature-disable procedures.
+Acceptance:
+- Required approvers sign off on the intended release scope.
+- No unresolved release-blocking findings remain.
+- Staging configuration is reproducible.
+
+BATCH 24 — PRODUCTION READINESS AND CONTROLLED RELEASE
+Goal: Release only the validated and approved scope.
+Work:
+- Review deployment diff and target environment; do not run destructive sync blindly.
+- Confirm secrets, access rules, backups, monitoring, rollback, support ownership, and incident contacts.
+- Deploy a tagged/reviewed version and run smoke tests plus tenant-isolation probes.
+- Enable sensitive features progressively only after their specific approvals.
+Acceptance:
+- Release checklist is signed and test evidence linked.
+- Production smoke tests and security probes pass.
+- Rollback is available and rehearsed.
+
+BATCH 25 — POST-RELEASE MONITORING AND CONTROLLED ITERATION
+Goal: Maintain safety and improve the system based on evidence.
+Work:
+- Monitor errors, latency, failed jobs, security events, data quality, and support reports with privacy-preserving telemetry.
+- Triage incidents and defects by severity; add regression tests for every confirmed defect.
+- Review source/reference updates and revalidate affected clinical rules.
+- Maintain a versioned decision log and update traceability when requirements change.
+Acceptance:
+- Monitoring and incident ownership are active.
+- Every production defect has a tracked resolution or mitigation.
+- Changes follow the same review, test, and release gates.
+
+CROSS-BATCH RELEASE BLOCKERS
+- Any confirmed cross-tenant data exposure or mutation.
+- Any unauthenticated or unauthorized access to protected patient data.
+- Any AI-triggered consequential action without required human approval.
+- Any prescription, dispensing, signature, or clinical rule lacking required source validation and qualified review.
+- Any migration or deployment without a tested recovery path where data loss is possible.
+- Any claim of compliance or clinical safety unsupported by current evidence and qualified review.
+
+IMPLEMENTATION ORDER / DEPENDENCIES
+Foundation sequence: 00 → 01 → 02 → 03 → 04 → 05 → 06 → 07.
+Core clinical sequence: 08 → 09 → 10 → 11.
+Sensitive clinical sequence: 12 → 13 and 14 (parallel only where their contracts and approvals are independent).
+Platform controls: 15 → 16 → 17 → 18.
+Release assurance: 19 and 20 throughout development; then 21 → 22 → 23 → 24 → 25.
+Security tests begin in Batch 02 and expand continuously; Batch 19 is consolidation, not the first security review.
+Do not start a dependent batch until its prerequisites and acceptance criteria are met. Some batches can overlap only when their schemas, permissions, and approved requirements are stable.
+
+CURRENT BASELINE / NEXT ACTION
+- Research is preserved under research/.
+- GitHub-to-Windmill production sync was confirmed successful for the current scope.
+- The only deployed Windmill function is the harmless sync smoke test because no real dental business functions have yet been added under f/dental/.
+- This plan does not mark any application implementation batch complete.
+- Next action after this plan is committed: Batch 00 reconciliation and requirement traceability, followed by Batch 01/02 approvals and Batch 03 foundation. Build a real executable function only when its requirement, input/output contract, authorization, tests, and deployment scope are defined.
+
+CHANGE CONTROL
+Update this file when scope, order, dependencies, or acceptance criteria materially change. Record why and link the decision in CONVERSATION_DECISION_LOG.md. Never mark a batch complete without evidence and a dated verification note.
