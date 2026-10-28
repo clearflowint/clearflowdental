@@ -394,6 +394,20 @@ async function handle(db, storage, userId, body) {
     return { document: doc };
   }
 
+  if (action === 'ai.chat') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const message = String(payload.message || '').trim();
+    if (!message) throw Object.assign(new Error('Enter a question first.'), { status: 400 });
+    if (message.length > 6000) throw Object.assign(new Error('Questions must be 6,000 characters or fewer.'), { status: 400 });
+    // The UI and authorization boundary are ready. No provider is configured yet;
+    // never silently substitute a fake model response or run an unapproved action.
+    if (!process.env.AI_API_URL || !process.env.AI_API_KEY || !process.env.AI_MODEL) {
+      throw Object.assign(new Error('AI is not connected yet. Configure the approved AI gateway URL, API key, and model as server-side Function variables. No clinic data was changed.'), { status: 503 });
+    }
+    throw Object.assign(new Error('AI gateway adapter is not enabled in this deployment yet. No clinic data was changed.'), { status: 503 });
+  }
+
   if (action === 'workspace.search') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
