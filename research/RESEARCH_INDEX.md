@@ -32,6 +32,10 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 - [Batch 37A](./PROJECT_NOTES_ADDENDUM_B37A.md) — staff attendance punch events, clinic/professional schedule templates and overrides, availability vs actual free slots, and sensitive payroll-period lifecycle.
 - [Batch 38](./PROJECT_NOTES_ADDENDUM_B38.md) — AERB dental X-ray registration/safety sources, biomedical-waste authorization and collection, dental-clinic standards template, and CBIC invoice/bill-of-supply fields.
 
+## Implementation sequencing
+
+- [Prototype-First Implementation Roadmap](./PROTOTYPE_FIRST_IMPLEMENTATION_ROADMAP.md) — owner-aligned end-to-end implementation batches: build and test the complete synthetic-data prototype first, then apply enterprise hardening; includes reusable module map, batch acceptance criteria, current verified bridge status and release checklists.
+
 ## Preservation and design rule
 The original application backup branch `backup/before-project-notes-reset-2026-10-27` has been deleted from the active branch list. `main` is intentionally research-notes-only after the user-requested reset. Branch deletion does not guarantee permanent erasure of historical commits or retained Git objects. Keep the large workspace dossier `ClearFlow_Dental_Enterprise_Schema_Research_Dossier.md` and complete workspace copy `ClearFlow_Dental_PROJECT_NOTES_Complete.md` alongside the GitHub notes; they contain the unstructured working research. Never claim the local workspace artifact is committed to Git unless a repository file confirms it.
 
