@@ -141,3 +141,11 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - The first rerun after the function change passed at https://github.com/clearflowint/clearflowdental/actions/runs/40677412118 for the intermediate commit. The full corrected test suite is queued/running after commits 826fd14b3c03e193eee266f5613692661b7dd156 and 7ff03eb480b5c92af1efc000454b75d6509456b2; verify the newest run before treating all tests as green.
 - Current app build passed at https://github.com/clearflowint/clearflowdental/actions/runs/40677190659 for commit 7c0f9f642450ff24a82fcf018d969974b4de3f1e. Subsequent Realtime-channel edit is not yet covered by a newer confirmed build in the available run list.
 - Cloudflare Pages deployment remains blocked on missing GitHub repository Actions secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. Do not call the prototype deployed or browser-testable until the secrets are configured and deployment succeeds.
+
+
+### Batch 16 — Appointment/visit consistency and current build — 2026-10-28
+- Added a frontend validation before opening a visit: when an appointment is selected, its patient must match the visit patient. The trusted API continues to enforce the same relationship server-side along with tenant membership; frontend validation is for clearer feedback, not the security boundary.
+- Current app build passed for commit 37d0c6497c33cc73882d363e6ee564ad3fcd6b65: https://github.com/clearflowint/clearflowdental/actions/runs/40677754124 .
+- The deployment workflow was triggered for the same commit; check its result separately. A successful build does not establish that Cloudflare Pages is deployed.
+- Reminder candidate tests remain green, including explicit tenant isolation: https://github.com/clearflowint/clearflowdental/actions/runs/40677435474 .
+- Still pending: Cloudflare Pages secrets, authenticated browser E2E, two-clinic isolation, original document upload/view, realtime runtime test, and complete synthetic patient-to-appointment-to-visit-to-draft journey. Continue synthetic data only.
