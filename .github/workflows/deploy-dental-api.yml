@@ -1,0 +1,40 @@
+name: Deploy ClearFlow Dental API
+
+on:
+  push:
+    branches: [main, "prototype/**"]
+    paths:
+      - "appwrite.config.json"
+      - "appwrite/functions/clearflow-dental-api/**"
+      - ".github/workflows/deploy-dental-api.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clearflow-dental-api-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Appwrite CLI
+        run: npm install --global appwrite-cli
+      - name: Configure Appwrite CLI
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+        run: |
+          test -n "$APPWRITE_ENDPOINT" || (echo "Missing APPWRITE_ENDPOINT secret" && exit 1)
+          test -n "$APPWRITE_PROJECT_ID" || (echo "Missing APPWRITE_PROJECT_ID secret" && exit 1)
+          test -n "$APPWRITE_API_KEY" || (echo "Missing APPWRITE_API_KEY secret" && exit 1)
+          appwrite client --endpoint "$APPWRITE_ENDPOINT" --project-id "$APPWRITE_PROJECT_ID" --key "$APPWRITE_API_KEY"
+      - name: Deploy ClearFlow Dental API only
+        run: appwrite push function --function-id clearflow-dental-api --activate --force
