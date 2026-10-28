@@ -18,7 +18,7 @@ export async function callApi(action,payload={}){
     false,
     '/',
     'POST',
-    {'x-appwrite-user-jwt':session.jwt}
+    {'x-clearflow-user-jwt':session.jwt}
   );
   let result;
   try{result=JSON.parse(execution.responseBody||'{}')}catch{throw new Error('The clinic API returned an invalid response.')}
