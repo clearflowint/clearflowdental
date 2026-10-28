@@ -10,15 +10,15 @@ export async function signOut(){await account.deleteSession('current')}
 export async function callApi(action,payload={}){
   const user = await account.get();
   const session = await account.createJWT();
-  // Appwrite Function execution doesn't reliably forward arbitrary custom
-  // headers. Carry the short-lived JWT in the JSON body instead; the server
-  // validates it with Appwrite Account before using the user ID.
+  // Forward the signed-in user's short-lived JWT in Appwrite's supported
+  // user-JWT header so the Function can verify the actual session.
   const execution = await functions.createExecution(
     'clearflow-dental-api',
-    JSON.stringify({action,payload,authContext:{jwt:session.jwt,userId:user.$id}}),
+    JSON.stringify({action,payload,authContext:{userId:user.$id}}),
     false,
     '/',
-    'POST'
+    'POST',
+    {'x-appwrite-user-jwt':session.jwt}
   );
   let result;
   try{result=JSON.parse(execution.responseBody||'{}')}catch{throw new Error('The clinic API returned an invalid response.')}
