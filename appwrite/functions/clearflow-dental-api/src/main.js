@@ -373,6 +373,44 @@ async function handle(db, storage, userId, body) {
     return { document: doc };
   }
 
+  if (action === 'workspace.search') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const query = String(payload.query || '').trim().toLowerCase().slice(0, 100);
+    if (query.length < 2) return { results: [] };
+    const [patientRows, appointmentRows, encounterRows, documentRows] = await Promise.all([
+      listRows(db, 'patients', [Query.equal('tenantId', tenantId)]),
+      listRows(db, 'appointments', [Query.equal('tenantId', tenantId)]),
+      listRows(db, 'encounters', [Query.equal('tenantId', tenantId)]),
+      listRows(db, 'patient_documents', [Query.equal('tenantId', tenantId)])
+    ]);
+    const patientById = new Map(patientRows.map(p => [p.$id, p]));
+    const results = [];
+    for (const p of patientRows) {
+      const label = [p.givenName, p.familyName].filter(Boolean).join(' ');
+      if ((label + ' ' + (p.patientNumber || '')).toLowerCase().includes(query)) results.push({ type: 'patient', id: p.$id, label, detail: 'Patient record' });
+    }
+    for (const a of appointmentRows) {
+      const p = patientById.get(a.patientId);
+      const label = p ? [p.givenName, p.familyName].filter(Boolean).join(' ') : 'Appointment';
+      const detail = new Date(a.startsAt).toLocaleString() + ' · ' + a.status;
+      if ((label + ' ' + (a.reason || '') + ' ' + detail).toLowerCase().includes(query)) results.push({ type: 'appointment', id: a.$id, label, detail });
+    }
+    for (const v of encounterRows) {
+      const p = patientById.get(v.patientId);
+      const label = p ? [p.givenName, p.familyName].filter(Boolean).join(' ') : 'Visit';
+      const detail = v.visitPurpose + ' · ' + v.status;
+      if ((label + ' ' + detail).toLowerCase().includes(query)) results.push({ type: 'visit', id: v.$id, label, detail });
+    }
+    for (const d of documentRows) {
+      const p = patientById.get(d.patientId);
+      const label = d.originalName || 'Source document';
+      const detail = (p ? [p.givenName, p.familyName].filter(Boolean).join(' ') + ' · ' : '') + d.sourceCategory;
+      if ((label + ' ' + detail).toLowerCase().includes(query)) results.push({ type: 'document', id: d.$id, label, detail });
+    }
+    return { results: results.slice(0, 25) };
+  }
+
   throw Object.assign(new Error('Unknown action.'), { status: 400 });
 }
 
