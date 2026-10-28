@@ -63,3 +63,15 @@ Record date, commit/PR, files changed, test commands and results, observed gaps,
 
 ### Next batch
 Implement and deploy a small trusted Appwrite API/function for clinic bootstrap and tenant-scoped patient operations, or use another existing trusted execution path only if its identity verification is equivalent. Then wire the patient directory through one shared data-access module and add synthetic tenant-isolation tests.
+
+
+### Batch 3 progress — trusted clinic/patient API
+- Added `appwrite/functions/clearflow-dental-api` with a shared tenant-scoped API surface for clinic bootstrap/list and patient list/create. Browser UI calls this API; it does not receive an elevated key.
+- Added a dedicated deployment workflow using the existing GitHub Actions secret references; no secret values are written to Git.
+- Function execute permission is limited to authenticated Appwrite users. Before any data operation, the function verifies the Appwrite user JWT and matches the verified account ID to the execution identity header. Tenant membership is then checked server-side for every patient operation.
+- Tables remain row-secured with no broad table permissions. Newly created clinic/patient rows receive read permission for the creating user; writes remain routed through the trusted API. Membership roles are not accepted from client payloads.
+- Live function deployment succeeded: https://github.com/clearflowint/clearflowdental/actions/runs/40674052469
+- Negative security check passed: a function execution without a valid user session returned HTTP 401 and created no records.
+- Appwrite localhost web platform was registered for local development.
+- App build workflow has passed for the previous application-shell/authentication revision: https://github.com/clearflowint/clearflowdental/actions/runs/40673684882 . A new build is required for the latest clinic/patient UI commit; check the run before calling that UI revision green.
+- Remaining verification: authenticated end-to-end clinic creation and patient CRUD, two-user/tenant isolation, Appwrite SDK response shape, and mobile browser rendering. No real patient data has been entered.
