@@ -132,3 +132,5 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - Still pending: confirm the current commit's CI, set Cloudflare deployment credentials, authenticated browser/mobile E2E, two-user tenant isolation test, source-file upload/view test, runtime Realtime test, and end-to-end appointment/visit/draft workflow. Continue using synthetic data only.
 
 - Follow-up validation note: the first dashboard-count commit failed the Vite build because the automated edit inserted loadOverview twice. Removed the duplicate declaration in commit 7c0f9f642450ff24a82fcf018d969974b4de3f1e; CI is rerunning. This failure and correction are recorded explicitly rather than treated as a pass.
+
+- Realtime follow-up: added patient_contacts to the Appwrite client subscription channels. The dashboard callback already refreshes the overview through loadOverview, so the same event path now covers summary counts while the contacts table is subscribed too. Runtime behavior still needs an authenticated multi-user browser test.
