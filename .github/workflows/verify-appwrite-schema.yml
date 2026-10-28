@@ -1,4 +1,4 @@
-name: Verify Appwrite prototype schema
+name: Apply and verify Appwrite schema
 
 on:
   push:
@@ -12,18 +12,29 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: clearflow-schema-reconcile
+  cancel-in-progress: false
+
 jobs:
-  verify:
+  apply-and-verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install schema verifier dependencies
+      - name: Install schema reconciler dependencies
         working-directory: scripts/appwrite-schema
         run: npm install
-      - name: Verify live schema without mutations
+      - name: Apply repository-owned permission baseline and required indexes
+        working-directory: scripts/appwrite-schema
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+        run: node apply.mjs
+      - name: Verify live schema after reconciliation
         working-directory: scripts/appwrite-schema
         env:
           APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
