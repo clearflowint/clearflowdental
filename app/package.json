@@ -3,7 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": {"dev": "vite --host 0.0.0.0", "build": "vite build", "preview": "vite preview --host 0.0.0.0", "test": "node --test"},
-  "dependencies": {"appwrite": "^17.0.0"},
-  "devDependencies": {"vite": "^6.0.0"}
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "appwrite": "^17.0.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "overrides": {
+    "rollup": "4.65.1"
+  }
 }
