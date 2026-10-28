@@ -2,6 +2,11 @@
   "name": "clearflow-dental-api",
   "private": true,
   "type": "module",
-  "scripts": {"start": "node src/main.js"},
-  "dependencies": {"node-appwrite": "^20.0.0"}
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "node-appwrite": "^20.0.0"
+  }
 }
