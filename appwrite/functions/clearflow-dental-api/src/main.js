@@ -394,6 +394,73 @@ async function handle(db, storage, userId, body) {
     return { document: doc };
   }
 
+  if (action === 'ai.providers.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    return { providers: [
+      { id: 'openai', name: 'OpenAI', models: ['gpt-4.1-mini', 'gpt-4.1', 'o4-mini'] },
+      { id: 'anthropic', name: 'Anthropic', models: ['claude-sonnet-4-20250514', 'claude-haiku-4-5'] },
+      { id: 'google', name: 'Google AI', models: ['gemini-2.5-flash', 'gemini-2.5-pro'] },
+      { id: 'openrouter', name: 'OpenRouter', models: ['openrouter/auto'] },
+      { id: 'groq', name: 'Groq', models: ['llama-3.3-70b-versatile'] },
+      { id: 'mistral', name: 'Mistral', models: ['mistral-small-latest', 'mistral-large-latest'] }
+    ] };
+  }
+
+  if (action === 'ai.settings.get') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const rows = await listRows(db, 'tenant_ai_preferences', [Query.equal('tenantId', tenantId)]);
+    const settings = rows[0] || {
+      tenantId, defaultProviderId: '', defaultModelId: '',
+      embeddingProviderId: '', embeddingModelId: '',
+      memoryEnabled: false, monthlyBudgetMinor: null, budgetCurrency: 'INR'
+    };
+    const credentials = await listRows(db, 'tenant_ai_provider_credentials', [Query.equal('tenantId', tenantId)]);
+    return { settings, providers: credentials.map(c => ({ providerId: c.providerId, status: c.status, maskedSuffix: c.maskedSuffix || '' })) };
+  }
+
+  if (action === 'ai.settings.update') {
+    const tenantId = String(payload.tenantId || '');
+    const membership = await requireMembership(db, userId, tenantId);
+    if (!['owner', 'admin'].includes(String(membership.role || '').toLowerCase())) {
+      throw Object.assign(new Error('Only clinic owners or admins can change AI settings.'), { status: 403 });
+    }
+    const providerId = String(payload.defaultProviderId || '');
+    const modelId = String(payload.defaultModelId || '');
+    const allowedModels = {
+      openai: ['gpt-4.1-mini', 'gpt-4.1', 'o4-mini'],
+      anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-4-5'],
+      google: ['gemini-2.5-flash', 'gemini-2.5-pro'],
+      openrouter: ['openrouter/auto'],
+      groq: ['llama-3.3-70b-versatile'],
+      mistral: ['mistral-small-latest', 'mistral-large-latest']
+    };
+    if (providerId && !Object.hasOwn(allowedModels, providerId)) throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
+    if (providerId && !allowedModels[providerId].includes(modelId)) throw Object.assign(new Error('Choose a model from the selected provider.'), { status: 400 });
+    const budget = payload.monthlyBudgetMinor === '' || payload.monthlyBudgetMinor == null ? null : Number(payload.monthlyBudgetMinor);
+    if (budget !== null && (!Number.isSafeInteger(budget) || budget < 0 || budget > 100000000000)) throw Object.assign(new Error('Enter a valid non-negative monthly budget in paise.'), { status: 400 });
+    const existingRows = await listRows(db, 'tenant_ai_preferences', [Query.equal('tenantId', tenantId)]);
+    const timestamp = now();
+    const data = {
+      tenantId, defaultProviderId: providerId, defaultModelId: modelId,
+      embeddingProviderId: String(payload.embeddingProviderId || '').slice(0, 80),
+      embeddingModelId: String(payload.embeddingModelId || '').slice(0, 160),
+      memoryEnabled: payload.memoryEnabled === true,
+      monthlyBudgetMinor: budget,
+      budgetCurrency: 'INR',
+      updatedAt: timestamp
+    };
+    let settings;
+    if (existingRows[0]) {
+      settings = await db.updateRow({ databaseId, tableId: 'tenant_ai_preferences', rowId: existingRows[0].$id, data });
+    } else {
+      settings = await db.createRow({ databaseId, tableId: 'tenant_ai_preferences', rowId: ID.unique(), data: { ...data, createdAt: timestamp } });
+    }
+    await logEvent(db, userId, tenantId, 'ai.settings.updated', 'ai_settings', tenantId, 'AI provider preferences updated');
+    return { settings };
+  }
+
   if (action === 'ai.chat') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
