@@ -1,4 +1,5 @@
 import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
+import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus } from './domain.js';
 
 const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
@@ -56,7 +57,7 @@ async function handle(db, storage, userId, body) {
 
   if (action === 'clinic.create') {
     const name = String(payload.name || '').trim();
-    const slug = String(payload.slug || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+    const slug = normalizeSlug(payload.slug);
     if (name.length < 2 || name.length > 150 || slug.length < 3 || slug.length > 80) {
       throw Object.assign(new Error('Enter a clinic name and a workspace slug of at least 3 characters.'), { status: 400 });
     }
@@ -145,14 +146,13 @@ async function handle(db, storage, userId, body) {
     const patientId = String(payload.patientId || '');
     const patient = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
     if (patient.tenantId !== tenantId) throw Object.assign(new Error('Patient not found in this clinic.'), { status: 404 });
-    const startsAt = new Date(payload.startsAt);
-    const endsAt = new Date(payload.endsAt);
-    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) throw Object.assign(new Error('Choose a valid appointment start and end time.'), { status: 400 });
+    const range = parseDateRange(payload.startsAt, payload.endsAt);
+    if (!range) throw Object.assign(new Error('Choose a valid appointment start and end time.'), { status: 400 });
     const timestamp = now();
     const appointmentId = ID.unique();
     const appointment = await db.createRow({
       databaseId, tableId: 'appointments', rowId: appointmentId,
-      data: { tenantId, patientId, providerUserId: String(payload.providerUserId || '') || undefined, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), status: 'scheduled', reason: String(payload.reason || '').trim().slice(0, 180) || undefined, notes: String(payload.notes || '').trim() || undefined, createdBy: userId, updatedBy: userId, createdAt: timestamp, updatedAt: timestamp },
+      data: { tenantId, patientId, providerUserId: String(payload.providerUserId || '') || undefined, startsAt: range.startsAt, endsAt: range.endsAt, status: 'scheduled', reason: String(payload.reason || '').trim().slice(0, 180) || undefined, notes: String(payload.notes || '').trim() || undefined, createdBy: userId, updatedBy: userId, createdAt: timestamp, updatedAt: timestamp },
       permissions: userRead(userId)
     });
     await logEvent(db, userId, tenantId, 'appointment.created', 'appointment', appointmentId, 'Appointment scheduled');
@@ -165,15 +165,13 @@ async function handle(db, storage, userId, body) {
     const appointmentId = String(payload.appointmentId || '');
     const existing = await db.getRow({ databaseId, tableId: 'appointments', rowId: appointmentId });
     if (existing.tenantId !== tenantId) throw Object.assign(new Error('Appointment not found in this clinic.'), { status: 404 });
-    const allowed = ['scheduled', 'confirmed', 'arrived', 'cancelled', 'completed', 'no_show'];
     const status = String(payload.status || existing.status);
-    if (!allowed.includes(status)) throw Object.assign(new Error('Choose a valid appointment status.'), { status: 400 });
+    if (!isAppointmentStatus(status)) throw Object.assign(new Error('Choose a valid appointment status.'), { status: 400 });
     const data = { status, updatedBy: userId, updatedAt: now() };
     if (payload.startsAt || payload.endsAt) {
-      const startsAt = new Date(payload.startsAt || existing.startsAt);
-      const endsAt = new Date(payload.endsAt || existing.endsAt);
-      if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) throw Object.assign(new Error('Choose a valid appointment time range.'), { status: 400 });
-      data.startsAt = startsAt.toISOString(); data.endsAt = endsAt.toISOString();
+      const range = parseDateRange(payload.startsAt || existing.startsAt, payload.endsAt || existing.endsAt);
+      if (!range) throw Object.assign(new Error('Choose a valid appointment time range.'), { status: 400 });
+      data.startsAt = range.startsAt; data.endsAt = range.endsAt;
     }
     const appointment = await db.updateRow({ databaseId, tableId: 'appointments', rowId: appointmentId, data });
     await logEvent(db, userId, tenantId, 'appointment.updated', 'appointment', appointmentId, 'Appointment status or time updated');
@@ -308,9 +306,8 @@ async function handle(db, storage, userId, body) {
     const file = await storage.getFile({ bucketId: 'dental-source-documents', fileId });
     const userReadPermission = `read("user:${userId}")`;
     if (!(file.$permissions || []).includes(userReadPermission)) throw Object.assign(new Error('Uploaded file is not readable by the signed-in user.'), { status: 403 });
-    const categories = ['handwritten_prescription', 'report', 'image', 'referral', 'patient_supplied_history', 'other'];
     const sourceCategory = String(payload.sourceCategory || 'other');
-    if (!categories.includes(sourceCategory)) throw Object.assign(new Error('Choose a valid source category.'), { status: 400 });
+    if (!isSourceCategory(sourceCategory)) throw Object.assign(new Error('Choose a valid source category.'), { status: 400 });
     const timestamp = now();
     const documentId = ID.unique();
     const doc = await db.createRow({
