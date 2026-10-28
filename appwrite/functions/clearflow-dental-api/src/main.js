@@ -119,6 +119,19 @@ async function handle(db, storage, userId, body) {
   }
 
 
+  if (action === 'patient_contact.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const patientId = String(payload.patientId || '');
+    if (patientId) {
+      const patient = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
+      if (patient.tenantId !== tenantId) throw Object.assign(new Error('Patient not found in this clinic.'), { status: 404 });
+    }
+    const queries = [Query.equal('tenantId', tenantId)];
+    if (patientId) queries.push(Query.equal('patientId', patientId));
+    return { contacts: await listRows(db, 'patient_contacts', queries) };
+  }
+
   if (action === 'patient.update') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
