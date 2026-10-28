@@ -117,6 +117,110 @@ async function handle(db, userId, body) {
     return { patient };
   }
 
+
+  if (action === 'patient.update') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const patientId = String(payload.patientId || '');
+    const existing = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
+    if (existing.tenantId !== tenantId) throw Object.assign(new Error('Patient not found in this clinic.'), { status: 404 });
+    const givenName = String(payload.givenName ?? existing.givenName).trim();
+    const familyName = String(payload.familyName ?? existing.familyName ?? '').trim();
+    if (!givenName || givenName.length > 100 || familyName.length > 100) throw Object.assign(new Error('Check the patient name fields.'), { status: 400 });
+    const patient = await db.updateRow({ databaseId, tableId: 'patients', rowId: patientId, data: { givenName, familyName, updatedBy: userId, updatedAt: now() } });
+    await logEvent(db, userId, tenantId, 'patient.updated', 'patient', patientId, 'Patient record updated');
+    return { patient };
+  }
+
+  if (action === 'appointment.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const appointments = await listRows(db, 'appointments', [Query.equal('tenantId', tenantId)]);
+    return { appointments };
+  }
+
+  if (action === 'appointment.create') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const patientId = String(payload.patientId || '');
+    const patient = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
+    if (patient.tenantId !== tenantId) throw Object.assign(new Error('Patient not found in this clinic.'), { status: 404 });
+    const startsAt = new Date(payload.startsAt);
+    const endsAt = new Date(payload.endsAt);
+    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) throw Object.assign(new Error('Choose a valid appointment start and end time.'), { status: 400 });
+    const timestamp = now();
+    const appointmentId = ID.unique();
+    const appointment = await db.createRow({
+      databaseId, tableId: 'appointments', rowId: appointmentId,
+      data: { tenantId, patientId, providerUserId: String(payload.providerUserId || '') || undefined, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), status: 'scheduled', reason: String(payload.reason || '').trim().slice(0, 180) || undefined, notes: String(payload.notes || '').trim() || undefined, createdBy: userId, updatedBy: userId, createdAt: timestamp, updatedAt: timestamp },
+      permissions: userRead(userId)
+    });
+    await logEvent(db, userId, tenantId, 'appointment.created', 'appointment', appointmentId, 'Appointment scheduled');
+    return { appointment };
+  }
+
+  if (action === 'encounter.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    return { encounters: await listRows(db, 'encounters', [Query.equal('tenantId', tenantId)]) };
+  }
+
+  if (action === 'encounter.create') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const patientId = String(payload.patientId || '');
+    const patient = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
+    if (patient.tenantId !== tenantId) throw Object.assign(new Error('Patient not found in this clinic.'), { status: 404 });
+    const appointmentId = String(payload.appointmentId || '');
+    if (appointmentId) {
+      const appointment = await db.getRow({ databaseId, tableId: 'appointments', rowId: appointmentId });
+      if (appointment.tenantId !== tenantId || appointment.patientId !== patientId) throw Object.assign(new Error('Appointment does not belong to this patient and clinic.'), { status: 400 });
+    }
+    const visitPurpose = String(payload.visitPurpose || '').trim();
+    if (!visitPurpose || visitPurpose.length > 255) throw Object.assign(new Error('Enter the visit purpose.'), { status: 400 });
+    const timestamp = now();
+    const encounterId = ID.unique();
+    const encounter = await db.createRow({
+      databaseId, tableId: 'encounters', rowId: encounterId,
+      data: { tenantId, patientId, appointmentId: appointmentId || undefined, startedAt: timestamp, status: 'in_progress', visitPurpose, summary: String(payload.summary || '').trim() || undefined, createdBy: userId, updatedBy: userId, createdAt: timestamp, updatedAt: timestamp },
+      permissions: userRead(userId)
+    });
+    await logEvent(db, userId, tenantId, 'encounter.created', 'encounter', encounterId, 'Encounter opened');
+    return { encounter };
+  }
+
+  if (action === 'treatment.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const encounterId = String(payload.encounterId || '');
+    if (encounterId) {
+      const encounter = await db.getRow({ databaseId, tableId: 'encounters', rowId: encounterId });
+      if (encounter.tenantId !== tenantId) throw Object.assign(new Error('Encounter not found in this clinic.'), { status: 404 });
+      return { treatments: await listRows(db, 'encounter_treatments', [Query.equal('tenantId', tenantId), Query.equal('encounterId', encounterId)]) };
+    }
+    return { treatments: await listRows(db, 'encounter_treatments', [Query.equal('tenantId', tenantId)]) };
+  }
+
+  if (action === 'treatment.create') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const encounterId = String(payload.encounterId || '');
+    const encounter = await db.getRow({ databaseId, tableId: 'encounters', rowId: encounterId });
+    if (encounter.tenantId !== tenantId) throw Object.assign(new Error('Encounter not found in this clinic.'), { status: 404 });
+    const name = String(payload.name || '').trim();
+    const status = String(payload.status || 'planned');
+    if (!name || name.length > 180 || !['discussed', 'planned', 'performed', 'not_performed'].includes(status)) throw Object.assign(new Error('Enter a treatment name and valid status.'), { status: 400 });
+    const timestamp = now();
+    const treatmentId = ID.unique();
+    const treatment = await db.createRow({
+      databaseId, tableId: 'encounter_treatments', rowId: treatmentId,
+      data: { tenantId, encounterId, name, status, performedAt: status === 'performed' ? (payload.performedAt ? new Date(payload.performedAt).toISOString() : timestamp) : undefined, performedBy: status === 'performed' ? userId : undefined, notes: String(payload.notes || '').trim() || undefined, createdBy: userId, createdAt: timestamp, updatedAt: timestamp },
+      permissions: userRead(userId)
+    });
+    await logEvent(db, userId, tenantId, 'treatment.created', 'encounter_treatment', treatmentId, 'Encounter treatment recorded');
+    return { treatment };
+  }
+
   throw Object.assign(new Error('Unknown action.'), { status: 400 });
 }
 
