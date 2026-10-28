@@ -1,6 +1,16 @@
 # ClearFlow Dental Clinic — Prototype Data Model Contract v0.1
 
-Date: 2026-10-28. Status: Proposed; not yet applied to Appwrite. This is the minimal end-to-end prototype schema, not the final enterprise schema.
+Date: 2026-10-28. Status: Applied prototype baseline in the canonical Appwrite project. This is the minimal end-to-end prototype schema, not the final enterprise schema.
+
+## Canonical environment
+
+- Canonical Appwrite project: Dental Hospitals (`6adcea89003c9613425b`).
+- Canonical endpoint: `https://clearflowappwrite.duckdns.org/v1`.
+- Canonical database: `clearflow_dental`.
+- Retired tenant-isolation test project: deleted by owner; do not recreate or reference it.
+- The PWA, ClearFlow Dental API function and schema manifest must all use the canonical project/database above.
+- Do not delete or recreate current project data as part of configuration cleanup.
+- The live baseline was created directly in Appwrite. `appwrite/schema/prototype-v0.1.json` is the current expected-state manifest and `scripts/appwrite-schema/verify.mjs` checks it without mutating live data. A complete typed, repeatable migration/apply script is still required before schema changes can be reproduced automatically.
 
 ## Design rules
 - Stable internal patient IDs; phone is a contact channel, never a patient identifier.
@@ -45,5 +55,9 @@ getActiveClinic(actor); requireClinicMembership(actor, tenantId, roles?); getPat
 ## Deliberate deferrals
 Branches, professional credentials, advanced odontogram/periodontal/orthodontic records, prescriptions/dispensing, medication inventory, billing/tax, payroll, insurance, facility compliance, direct external diagnostic APIs and vector memory. Manual external report intake is supported through patient_documents. Do not add a Java backend unless a demonstrated trust-critical requirement needs it; first prove Appwrite + Windmill for the prototype.
 
-## Gates
-A. Map schema to research and decision notes. B. Inspect live Appwrite project and exact capabilities before applying. C. Make setup repeatable. D. Test two synthetic tenants/users across list/get/create/update and related IDs. E. Complete the end-to-end prototype before enterprise hardening.
+## Remaining validation gates
+A. Verify live schema and storage bucket against the checked-in manifest.
+B. Make schema changes reproducible with typed migration/apply scripts and safe drift checks.
+C. Test two synthetic tenants/users across list/get/create/update and related IDs using only this canonical project.
+D. Complete authenticated browser testing and verify tenant isolation.
+E. Complete the end-to-end prototype before enterprise hardening.
