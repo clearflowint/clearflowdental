@@ -36,5 +36,8 @@ jobs:
           test -n "$APPWRITE_PROJECT_ID" || (echo "Missing APPWRITE_PROJECT_ID secret" && exit 1)
           test -n "$APPWRITE_API_KEY" || (echo "Missing APPWRITE_API_KEY secret" && exit 1)
           appwrite client --endpoint "$APPWRITE_ENDPOINT" --project-id "$APPWRITE_PROJECT_ID" --key "$APPWRITE_API_KEY"
+      - name: Test deterministic API domain rules
+        working-directory: appwrite/functions/clearflow-dental-api
+        run: npm install && npm test
       - name: Deploy ClearFlow Dental API only
         run: appwrite push function --function-id clearflow-dental-api --activate --force
