@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus } from '../src/domain.js';
+import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, normalizeContactValue } from '../src/domain.js';
 
 test('normalizes a clinic slug deterministically', () => {
   assert.equal(normalizeSlug('  ClearFlow Dental!!  '), 'clearflow-dental');
@@ -24,4 +24,12 @@ test('keeps source categories and treatment states constrained', () => {
 test('accepts only known appointment statuses', () => {
   assert.equal(isAppointmentStatus('no_show'), true);
   assert.equal(isAppointmentStatus('approved'), false);
+});
+
+test('accepts supported contact channel types', () => {
+  assert.equal(isContactType('phone'), true);
+  assert.equal(isContactType('email'), true);
+  assert.equal(isContactType('social-login'), false);
+  assert.equal(normalizeContactValue('  +91 99999 11111  '), '+91 99999 11111');
+  assert.equal(normalizeContactValue('x'.repeat(200)).length, 180);
 });
