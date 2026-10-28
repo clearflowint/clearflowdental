@@ -416,7 +416,7 @@ async function handle(db, storage, userId, body) {
 }
 
 async function verifyActor(body, headers = {}) {
-  const jwt = headers['x-appwrite-user-jwt'] || headers['X-Appwrite-User-JWT'] || body?.authContext?.jwt;
+  const jwt = headers['x-clearflow-user-jwt'] || headers['X-Clearflow-User-JWT'] || body?.authContext?.jwt;
   const claimedUserId = body?.authContext?.userId;
   if (typeof jwt !== 'string' || !jwt || typeof claimedUserId !== 'string' || !claimedUserId) return null;
   const identityClient = new Client().setEndpoint(endpoint).setProject(projectId).setJWT(jwt);
