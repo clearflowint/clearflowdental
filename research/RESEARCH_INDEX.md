@@ -10,6 +10,7 @@ Updated 2026-10-27. This index points to the consolidated notebook and the conti
 - [../scripts/appwrite-schema/verify.mjs](../scripts/appwrite-schema/verify.mjs) — verifies the live prototype schema without mutating it.
 - [../windmill/dental/appointment_reminder_candidates.py](../windmill/dental/appointment_reminder_candidates.py) — deterministic reminder candidate generator; no outbound messages.
 - [REBUILD_EXECUTION_LOG.md](./REBUILD_EXECUTION_LOG.md) — current batch status, commit/build/deployment evidence and next steps.
+- [PROTOTYPE_E2E_TEST_PLAN.md](./PROTOTYPE_E2E_TEST_PLAN.md) — synthetic-data test cases and acceptance checks for the complete prototype.
 
 ## Core notebook
 - [CONVERSATION_DECISION_LOG.md](./CONVERSATION_DECISION_LOG.md) — append-only record of product discussions and decisions, including document-first medical scope, visit purpose vs treatments, patient identity, PWA/frontend choices, realtime collaboration and streaming AI requirements.
