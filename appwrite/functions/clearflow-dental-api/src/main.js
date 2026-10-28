@@ -476,10 +476,24 @@ async function handle(db, storage, userId, body) {
     return { settings };
   }
 
+  if (action === 'ai.history.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const conversationId = String(payload.conversationId || '');
+    if (!conversationId || conversationId.length > 128) throw Object.assign(new Error('A valid conversation is required.'), { status: 400 });
+    const messages = await listRows(db, 'tenant_ai_messages', [
+      Query.equal('tenantId', tenantId), Query.equal('conversationId', conversationId),
+      Query.orderAsc('createdAt')
+    ]);
+    return { messages: messages.filter(m => m.actorId === userId).map(m => ({ role: m.role, content: m.content, createdAt: m.createdAt, requestId: m.requestId || '' })) };
+  }
+
   if (action === 'ai.chat') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
     const message = String(payload.message || '').trim();
+    const conversationId = String(payload.conversationId || '');
+    if (!conversationId || conversationId.length > 128) throw Object.assign(new Error('A valid conversation is required.'), { status: 400 });
     if (!message) throw Object.assign(new Error('Enter a question first.'), { status: 400 });
     if (message.length > 6000) throw Object.assign(new Error('Questions must be 6,000 characters or fewer.'), { status: 400 });
 
@@ -489,6 +503,15 @@ async function handle(db, storage, userId, body) {
     const modelId = String(preferences.defaultModelId || '');
     if (!providerId || !isSupportedProviderModel(providerId, modelId)) {
       throw Object.assign(new Error('Choose and save a supported AI provider and model in AI settings first.'), { status: 409 });
+    }
+    try {
+      await db.createRow({
+        databaseId, tableId: 'tenant_ai_messages', rowId: ID.unique(),
+        data: { tenantId, actorId: userId, conversationId, role: 'user', content: message, createdAt: now() },
+        permissions: userRead(userId)
+      });
+    } catch (e) {
+      throw Object.assign(new Error('Conversation history is not configured yet. Apply the AI message table migration and retry.'), { status: 503 });
     }
     const credentialRows = await listRows(db, 'tenant_ai_provider_credentials', [
       Query.equal('tenantId', tenantId), Query.equal('providerId', providerId), Query.equal('status', 'connected')
@@ -559,6 +582,15 @@ async function handle(db, storage, userId, body) {
     if (!reply) throw Object.assign(new Error('The provider returned an empty response. Try again.'), { status: 502 });
     const tokenUsage = extractUsage(result);
     const latencyMs = Math.max(0, Date.now() - startedAt);
+    try {
+      await db.createRow({
+        databaseId, tableId: 'tenant_ai_messages', rowId: ID.unique(),
+        data: { tenantId, actorId: userId, conversationId, role: 'assistant', content: reply.slice(0, 12000), requestId, createdAt: now() },
+        permissions: userRead(userId)
+      });
+    } catch {
+      throw Object.assign(new Error('AI replied, but conversation history could not be saved. Apply the AI message table migration.'), { status: 503 });
+    }
     // Usage rows are recorded without storing prompts, responses, or API keys.
     // Initial prototype cost is left at zero until per-model price tables are added.
     try {
