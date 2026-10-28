@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "0.1",
+  "databaseId": "clearflow_dental",
+  "tableDefaults": {
+    "rowSecurity": true,
+    "tablePermissions": []
+  },
+  "tables": {
+    "clinics": {
+      "columns": ["name", "slug", "timezone", "status", "createdBy", "createdAt", "updatedAt"],
+      "indexes": ["slug_unique"]
+    },
+    "clinic_memberships": {
+      "columns": ["tenantId", "userId", "role", "status", "createdAt", "updatedAt"],
+      "indexes": ["tenant_user_unique"]
+    },
+    "patients": {
+      "columns": ["tenantId", "patientNumber", "givenName", "familyName", "dateOfBirth", "sexOrGender", "notesForReception", "status", "createdBy", "updatedBy", "createdAt", "updatedAt"],
+      "indexes": []
+    },
+    "patient_contacts": {
+      "columns": ["tenantId", "patientId", "type", "value", "label", "isPrimary", "isVerified", "createdAt", "updatedAt"],
+      "indexes": ["tenant_patient"]
+    },
+    "patient_documents": {
+      "columns": ["tenantId", "patientId", "encounterId", "storageFileId", "originalName", "mimeType", "sizeBytes", "sourceCategory", "sourceDate", "uploadedBy", "uploadedAt", "reviewStatus", "sourceProviderName"],
+      "indexes": ["tenant_patient_uploaded"]
+    },
+    "appointments": {
+      "columns": ["tenantId", "patientId", "providerUserId", "startsAt", "endsAt", "status", "reason", "notes", "createdBy", "updatedBy", "createdAt", "updatedAt"],
+      "indexes": ["tenant_starts"]
+    },
+    "encounters": {
+      "columns": ["tenantId", "patientId", "appointmentId", "startedAt", "endedAt", "status", "visitPurpose", "summary", "createdBy", "updatedBy", "createdAt", "updatedAt"],
+      "indexes": ["tenant_patient_started"]
+    },
+    "encounter_treatments": {
+      "columns": ["tenantId", "encounterId", "name", "status", "performedAt", "performedBy", "notes", "createdBy", "createdAt", "updatedAt"],
+      "indexes": ["tenant_encounter"]
+    },
+    "clinical_drafts": {
+      "columns": ["tenantId", "patientId", "encounterId", "sourceDocumentId", "draftContent", "status", "createdBy", "reviewedBy", "reviewedAt", "version", "createdAt", "updatedAt"],
+      "indexes": ["tenant_encounter_status"]
+    },
+    "activity_events": {
+      "columns": ["tenantId", "actorUserId", "actorService", "action", "entityType", "entityId", "occurredAt", "outcome", "correlationId", "summary"],
+      "indexes": ["tenant_occurred"]
+    }
+  },
+  "storage": {
+    "bucketId": "dental-source-documents",
+    "fileSecurity": true,
+    "maximumFileSize": 26214400,
+    "allowedFileExtensions": ["pdf", "jpg", "jpeg", "png", "webp"],
+    "encryption": true
+  },
+  "notes": [
+    "This manifest records the prototype schema applied on 2026-10-28; it is not the enterprise schema.",
+    "The patients tenant_family index was not confirmed created and is intentionally absent.",
+    "The verifier checks current state only. It does not mutate the database."
+  ]
+}
