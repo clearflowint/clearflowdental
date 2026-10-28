@@ -2,6 +2,12 @@
 
 Updated 2026-10-27. This index points to the consolidated notebook and the continuing source-specific batches. Research is ongoing; no canonical schema should be frozen until the evidence matrix and jurisdiction review are complete.
 
+## Active rebuild artifacts
+- [PROTOTYPE_FIRST_IMPLEMENTATION_ROADMAP.md](./PROTOTYPE_FIRST_IMPLEMENTATION_ROADMAP.md) — ordered prototype-first batches followed by enterprise hardening.
+- [PROTOTYPE_DATABASE_SCHEMA_V0_1.md](./PROTOTYPE_DATABASE_SCHEMA_V0_1.md) — initial prototype data-model contract; not a final enterprise schema.
+- [APPWRITE_SCHEMA_APPLIED_2026-10-28.md](./APPWRITE_SCHEMA_APPLIED_2026-10-28.md) — actual Appwrite tables, indexes, permissions and remaining schema checks.
+- [REBUILD_EXECUTION_LOG.md](./REBUILD_EXECUTION_LOG.md) — current batch status, commit/build/deployment evidence and next steps.
+
 ## Core notebook
 - [CONVERSATION_DECISION_LOG.md](./CONVERSATION_DECISION_LOG.md) — append-only record of product discussions and decisions, including document-first medical scope, visit purpose vs treatments, patient identity, PWA/frontend choices, realtime collaboration and streaming AI requirements.
 - [PROJECT_NOTES.md](./PROJECT_NOTES.md) — consolidated project goals, domain coverage, architecture principles, core source observations, invariants and next research steps.
