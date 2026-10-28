@@ -434,11 +434,15 @@ export default async ({ req, res, log, error }) => {
   }
   const body = parseBody(req);
   let actorId;
-  try { actorId = await verifyActor(body); } catch {
-    log('Appwrite session JWT verification failed.');
+  try { actorId = await verifyActor(body); } catch (e) {
+    // Diagnostic only: never log the JWT or request body.
+    log(`Appwrite session JWT verification failed; authContext=${Boolean(body?.authContext)}, jwtPresent=${typeof body?.authContext?.jwt === 'string' && body.authContext.jwt.length > 0}, userIdPresent=${typeof body?.authContext?.userId === 'string' && body.authContext.userId.length > 0}, error=${String(e?.message || 'unknown').slice(0, 180)}`);
     actorId = null;
   }
-  if (!actorId) return response(res, { error: 'A valid Appwrite user session is required.' }, 401);
+  if (!actorId) {
+    log(`Rejected unauthenticated request; bodyKeys=${Object.keys(body || {}).join(',').slice(0, 120)}`);
+    return response(res, { error: 'A valid Appwrite user session is required.' }, 401);
+  }
   try {
     const requestClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(runtimeKey);
     const requestDb = new TablesDB(requestClient);
