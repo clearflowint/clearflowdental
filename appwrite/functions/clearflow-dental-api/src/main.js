@@ -240,7 +240,7 @@ async function handle(db, storage, userId, body) {
     if (encounter.tenantId !== tenantId) throw Object.assign(new Error('Encounter not found in this clinic.'), { status: 404 });
     const name = String(payload.name || '').trim();
     const status = String(payload.status || 'planned');
-    if (!name || name.length > 180 || !['discussed', 'planned', 'performed', 'not_performed'].includes(status)) throw Object.assign(new Error('Enter a treatment name and valid status.'), { status: 400 });
+    if (!name || name.length > 180 || !isTreatmentStatus(status)) throw Object.assign(new Error('Enter a treatment name and valid status.'), { status: 400 });
     const timestamp = now();
     const treatmentId = ID.unique();
     const treatment = await db.createRow({
