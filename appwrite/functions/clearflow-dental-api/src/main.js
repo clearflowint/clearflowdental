@@ -3,8 +3,6 @@ import { Client, Account, ID, Permission, Role, Query, TablesDB } from 'node-app
 const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
 const databaseId = process.env.CLEARFLOW_DATABASE_ID || 'clearflow_dental';
-const client = new Client().setEndpoint(endpoint).setProject(projectId);
-const db = new TablesDB(client);
 const now = () => new Date().toISOString();
 const userRead = userId => [Permission.read(Role.user(userId))];
 
@@ -15,23 +13,23 @@ function parseBody(req) {
   if (req.bodyJson && typeof req.bodyJson === 'object') return req.bodyJson;
   try { return JSON.parse(req.bodyText || '{}'); } catch { return {}; }
 }
-async function listRows(tableId, queries) {
+async function listRows(db, tableId, queries) {
   const result = await db.listRows({ databaseId, tableId, queries: [...queries, Query.limit(100)] });
   return result.rows || [];
 }
-async function membershipFor(userId, tenantId) {
-  const rows = await listRows('clinic_memberships', [
+async function membershipFor(db, userId, tenantId) {
+  const rows = await listRows(db, 'clinic_memberships', [
     Query.equal('userId', userId), Query.equal('tenantId', tenantId), Query.equal('status', 'active')
   ]);
   return rows[0] || null;
 }
-async function requireMembership(userId, tenantId) {
+async function requireMembership(db, userId, tenantId) {
   if (!tenantId || typeof tenantId !== 'string') throw Object.assign(new Error('A clinic workspace is required.'), { status: 400 });
-  const membership = await membershipFor(userId, tenantId);
+  const membership = await membershipFor(db, userId, tenantId);
   if (!membership) throw Object.assign(new Error('You do not have access to this clinic workspace.'), { status: 403 });
   return membership;
 }
-async function logEvent(userId, tenantId, action, entityType, entityId, summary = '') {
+async function logEvent(db, userId, tenantId, action, entityType, entityId, summary = '') {
   try {
     await db.createRow({
       databaseId, tableId: 'activity_events', rowId: ID.unique(),
@@ -40,12 +38,12 @@ async function logEvent(userId, tenantId, action, entityType, entityId, summary 
     });
   } catch { /* audit failures are not silently treated as successful in the response paths that require them */ }
 }
-async function handle(userId, body) {
+async function handle(db, userId, body) {
   const { action, payload = {} } = body;
   if (!userId) throw Object.assign(new Error('Sign in is required.'), { status: 401 });
 
   if (action === 'clinic.list') {
-    const memberships = await listRows('clinic_memberships', [Query.equal('userId', userId), Query.equal('status', 'active')]);
+    const memberships = await listRows(db, 'clinic_memberships', [Query.equal('userId', userId), Query.equal('status', 'active')]);
     const clinics = [];
     for (const membership of memberships) {
       try {
@@ -81,16 +79,16 @@ async function handle(userId, body) {
       try { await db.deleteRow({ databaseId, tableId: 'clinics', rowId: clinicId }); } catch {}
       throw error;
     }
-    await logEvent(userId, clinicId, 'clinic.created', 'clinic', clinicId, 'Clinic workspace created');
+    await logEvent(db, userId, clinicId, 'clinic.created', 'clinic', clinicId, 'Clinic workspace created');
     return { clinic, role: 'owner' };
   }
 
   if (action === 'patient.list') {
     const tenantId = String(payload.tenantId || '');
-    await requireMembership(userId, tenantId);
+    await requireMembership(db, userId, tenantId);
     const queries = [Query.equal('tenantId', tenantId)];
     // Keep the first prototype query index-independent; UI filters the returned bounded page locally.
-    const rows = await listRows('patients', queries);
+    const rows = await listRows(db, 'patients', queries);
     return { patients: rows };
   }
 
@@ -109,13 +107,13 @@ async function handle(userId, body) {
       data: {
         tenantId, givenName, familyName,
         patientNumber: String(payload.patientNumber || '').trim().slice(0, 40) || undefined,
-        dateOfBirth: payload.dateOfBirth || undefined,
+        dateOfBirth: payload.dateOfBirth ? new Date(`${payload.dateOfBirth}T00:00:00.000Z`).toISOString() : undefined,
         status: 'active', createdBy: userId, updatedBy: userId,
         createdAt: timestamp, updatedAt: timestamp
       },
       permissions: userRead(userId)
     });
-    await logEvent(userId, tenantId, 'patient.created', 'patient', patientId, 'Patient record created');
+    await logEvent(db, userId, tenantId, 'patient.created', 'patient', patientId, 'Patient record created');
     return { patient };
   }
 
@@ -143,8 +141,9 @@ export default async ({ req, res, log, error }) => {
   try { actorId = await verifyActor(req); } catch { actorId = null; }
   if (!actorId) return response(res, { error: 'A valid Appwrite user session is required.' }, 401);
   try {
-    client.setKey(runtimeKey);
-    const result = await handle(actorId, parseBody(req));
+    const requestClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(runtimeKey);
+    const requestDb = new TablesDB(requestClient);
+    const result = await handle(requestDb, actorId, parseBody(req));
     return response(res, { ok: true, ...result });
   } catch (e) {
     const status = Number(e?.status) || 500;
