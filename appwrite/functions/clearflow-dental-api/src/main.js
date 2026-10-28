@@ -15,8 +15,16 @@ function parseBody(req) {
   try { return JSON.parse(req.bodyText || '{}'); } catch { return {}; }
 }
 async function listRows(db, tableId, queries) {
-  const result = await db.listRows({ databaseId, tableId, queries: [...queries, Query.limit(100)] });
-  return result.rows || [];
+  const allQueries = [...queries, Query.limit(100)];
+  try {
+    const result = await db.listRows({ databaseId, tableId, queries: allQueries });
+    return result.rows || [];
+  } catch (e) {
+    // Diagnostic context deliberately excludes query values, user IDs and credentials.
+    const endpointHost = (() => { try { return new URL(endpoint).host; } catch { return 'invalid-endpoint'; } })();
+    e.message = `listRows failed; database=${databaseId}; table=${tableId}; queryCount=${allQueries.length}; endpointHost=${endpointHost}; original=${String(e?.message || 'unknown').slice(0, 180)}`;
+    throw e;
+  }
 }
 async function membershipFor(db, userId, tenantId) {
   const rows = await listRows(db, 'clinic_memberships', [
