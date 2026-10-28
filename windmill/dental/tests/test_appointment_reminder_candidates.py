@@ -34,6 +34,15 @@ class ReminderCandidateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             main([], 'clinic-a', self.now, 1000)
 
+    def test_other_tenants_are_excluded(self):
+        mixed = self.rows + [{"$id": "foreign", "tenantId": "clinic-b", "patientId": "p9", "startsAt": "2026-10-28T11:00:00Z", "status": "scheduled"}]
+        result = main(mixed, 'clinic-a', self.now, 24)
+        self.assertEqual([row['appointmentId'] for row in result['candidates']], ['a1'])
+
+    def test_tenant_is_required(self):
+        with self.assertRaises(ValueError):
+            main(self.rows, '', self.now, 24)
+
 
 if __name__ == "__main__":
     unittest.main()
