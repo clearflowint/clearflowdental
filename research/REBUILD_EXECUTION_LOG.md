@@ -14,21 +14,21 @@
 ## Batch tracker
 | Batch | Scope | Status | Next evidence |
 |---|---|---|---|
-| 0 | Repository baseline and rebuild branch | Complete | Main tree inspected; fresh feature branch created. |
-| 1 | Prototype data model/schema contract | In progress | Schema v0.1 drafted; inspect live Appwrite capabilities before applying. |
-| 2 | Runnable PWA shell/build/test foundation | Not started | Fresh app source, local build and CI. |
-| 3 | Appwrite schema setup and repeatable migration | Not started | Apply minimal schema in the correct test project; verify IDs/indexes/permissions. |
-| 4 | Authentication, clinic workspace and membership | Not started | Working login/session and active clinic context. |
-| 5 | Patient directory | Not started | Synthetic patient create/search/view/update. |
-| 6 | Original document capture | Not started | Upload, metadata, preview/download with source preserved. |
-| 7 | Appointments | Not started | Schedule/reschedule/cancel flow. |
-| 8 | Visit timeline and treatment association | Not started | Encounter distinct from appointment; purpose distinct from treatments. |
-| 9 | Optional clinical draft | Not started | Draft/review states; no silent approval. |
-| 10 | Realtime | Not started | Two-user update and access test. |
-| 11 | Deterministic Windmill workflow | Not started | Real workflow beyond connectivity ping; synthetic inputs. |
-| 12 | Read-first AI assistance | Not started | Authorized retrieval and proposals only. |
-| 13 | Full prototype end-to-end test | Not started | Synthetic journey evidence and mobile checks. |
-| 14+ | Enterprise hardening and optional modules | Deferred | Follow the prototype-first roadmap after full prototype testing. |
+| 0 | Repository baseline and rebuild branch | Complete | Research and deployment assets preserved. |
+| 1 | Prototype data model/schema contract | Applied; repeatability follow-up | Live schema verifier passed; keep manifest/verifier as drift checks. |
+| 2 | Runnable PWA shell/build/test foundation | Implemented; Cloudflare preview deployed | Native build passed; owner to verify on-device rendering. |
+| 3 | Appwrite schema setup and trusted tenant API | Deployed | Unauthenticated API rejection verified; authenticated workflow still needs browser E2E. |
+| 4 | Authentication, clinic workspace and membership | Implemented; E2E pending | Test sign-in, session restore, clinic creation/list, membership checks. |
+| 5 | Patient directory and contacts | Implemented; E2E pending | Test synthetic create/search/edit/contact flows. |
+| 6 | Original document capture | Implemented; E2E pending | Test upload, metadata, private preview and permission boundary. |
+| 7 | Appointments | Implemented; E2E pending | Test create, status changes and validation. |
+| 8 | Visit timeline and treatment association | Implemented; E2E pending | Test appointment-linked and walk-in visits, treatment lifecycle. |
+| 9 | Optional clinical draft | Implemented; E2E pending | Verify draft remains unapproved and source references are tenant-scoped. |
+| 10 | Realtime | Client subscriptions implemented; runtime unverified | Two-user update and access test. |
+| 11 | Deterministic Windmill workflow | Candidate logic tested; deployed input schema stale | Deploy canonical JSON-input version; test tenant filter; keep unscheduled. |
+| 12 | Read-first AI assistance | Not implemented | Define safe retrieval/proposal boundary after prototype E2E. |
+| 13 | Full prototype end-to-end test | Pending owner/browser validation | Synthetic journey plus mobile checks and tenant-isolation evidence. |
+| 14+ | Enterprise hardening and optional modules | Deferred | Follow the prototype-first roadmap after core journey works. |
 
 ## Execution notes
 ### 2026-10-28 — Rebuild kickoff
