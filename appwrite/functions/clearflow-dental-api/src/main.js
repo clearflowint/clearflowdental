@@ -504,15 +504,6 @@ async function handle(db, storage, userId, body) {
     if (!providerId || !isSupportedProviderModel(providerId, modelId)) {
       throw Object.assign(new Error('Choose and save a supported AI provider and model in AI settings first.'), { status: 409 });
     }
-    try {
-      await db.createRow({
-        databaseId, tableId: 'tenant_ai_messages', rowId: ID.unique(),
-        data: { tenantId, actorId: userId, conversationId, role: 'user', content: message, createdAt: now() },
-        permissions: userRead(userId)
-      });
-    } catch (e) {
-      throw Object.assign(new Error('Conversation history is not configured yet. Apply the AI message table migration and retry.'), { status: 503 });
-    }
     const credentialRows = await listRows(db, 'tenant_ai_provider_credentials', [
       Query.equal('tenantId', tenantId), Query.equal('providerId', providerId), Query.equal('status', 'connected')
     ]);
@@ -583,6 +574,11 @@ async function handle(db, storage, userId, body) {
     const tokenUsage = extractUsage(result);
     const latencyMs = Math.max(0, Date.now() - startedAt);
     try {
+      await db.createRow({
+        databaseId, tableId: 'tenant_ai_messages', rowId: ID.unique(),
+        data: { tenantId, actorId: userId, conversationId, role: 'user', content: message, requestId, createdAt: new Date(Date.now() - 1).toISOString() },
+        permissions: userRead(userId)
+      });
       await db.createRow({
         databaseId, tableId: 'tenant_ai_messages', rowId: ID.unique(),
         data: { tenantId, actorId: userId, conversationId, role: 'assistant', content: reply.slice(0, 12000), requestId, createdAt: now() },
