@@ -2,7 +2,7 @@ import { Client, Account, ID, Permission, Role, Query, TablesDB } from 'node-app
 
 const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
-const apiKey = process.env.APPWRITE_FUNCTION_API_KEY;
+const apiKey = process.env.APPWRITE_FUNCTION_API_KEY; // Build-time only; runtime uses the per-execution x-appwrite-key header.
 const databaseId = process.env.CLEARFLOW_DATABASE_ID || 'clearflow_dental';
 const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
 const db = new TablesDB(client);
@@ -135,7 +135,8 @@ async function verifyActor(req) {
 
 export default async ({ req, res, log, error }) => {
   if (req.method !== 'POST') return response(res, { error: 'Method not allowed.' }, 405);
-  if (!endpoint || !projectId || !apiKey) {
+  const runtimeKey = req.headers?.['x-appwrite-key'] || req.headers?.['X-Appwrite-Key'];
+  if (!endpoint || !projectId || !runtimeKey) {
     error('Dental API function is missing its generated Appwrite API context.');
     return response(res, { error: 'API is not configured.' }, 503);
   }
@@ -143,6 +144,7 @@ export default async ({ req, res, log, error }) => {
   try { actorId = await verifyActor(req); } catch { actorId = null; }
   if (!actorId) return response(res, { error: 'A valid Appwrite user session is required.' }, 401);
   try {
+    client.setKey(runtimeKey);
     const result = await handle(actorId, parseBody(req));
     return response(res, { ok: true, ...result });
   } catch (e) {
