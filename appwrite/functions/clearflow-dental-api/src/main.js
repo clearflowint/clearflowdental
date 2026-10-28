@@ -416,12 +416,19 @@ async function handle(db, storage, userId, body) {
 }
 
 async function verifyActor(body, headers = {}) {
-  const jwt = headers['x-clearflow-user-jwt'] || headers['X-Clearflow-User-JWT'] || body?.authContext?.jwt;
+  // Appwrite injects the authenticated caller identity into Function execution
+  // context when the execution is authorized for a signed-in user.
+  // Prefer the platform-provided identity; do not trust the body userId alone.
+  const platformUserId = headers['x-appwrite-user-id'] || headers['X-Appwrite-User-Id'];
+  if (typeof platformUserId === 'string' && platformUserId.trim()) return platformUserId.trim();
+
+  // Compatibility fallback for installations that do not inject the caller ID.
+  const jwt = headers['x-appwrite-user-jwt'] || headers['X-Appwrite-User-JWT'] ||
+    headers['x-clearflow-user-jwt'] || headers['X-Clearflow-User-JWT'] || body?.authContext?.jwt;
   const claimedUserId = body?.authContext?.userId;
   if (typeof jwt !== 'string' || !jwt || typeof claimedUserId !== 'string' || !claimedUserId) return null;
   const identityClient = new Client().setEndpoint(endpoint).setProject(projectId).setJWT(jwt);
-  const account = new Account(identityClient);
-  const user = await account.get();
+  const user = await new Account(identityClient).get();
   return user.$id === claimedUserId ? user.$id : null;
 }
 
