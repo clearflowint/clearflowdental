@@ -1,4 +1,4 @@
-import { Client, ID, Permission, Role, Query, TablesDB } from 'node-appwrite';
+import { Client, Account, ID, Permission, Role, Query, TablesDB } from 'node-appwrite';
 
 const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
@@ -123,14 +123,25 @@ async function handle(userId, body) {
   throw Object.assign(new Error('Unknown action.'), { status: 400 });
 }
 
+async function verifyActor(req) {
+  const jwt = req.headers?.['x-appwrite-user-jwt'] || req.headers?.['X-Appwrite-User-JWT'];
+  const headerUserId = req.headers?.['x-appwrite-user-id'] || req.headers?.['X-Appwrite-User-Id'];
+  if (!jwt || !headerUserId) return null;
+  const identityClient = new Client().setEndpoint(endpoint).setProject(projectId).setJWT(jwt);
+  const account = new Account(identityClient);
+  const user = await account.get();
+  return user.$id === headerUserId ? user.$id : null;
+}
+
 export default async ({ req, res, log, error }) => {
   if (req.method !== 'POST') return response(res, { error: 'Method not allowed.' }, 405);
   if (!endpoint || !projectId || !apiKey) {
     error('Dental API function is missing its generated Appwrite API context.');
     return response(res, { error: 'API is not configured.' }, 503);
   }
-  const actorId = req.headers?.['x-appwrite-user-id'] || req.headers?.['X-Appwrite-User-Id'];
-  if (!actorId) return response(res, { error: 'Sign in is required.' }, 401);
+  let actorId;
+  try { actorId = await verifyActor(req); } catch { actorId = null; }
+  if (!actorId) return response(res, { error: 'A valid Appwrite user session is required.' }, 401);
   try {
     const result = await handle(actorId, parseBody(req));
     return response(res, { ok: true, ...result });
