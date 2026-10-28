@@ -1,5 +1,6 @@
 import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
+import { AI_PROVIDERS, isSupportedProviderModel } from './ai-config.js';
 
 function normalizeAppwriteEndpoint(raw) {
   if (!raw) return raw;
@@ -397,14 +398,7 @@ async function handle(db, storage, userId, body) {
   if (action === 'ai.providers.list') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
-    return { providers: [
-      { id: 'openai', name: 'OpenAI', models: ['gpt-4.1-mini', 'gpt-4.1', 'o4-mini'] },
-      { id: 'anthropic', name: 'Anthropic', models: ['claude-sonnet-4-20250514', 'claude-haiku-4-5'] },
-      { id: 'google', name: 'Google AI', models: ['gemini-2.5-flash', 'gemini-2.5-pro'] },
-      { id: 'openrouter', name: 'OpenRouter', models: ['openrouter/auto'] },
-      { id: 'groq', name: 'Groq', models: ['llama-3.3-70b-versatile'] },
-      { id: 'mistral', name: 'Mistral', models: ['mistral-small-latest', 'mistral-large-latest'] }
-    ] };
+    return { providers: AI_PROVIDERS.map(provider => ({ id: provider.id, name: provider.name, models: [...provider.models] })) };
   }
 
   if (action === 'ai.settings.get') {
@@ -428,16 +422,8 @@ async function handle(db, storage, userId, body) {
     }
     const providerId = String(payload.defaultProviderId || '');
     const modelId = String(payload.defaultModelId || '');
-    const allowedModels = {
-      openai: ['gpt-4.1-mini', 'gpt-4.1', 'o4-mini'],
-      anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-4-5'],
-      google: ['gemini-2.5-flash', 'gemini-2.5-pro'],
-      openrouter: ['openrouter/auto'],
-      groq: ['llama-3.3-70b-versatile'],
-      mistral: ['mistral-small-latest', 'mistral-large-latest']
-    };
-    if (providerId && !Object.hasOwn(allowedModels, providerId)) throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
-    if (providerId && !allowedModels[providerId].includes(modelId)) throw Object.assign(new Error('Choose a model from the selected provider.'), { status: 400 });
+    if (providerId && !AI_PROVIDERS.some(provider => provider.id === providerId)) throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
+    if (providerId && !isSupportedProviderModel(providerId, modelId)) throw Object.assign(new Error('Choose a model from the selected provider.'), { status: 400 });
     const budget = payload.monthlyBudgetMinor === '' || payload.monthlyBudgetMinor == null ? null : Number(payload.monthlyBudgetMinor);
     if (budget !== null && (!Number.isSafeInteger(budget) || budget < 0 || budget > 100000000000)) throw Object.assign(new Error('Enter a valid non-negative monthly budget in paise.'), { status: 400 });
     const existingRows = await listRows(db, 'tenant_ai_preferences', [Query.equal('tenantId', tenantId)]);
