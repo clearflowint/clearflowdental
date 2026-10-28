@@ -1,10 +1,10 @@
-"""Deterministic appointment reminder candidate generator for Windmill.
+"""Deterministic appointment reminder candidates for one tenant.
 
-This script intentionally does not send messages, read contact details, or make
-clinical decisions. It processes one clinic tenant per invocation and emits
-only the IDs and scheduling metadata needed for a later, separately approved
-delivery workflow.
+No messages are sent and no contact details are read. appointments_json is a
+JSON-encoded array of appointment rows because Windmill's Python input schema
+does not reliably expose nested list[dict] types in its run form.
 """
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -16,13 +16,12 @@ def _parse_time(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def main(
+def generate_candidates(
     appointments: list[dict[str, Any]],
     tenant_id: str,
     now_iso: str,
     window_hours: int = 24,
 ) -> dict[str, Any]:
-    """Return deterministic reminder candidates for a single tenant."""
     tenant_id = str(tenant_id or "").strip()
     if not tenant_id:
         raise ValueError("tenant_id is required")
@@ -33,6 +32,8 @@ def main(
     horizon = now + timedelta(hours=int(window_hours))
     candidates = []
     for item in appointments:
+        if not isinstance(item, dict):
+            continue
         if str(item.get("tenantId", "")) != tenant_id:
             continue
         if item.get("status") not in {"scheduled", "confirmed"}:
@@ -53,3 +54,13 @@ def main(
 
     candidates.sort(key=lambda row: (row["startsAt"], row["appointmentId"]))
     return {"candidateCount": len(candidates), "candidates": candidates, "sent": 0}
+
+
+def main(appointments_json: str, tenant_id: str, now_iso: str, window_hours: int = 24) -> dict[str, Any]:
+    try:
+        appointments = json.loads(appointments_json)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("appointments_json must contain a JSON array") from exc
+    if not isinstance(appointments, list):
+        raise ValueError("appointments_json must contain a JSON array")
+    return generate_candidates(appointments, tenant_id, now_iso, window_hours)
