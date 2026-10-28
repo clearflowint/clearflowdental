@@ -453,12 +453,50 @@ async function handle(db, storage, userId, body) {
     const message = String(payload.message || '').trim();
     if (!message) throw Object.assign(new Error('Enter a question first.'), { status: 400 });
     if (message.length > 6000) throw Object.assign(new Error('Questions must be 6,000 characters or fewer.'), { status: 400 });
-    // The UI and authorization boundary are ready. No provider is configured yet;
-    // never silently substitute a fake model response or run an unapproved action.
-    if (!process.env.AI_API_URL || !process.env.AI_API_KEY || !process.env.AI_MODEL) {
-      throw Object.assign(new Error('AI is not connected yet. Configure the approved AI gateway URL, API key, and model as server-side Function variables. No clinic data was changed.'), { status: 503 });
+
+    // Appwrite remains the authenticated PWA/API boundary. Windmill owns AI
+    // execution. Never accept provider/model choices from the browser for chat;
+    // resolve them from this tenant's saved preferences.
+    const preferenceRows = await listRows(db, 'tenant_ai_preferences', [Query.equal('tenantId', tenantId)]);
+    const preferences = preferenceRows[0] || {};
+    const providerId = String(preferences.defaultProviderId || '');
+    const modelId = String(preferences.defaultModelId || '');
+    if (!providerId || !isSupportedProviderModel(providerId, modelId)) {
+      throw Object.assign(new Error('Choose and save a supported AI provider and model in AI settings first.'), { status: 409 });
     }
-    throw Object.assign(new Error('AI gateway adapter is not enabled in this deployment yet. No clinic data was changed.'), { status: 503 });
+
+    const webhookUrl = process.env.WINDMILL_AI_WEBHOOK_URL;
+    const webhookKey = process.env.WINDMILL_AI_WEBHOOK_KEY;
+    if (!webhookUrl || !webhookKey) {
+      throw Object.assign(new Error('Windmill AI endpoint is not configured on the server yet. No clinic data was changed.'), { status: 503 });
+    }
+    let target;
+    try { target = new URL(webhookUrl); } catch {
+      throw Object.assign(new Error('Windmill AI endpoint configuration is invalid.'), { status: 503 });
+    }
+    if (target.protocol !== 'https:') throw Object.assign(new Error('Windmill AI endpoint must use HTTPS.'), { status: 503 });
+
+    const requestId = ID.unique();
+    const startedAt = Date.now();
+    let upstream;
+    try {
+      upstream = await fetch(target.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-ClearFlow-Webhook-Key': webhookKey },
+        body: JSON.stringify({ tenantId, actorId: userId, message, providerId, modelId, requestId }),
+        signal: AbortSignal.timeout(12000)
+      });
+    } catch {
+      throw Object.assign(new Error('Windmill AI service is unavailable. No clinic data was changed.'), { status: 502 });
+    }
+    let result;
+    try { result = await upstream.json(); } catch { result = {}; }
+    if (!upstream.ok) throw Object.assign(new Error('Windmill AI request failed. No clinic data was changed.'), { status: 502 });
+    const latencyMs = Math.max(0, Date.now() - startedAt);
+    if (result?.status !== 'completed' || typeof result?.reply !== 'string') {
+      return { ok: false, status: result?.status || 'provider_not_connected', requestId, message: String(result?.message || 'AI provider is not connected yet.'), clinicalDataChanged: false, latencyMs };
+    }
+    return { ok: true, status: 'completed', requestId, reply: result.reply.slice(0, 12000), clinicalDataChanged: false, latencyMs };
   }
 
   if (action === 'workspace.search') {
