@@ -1,7 +1,20 @@
 import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
 
-const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
+function normalizeAppwriteEndpoint(raw) {
+  if (!raw) return raw;
+  const url = new URL(raw);
+  // Some self-hosted deployments expose the function runtime endpoint with
+  // the realtime route accidentally appended. SDK REST calls must use /v1,
+  // not /v1/realtime/v1.
+  url.pathname = url.pathname.replace(/\\/realtime\\/v1\\/?$/, '').replace(/\\/+$/, '');
+  if (!url.pathname || url.pathname === '/') url.pathname = '/v1';
+  else if (!url.pathname.endsWith('/v1')) url.pathname += '/v1';
+  url.search = '';
+  url.hash = '';
+  return url.toString().replace(/\\/$/, '');
+}
+const endpoint = normalizeAppwriteEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT);
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
 const databaseId = process.env.CLEARFLOW_DATABASE_ID || 'clearflow_dental';
 const now = () => new Date().toISOString();
