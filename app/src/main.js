@@ -54,3 +54,5 @@ function wirePatients(){
 
 async function init(){try{user=await currentUser();if(user)await loadClinics();else auth()}catch{auth()}}
 init();
+
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
