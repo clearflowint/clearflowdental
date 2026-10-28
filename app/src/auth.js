@@ -14,7 +14,7 @@ export async function callApi(action,payload={}){
   // user-JWT header so the Function can verify the actual session.
   const execution = await functions.createExecution(
     'clearflow-dental-api',
-    JSON.stringify({action,payload,authContext:{userId:user.$id}}),
+    JSON.stringify({action,payload,authContext:{jwt:session.jwt,userId:user.$id}}),
     false,
     '/',
     'POST',
