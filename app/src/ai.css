@@ -37,3 +37,15 @@
 .patient-card-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
 .secondary{border:1px solid #d9e6e1;background:#fff;color:#27675d;border-radius:10px;padding:9px 12px;font-weight:650}
 @media(min-width:560px){.ai-shell{padding:22px}.ai-form-footer{flex-direction:row;align-items:center;justify-content:space-between}.ai-form-footer button{min-width:150px}.profile-facts{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.ai-settings{border:1px solid #e4eeea;border-radius:15px;padding:14px;margin:8px 0 16px;background:#fbfdfc}
+.ai-settings .section-heading{margin-bottom:12px}
+.ai-settings .section-heading h3{margin:0 0 4px;font-size:16px}
+.ai-settings .section-heading p{margin:0;color:#81938e;font-size:12px}
+.ai-settings .patient-form{display:grid;gap:12px}
+.ai-settings label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#34534c}
+.ai-settings select,.ai-settings input[type="number"]{width:100%;min-height:42px;border:1px solid #dce8e4;border-radius:10px;background:#fff;padding:9px 10px;color:#173330;font:inherit}
+.ai-settings .checkbox-line{display:flex;align-items:center;gap:9px;font-weight:500}
+.ai-settings .checkbox-line input{width:18px;height:18px;flex:0 0 auto}
+.ai-settings .form-actions{display:flex;justify-content:flex-start}
+.ai-settings .ai-safety-note{margin-top:12px;margin-bottom:0}
