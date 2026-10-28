@@ -1,0 +1,24 @@
+{
+  "$schema": "https://appwrite.io/schemas/appwrite.config.json",
+  "projectId": "6adcea89003c9613425b",
+  "endpoint": "https://clearflowappwrite.duckdns.org/v1",
+  "functions": [
+    {
+      "$id": "clearflow-windmill-bridge",
+      "name": "ClearFlow Windmill Bridge",
+      "runtime": "node-22",
+      "path": "appwrite/functions/clearflow-windmill-bridge",
+      "entrypoint": "src/main.js",
+      "commands": "",
+      "execute": [],
+      "events": [],
+      "schedule": "",
+      "timeout": 15,
+      "enabled": true,
+      "logging": true,
+      "ignore": ["node_modules", ".git"],
+      "scopes": [],
+      "vars": []
+    }
+  ]
+}
