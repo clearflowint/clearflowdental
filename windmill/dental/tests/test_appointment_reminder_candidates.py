@@ -16,13 +16,13 @@ class ReminderCandidateTests(unittest.TestCase):
         ]
 
     def test_only_scheduled_or_confirmed_in_window_are_candidates(self):
-        result = main(self.rows, self.now, 24)
+        result = main(self.rows, 'clinic-a', self.now, 24)
         self.assertEqual(result["candidateCount"], 1)
         self.assertEqual(result["candidates"][0]["appointmentId"], "a1")
         self.assertEqual(result["sent"], 0)
 
     def test_candidate_has_no_contact_or_message_content(self):
-        result = main(self.rows, self.now, 24)
+        result = main(self.rows, 'clinic-a', self.now, 24)
         self.assertNotIn("phone", result["candidates"][0])
         self.assertNotIn("message", result["candidates"][0])
 
@@ -32,7 +32,7 @@ class ReminderCandidateTests(unittest.TestCase):
 
     def test_window_is_bounded(self):
         with self.assertRaises(ValueError):
-            main([], self.now, 1000)
+            main([], 'clinic-a', self.now, 1000)
 
 
 if __name__ == "__main__":
