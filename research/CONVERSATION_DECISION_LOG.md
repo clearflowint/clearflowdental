@@ -769,3 +769,27 @@ This is a prepared and scoped workflow, not evidence that synchronization is alr
 
 ### Follow-up correction to section 28 — CLI flag validation
 The dry-run workflow was rechecked against the official Windmill CLI sync reference. Removed `--keep-deleted`, which is not a documented `wmill sync push` option. The workflow remains manually triggered and dry-run only; its output must be inspected for any proposed deletions before any live push is considered. Correction commit: `802dd18d80df0e37ec6aa70c2148e9cad7980849`.
+
+
+## 29. Prototype-first end-to-end implementation roadmap
+**Discussion date:** 2026-10-28  
+**Status:** Owner direction translated into a detailed proposed roadmap; implementation batches are not yet completed.
+
+The owner requested a careful end-to-end implementation plan based on the repository research and decision patterns, split into practical batches, emphasizing reuse and avoiding duplicated modules. The owner explicitly does not want excessive security refinement to block initial prototype delivery. The full prototype should be built and tested first, then hardened into an enterprise-grade product.
+
+### Current sequencing decision
+- Use `research/PROTOTYPE_FIRST_IMPLEMENTATION_ROADMAP.md` as the current implementation sequence.
+- Retain `research/IMPLEMENTATION_BATCH_PLAN.txt` as the broad enterprise checklist, risk inventory and long-term release control reference; this roadmap changes the delivery order, not the importance of its controls.
+- Build an end-to-end synthetic-data prototype in small, runnable vertical slices: app/clinic shell, patient directory, original-document capture, appointments, visit timeline, optional structured clinical draft, realtime, a deterministic Windmill workflow, read-first AI, and full prototype testing.
+- Apply enterprise hardening after the prototype is coherent and tested, before real patient data or broader production use.
+- Keep a minimum safety floor from the first prototype batch: synthetic data only, tenant scope on all implemented data paths, secrets out of frontend/Git/logs, original clinical source preserved, and no autonomous AI clinical approval/issuance/destructive actions.
+- Default to reusing the existing Vue 3 + plain JavaScript + Vite prototype if it is present and buildable. Do not rewrite the frontend merely to change frameworks without evidence that reuse is worse.
+- Reuse shared modules for tenant-scoped data access, patient identity/contact lookup, file storage/metadata, visit timeline context, audit/provenance, Windmill job envelopes/idempotency, reminders, realtime subscriptions, AI tools/confirmation, and common UI states. Reuse mechanisms without collapsing distinct clinical concepts into one generic record.
+- Direct external diagnostic-centre APIs, broad financial/workforce/compliance modules, advanced dental specialty modules, and streaming voice are deferred until the core prototype proves the need and the relevant scope is approved.
+- The Appwrite-to-Windmill HTTP 200 ping is a verified connectivity milestone only; it does not mark any dental workflow or clinical database operation complete.
+
+### Repository artifact
+The detailed plan is saved at [PROTOTYPE_FIRST_IMPLEMENTATION_ROADMAP.md](./PROTOTYPE_FIRST_IMPLEMENTATION_ROADMAP.md). It includes batch outcomes, work items, acceptance criteria, module reuse map, prototype exit checklist, enterprise exit checklist, evidence/status conventions and immediate next actions.
+
+### Next action
+Inspect the actual application source available on `main`, confirm whether the preserved Vue prototype is present or must be restored/rebuilt, and start the first runnable application batch without deleting the existing research, bridge or deployment assets.
