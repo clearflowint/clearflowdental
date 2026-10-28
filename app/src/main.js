@@ -9,7 +9,7 @@ import { currentUser, signIn, signUp, signOut, callApi, uploadOriginal, original
 const root=document.querySelector('#app');
 const views={overview:'Overview',patients:'Patients',appointments:'Appointments',visits:'Visits',documents:'Documents',ai:'AI Assistant'};
 const symbols=['◫','◎','▦','＋','▤','✦'];
-let user=null,mode='login',active='overview',clinic=null,clinics=[],aiMessages=[] ,patients=[],patientContacts=[],appointments=[],encounters=[],treatments=[],documents=[],clinicalDrafts=[],realtimeSubscription=null,realtimeTenantId=null;
+let user=null,mode='login',active='overview',clinic=null,clinics=[],aiMessages=[] ,aiConversationId='',patients=[],patientContacts=[],appointments=[],encounters=[],treatments=[],documents=[],clinicalDrafts=[],realtimeSubscription=null,realtimeTenantId=null;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function notice(message){const n=root.querySelector('#notice');if(n){n.hidden=false;n.textContent=message}}
 function auth(){root.innerHTML=`<main class="auth-shell"><section class="brand-panel"><div class="brand-mark">CF</div><p class="eyebrow">CLEARFLOW DENTAL</p><h1>Care, connected.</h1><p class="muted">A simpler workspace for clinic teams.</p><div class="prototype-note">Prototype mode · Synthetic data only</div></section><section class="auth-card"><p class="eyebrow">${mode==='login'?'WELCOME BACK':'NEW ACCOUNT'}</p><h2>${mode==='login'?'Sign in to your clinic':'Create your test account'}</h2><p class="muted">Use a test account in Appwrite.</p><form id="auth-form">${mode==='signup'?'<label>Full name<input name="name" required maxlength="100"></label>':''}<label>Email address<input name="email" type="email" required autocomplete="email"></label><label>Password<input name="password" type="password" minlength="8" required></label><button class="primary" type="submit">${mode==='login'?'Sign in':'Create account'}</button></form><button class="text-button" id="toggle">${mode==='login'?'Create a test account':'Back to sign in'}</button><div id="notice" class="notice" hidden></div></section></main>`;root.querySelector('#auth-form').onsubmit=async e=>{e.preventDefault();const d=new FormData(e.currentTarget);try{user=mode==='login'?await signIn(d.get('email'),d.get('password')):await signUp(d.get('name'),d.get('email'),d.get('password'));await loadClinics()}catch(err){notice(err?.message||'Authentication failed. Check Appwrite platform configuration.')}};root.querySelector('#toggle').onclick=()=>{mode=mode==='login'?'signup':'login';auth()}}
@@ -43,7 +43,7 @@ function wireAI(){
  const providerSelect=root.querySelector('#ai-provider');
  const modelSelect=root.querySelector('#ai-model');
  const settingsStatus=root.querySelector('#ai-settings-status');
- let providers=[];\n const keyForm=root.querySelector('#ai-key-form');\n const keyProvider=root.querySelector('#ai-key-provider');\n const keyStatus=root.querySelector('#ai-key-status');
+ let providers=[];\n let historyLoadedFor='';\n const getConversationId=()=>{const key='clearflow-ai-conversation:'+clinic.$id+':'+(user?.$id||'user');let value='';try{value=localStorage.getItem(key)||'';if(!value){value='conv-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);localStorage.setItem(key,value)}}catch{value='conv-'+clinic.$id+'-'+(user?.$id||'user')}return value};\n aiConversationId=getConversationId();\n const keyForm=root.querySelector('#ai-key-form');\n const keyProvider=root.querySelector('#ai-key-provider');\n const keyStatus=root.querySelector('#ai-key-status');
  const paintModels=(providerId,selected='')=>{
    const provider=providers.find(p=>p.id===providerId);
    modelSelect.innerHTML=provider?provider.models.map(m=>`<option value="${esc(m)}" ${m===selected?'selected':''}>${esc(m)}</option>`).join(''):'<option value="">Choose provider first</option>';
@@ -51,7 +51,7 @@ function wireAI(){
  providerSelect.onchange=()=>paintModels(providerSelect.value);
  (async()=>{
    try{
-     const [catalog,saved]=await Promise.all([callApi('ai.providers.list',{tenantId:clinic.$id}),callApi('ai.settings.get',{tenantId:clinic.$id})]);
+     const [catalog,saved,history]=await Promise.all([callApi('ai.providers.list',{tenantId:clinic.$id}),callApi('ai.settings.get',{tenantId:clinic.$id}),callApi('ai.history.list',{tenantId:clinic.$id,conversationId:aiConversationId}).catch(()=>({messages:[]}))]);\n     if(historyLoadedFor!==aiConversationId){aiMessages=(history.messages||[]).map(m=>({role:m.role,content:m.content}));historyLoadedFor=aiConversationId;}
      providers=catalog.providers||[];
      providerSelect.innerHTML='<option value="">Choose provider</option>'+providers.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
      const s=saved.settings||{};
@@ -95,7 +95,7 @@ function wireAI(){
    const sendForm=root.querySelector('#ai-form');const sendStatus=root.querySelector('#ai-status');
    sendStatus.textContent='Sending securely to the clinic AI provider…';sendForm.querySelector('button[type="submit"]').disabled=true;
    try{
-     const result=await callApi('ai.chat',{tenantId:clinic.$id,message});
+     const result=await callApi('ai.chat',{tenantId:clinic.$id,message,conversationId:aiConversationId});
      if(result.status==='completed'&&typeof result.reply==='string'){
        aiMessages.push({role:'assistant',content:result.reply});
        sendStatus.textContent='Response received from the clinic AI service.';
