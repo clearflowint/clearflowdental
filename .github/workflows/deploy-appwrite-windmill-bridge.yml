@@ -21,7 +21,6 @@ jobs:
   deploy:
     name: Deploy one Appwrite function
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -43,7 +42,10 @@ jobs:
           test -n "$APPWRITE_ENDPOINT" || (echo "Missing APPWRITE_ENDPOINT secret" && exit 1)
           test -n "$APPWRITE_PROJECT_ID" || (echo "Missing APPWRITE_PROJECT_ID secret" && exit 1)
           test -n "$APPWRITE_API_KEY" || (echo "Missing APPWRITE_API_KEY secret" && exit 1)
-          appwrite client --endpoint "$APPWRITE_ENDPOINT" --project-id "$APPWRITE_PROJECT_ID" --key "$APPWRITE_API_KEY"
+          appwrite client --key "$APPWRITE_API_KEY"
 
       - name: Deploy ClearFlow Windmill Bridge only
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
         run: appwrite push function --function-id clearflow-windmill-bridge --activate --force
