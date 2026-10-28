@@ -90,11 +90,7 @@ async function handle(userId, body) {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(userId, tenantId);
     const queries = [Query.equal('tenantId', tenantId)];
-    const search = String(payload.search || '').trim();
-    if (search) {
-      const safeSearch = search.slice(0, 80);
-      queries.push(Query.search('givenName', safeSearch));
-    }
+    // Keep the first prototype query index-independent; UI filters the returned bounded page locally.
     const rows = await listRows('patients', queries);
     return { patients: rows };
   }
