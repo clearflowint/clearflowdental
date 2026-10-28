@@ -1,0 +1,7 @@
+{
+  "name": "clearflow-appwrite-schema-check",
+  "private": true,
+  "type": "module",
+  "scripts": {"verify": "node verify.mjs"},
+  "dependencies": {"node-appwrite": "^20.0.0"}
+}
