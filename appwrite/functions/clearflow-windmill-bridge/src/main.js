@@ -34,7 +34,7 @@ export default async ({ req, res, log, error }) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Webhook-Key": webhookKey
+        "X-ClearFlow-Webhook-Key": webhookKey
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(10000)
