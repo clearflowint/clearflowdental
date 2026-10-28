@@ -100,3 +100,12 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - Added Python unit-test CI; passed: https://github.com/clearflowint/clearflowdental/actions/runs/40675555027 .
 - Added Cloudflare Pages preview deployment workflow for `clearflow-dental-prototype`. Build succeeded, but deployment stopped at the credential check because GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are not configured. No public app URL exists yet. This is now a genuine external-access blocker for browser E2E/mobile testing; do not claim deployment success.
 - Current remaining work: resolve Cloudflare deployment credentials, authenticated browser E2E, test two-user/tenant isolation, verify document view/upload, realtime, then connect Windmill candidates to the trusted data path and build read-first AI assistance. No real patient data has been used.
+
+
+### Batch 12 — Deterministic retrieval and schema verification — 2026-10-28
+- Added tenant-scoped `workspace.search` to the trusted API. It searches patient labels, appointment reason/time/status, visit purpose/status, and source document names/categories. It returns at most 25 matching summaries and performs no writes.
+- Added a mobile-friendly Quick Find UI that uses the deterministic search API. This is a retrieval foundation, not a claim that the LLM conversational assistant is complete.
+- Added a machine-readable prototype schema manifest and a read-only verifier. Live Appwrite schema verification passed: https://github.com/clearflowint/clearflowdental/actions/runs/40676253266 . The manifest checks expected columns, required indexes, row security, empty table-level permissions, and source bucket settings.
+- Rechecked unauthenticated API execution after the new search operation; it returned HTTP 401 with “A valid Appwrite user session is required.” No records were created.
+- The app build passed for the Quick Find UI revision: https://github.com/clearflowint/clearflowdental/actions/runs/40676119090 . Latest styling/import revision is awaiting its own CI completion.
+- Windmill candidate script is deployed and tested, but its trigger is not yet wired to live appointment rows. No outbound messages are sent.
