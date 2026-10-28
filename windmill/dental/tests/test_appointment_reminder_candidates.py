@@ -23,7 +23,7 @@ class ReminderCandidateTests(unittest.TestCase):
         self.assertEqual(result["sent"], 0)
 
     def test_candidate_has_no_contact_or_message_content(self):
-        result = main(self.rows, 'clinic-a', self.now, 24)
+        result = main(json.dumps(self.rows), 'clinic-a', self.now, 24)
         self.assertNotIn("phone", result["candidates"][0])
         self.assertNotIn("message", result["candidates"][0])
 
@@ -37,7 +37,7 @@ class ReminderCandidateTests(unittest.TestCase):
 
     def test_other_tenants_are_excluded(self):
         mixed = self.rows + [{"$id": "foreign", "tenantId": "clinic-b", "patientId": "p9", "startsAt": "2026-10-28T11:00:00Z", "status": "scheduled"}]
-        result = main(mixed, 'clinic-a', self.now, 24)
+        result = main(json.dumps(mixed), 'clinic-a', self.now, 24)
         self.assertEqual([row['appointmentId'] for row in result['candidates']], ['a1'])
 
     def test_tenant_is_required(self):
