@@ -39,3 +39,14 @@
 
 ## Per-batch logging convention
 Record date, commit/PR, files changed, test commands and results, observed gaps, and next batch. A commit is not proof of runtime behavior. Keep credentials, webhook secrets and real patient data out of notes.
+
+
+## 2026-10-28 — Batch 1 and shell progress
+- Appwrite project/database inspected: project `Dental Hospitals`, database `clearflow_dental`; it initially had zero tables.
+- Created 10 prototype tables with row security enabled and empty table-level permissions: clinics, clinic_memberships, patients, patient_contacts, patient_documents, appointments, encounters, encounter_treatments, clinical_drafts, activity_events.
+- Created indexes: clinics.slug_unique; clinic_memberships.tenant_user_unique; patient_contacts.tenant_patient; patient_documents.tenant_patient_uploaded; appointments.tenant_starts; encounters.tenant_patient_started; encounter_treatments.tenant_encounter; clinical_drafts.tenant_encounter_status; activity_events.tenant_occurred. Patient family-name index was not confirmed due connector safety blocking; do not assume it exists.
+- Saved `research/PROTOTYPE_DATABASE_SCHEMA_V0_1.md` and `research/APPWRITE_SCHEMA_APPLIED_2026-10-28.md` as the schema contract and applied-schema record.
+- Added a fresh static mobile-first workspace shell in `app/`, PWA manifest, Vite build configuration and GitHub Actions build workflow. Current UI is intentionally a shell; it does not yet authenticate or read/write clinic records.
+- Important technical correction: keep the initial prototype lean with plain JavaScript + Vite + Appwrite SDK; no Vue dependency is needed for the current shell.
+- Verification so far: Git tree confirms app files and CI workflow are present; Appwrite list operation returned 10 tables. The CI build has not yet been observed passing, and live browser rendering has not yet been tested.
+- Next: inspect the CI run result, fix any build failures, then implement a repeatable schema setup artifact and the safe clinic bootstrap/membership path before connecting patient UI.
