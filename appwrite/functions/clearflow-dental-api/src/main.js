@@ -2,9 +2,8 @@ import { Client, Account, ID, Permission, Role, Query, TablesDB } from 'node-app
 
 const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
-const apiKey = process.env.APPWRITE_FUNCTION_API_KEY; // Build-time only; runtime uses the per-execution x-appwrite-key header.
 const databaseId = process.env.CLEARFLOW_DATABASE_ID || 'clearflow_dental';
-const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+const client = new Client().setEndpoint(endpoint).setProject(projectId);
 const db = new TablesDB(client);
 const now = () => new Date().toISOString();
 const userRead = userId => [Permission.read(Role.user(userId))];
