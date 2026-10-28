@@ -415,8 +415,8 @@ async function handle(db, storage, userId, body) {
   throw Object.assign(new Error('Unknown action.'), { status: 400 });
 }
 
-async function verifyActor(body) {
-  const jwt = body?.authContext?.jwt;
+async function verifyActor(body, headers = {}) {
+  const jwt = headers['x-appwrite-user-jwt'] || headers['X-Appwrite-User-JWT'] || body?.authContext?.jwt;
   const claimedUserId = body?.authContext?.userId;
   if (typeof jwt !== 'string' || !jwt || typeof claimedUserId !== 'string' || !claimedUserId) return null;
   const identityClient = new Client().setEndpoint(endpoint).setProject(projectId).setJWT(jwt);
@@ -434,7 +434,7 @@ export default async ({ req, res, log, error }) => {
   }
   const body = parseBody(req);
   let actorId;
-  try { actorId = await verifyActor(body); } catch (e) {
+  try { actorId = await verifyActor(body, req.headers || {}); } catch (e) {
     // Diagnostic only: never log the JWT or request body.
     log(`Appwrite session JWT verification failed; authContext=${Boolean(body?.authContext)}, jwtPresent=${typeof body?.authContext?.jwt === 'string' && body.authContext.jwt.length > 0}, userIdPresent=${typeof body?.authContext?.userId === 'string' && body.authContext.userId.length > 0}, error=${String(e?.message || 'unknown').slice(0, 180)}`);
     actorId = null;
