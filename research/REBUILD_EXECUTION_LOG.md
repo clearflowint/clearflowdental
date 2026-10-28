@@ -179,3 +179,13 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - Updated the deployed workspace script `f/dental/appointment_reminder_candidates` to the canonical `appointments_json` input schema, avoiding Windmill's unreliable nested `list[dict]` form.
 - Ran the draft and then the deployed version with synthetic appointments for two tenants and a cancelled appointment. Result: exactly one eligible tenant-a scheduled appointment returned; tenant-b row and cancelled row were excluded. Output contained no phone/email/message content and reported `sent: 0`.
 - The workflow remains candidate-only: it does not send reminders, access contact channels, or read live Appwrite data. It must remain unscheduled until a trusted, tenant-scoped appointment fetch path and a separate approved delivery lifecycle are designed and tested.
+
+
+## 2026-10-28 — Resume: API recovery and mobile-first UI
+
+- Corrected the trusted API function's endpoint normalization so the REST SDK no longer targets the malformed `/v1/realtime/v1` path. Active Appwrite deployment is `6ae2197adc7f4a97417a`; deployment status is `ready`.
+- Runtime evidence after the endpoint fix: recent `clearflow-dental-api` executions completed with HTTP 200 on deployment `6ae219ce33f9e9a50141`. This confirms the function is receiving requests successfully; it does not by itself prove every authenticated CRUD workflow.
+- Restored the missing `app/src/style.css` import in `app/src/main.js`; then rewrote the main workspace stylesheet mobile-first (compact horizontal mobile navigation, stacked metric cards on narrow screens, touch-sized controls, and desktop sidebar/layout only at wider breakpoints).
+- GitHub Actions Prototype build passed for commit `7b792734bc5e694909bd47613ce417646aee2179` (run `40721292103`).
+- Remaining delivery gap: the build workflow is not the same as a Cloudflare Pages deployment. Confirm which branch the production Pages hostname serves; current source changes are on `prototype/rebuild-from-scratch`, while production Pages is configured around `main`. Do not report the mobile fix as live until deployment/browser evidence confirms it.
+- Next implementation slice: complete the synthetic end-to-end journey in a real mobile browser—account/session restore, clinic create/list, patient create/edit/contact, appointment lifecycle, walk-in and appointment-linked visit, treatment status, unapproved draft, original file upload/metadata, and second-tenant denial. Fix observed failures before starting AI assistant work. Reminder delivery remains disabled.
