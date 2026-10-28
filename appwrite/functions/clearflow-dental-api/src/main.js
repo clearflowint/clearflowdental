@@ -495,6 +495,6 @@ export default async ({ req, res, log, error }) => {
     if (e?.name === 'AppwriteException' || status >= 500) {
       error(`Dental API request diagnostic: status=${status}; name=${String(e?.name || 'Error')}; code=${String(e?.code || '')}; type=${String(e?.type || '')}; message=${String(e?.message || 'unknown error').slice(0, 320)}; endpointHost=${(() => { try { return new URL(endpoint).host; } catch { return 'invalid-endpoint'; } })()}; database=${databaseId}; stack=${String(e?.stack || '').slice(0, 900)}`);
     }
-    return response(res, { ok: false, error: status >= 500 ? 'The operation could not be completed.' : e.message }, status);
+    return response(res, { ok: false, error: body?.action === 'ai.chat' && status === 503 ? String(e?.message || 'AI service is not configured.') : status >= 500 ? 'The operation could not be completed.' : e.message }, status);
   }
 };
