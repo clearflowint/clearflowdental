@@ -8,9 +8,9 @@ export async function signIn(email,password){await account.createEmailPasswordSe
 export async function signUp(name,email,password){await account.create(ID.unique(),email,password,name);await account.createEmailPasswordSession(email,password);return account.get()}
 export async function signOut(){await account.deleteSession('current')}
 export async function callApi(action,payload={}){
-  // Function executions do not reliably inherit the browser's Account session.
-  // Mint a short-lived Appwrite user JWT for this request; the trusted function
-  // validates it against Account before authorizing tenant-scoped operations.
+  // Pass both identity headers required by the trusted API. The function
+  // verifies the JWT against Appwrite Account and matches its user ID.
+  const user = await account.get();
   const session = await account.createJWT();
   const execution = await functions.createExecution(
     'clearflow-dental-api',
@@ -18,7 +18,10 @@ export async function callApi(action,payload={}){
     false,
     '/',
     'POST',
-    {'x-appwrite-user-jwt': session.jwt}
+    {
+      'x-appwrite-user-jwt': session.jwt,
+      'x-appwrite-user-id': user.$id
+    }
   );
   let result;
   try{result=JSON.parse(execution.responseBody||'{}')}catch{throw new Error('The clinic API returned an invalid response.')}
