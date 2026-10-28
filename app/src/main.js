@@ -1,5 +1,6 @@
 import './auth.css';
 import './records.css';
+import './clinical.css';
 import { currentUser, signIn, signUp, signOut, callApi, uploadOriginal, originalFileView } from './auth.js';
 const root=document.querySelector('#app');
 const views={overview:'Overview',patients:'Patients',appointments:'Appointments',visits:'Visits',documents:'Documents'};
