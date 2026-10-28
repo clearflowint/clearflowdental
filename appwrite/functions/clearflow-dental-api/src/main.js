@@ -343,6 +343,9 @@ async function handle(db, storage, userId, body) {
     if (!(file.$permissions || []).includes(userReadPermission)) throw Object.assign(new Error('Uploaded file is not readable by the signed-in user.'), { status: 403 });
     const sourceCategory = String(payload.sourceCategory || 'other');
     if (!isSourceCategory(sourceCategory)) throw Object.assign(new Error('Choose a valid source category.'), { status: 400 });
+    const mimeType = String(file.mimeType || payload.mimeType || 'application/octet-stream');
+    const sizeBytes = Number(file.sizeOriginal || file.size || 0);
+    if (sizeBytes <= 0 || sizeBytes > 26214400) throw Object.assign(new Error('Source file exceeds the allowed size.'), { status: 400 });
     const timestamp = now();
     const documentId = ID.unique();
     const doc = await db.createRow({
@@ -350,8 +353,8 @@ async function handle(db, storage, userId, body) {
       data: {
         tenantId, patientId, encounterId: String(payload.encounterId || '') || undefined,
         storageFileId: file.$id, originalName: String(file.name || payload.originalName || '').slice(0, 255),
-        mimeType: String(file.mimeType || payload.mimeType || 'application/octet-stream').slice(0, 100),
-        sizeBytes: Number(file.sizeOriginal || file.size || 0), sourceCategory,
+        mimeType: mimeType.slice(0, 100),
+        sizeBytes, sourceCategory,
         sourceDate: payload.sourceDate ? new Date(payload.sourceDate).toISOString() : undefined,
         uploadedBy: userId, uploadedAt: timestamp, reviewStatus: 'not_reviewed',
         sourceProviderName: String(payload.sourceProviderName || '').trim().slice(0, 180) || undefined
