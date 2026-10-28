@@ -163,7 +163,14 @@ async function handle(db, storage, userId, body) {
     const givenName = String(payload.givenName ?? existing.givenName).trim();
     const familyName = String(payload.familyName ?? existing.familyName ?? '').trim();
     if (!givenName || givenName.length > 100 || familyName.length > 100) throw Object.assign(new Error('Check the patient name fields.'), { status: 400 });
-    const patient = await db.updateRow({ databaseId, tableId: 'patients', rowId: patientId, data: { givenName, familyName, updatedBy: userId, updatedAt: now() } });
+    const data = { givenName, familyName, updatedBy: userId, updatedAt: now() };
+    if (payload.dateOfBirth) {
+      const rawDate = String(payload.dateOfBirth);
+      const date = new Date(rawDate.length === 10 ? rawDate + 'T00:00:00.000Z' : rawDate);
+      if (!Number.isFinite(date.getTime())) throw Object.assign(new Error('Enter a valid date of birth.'), { status: 400 });
+      data.dateOfBirth = date.toISOString();
+    }
+    const patient = await db.updateRow({ databaseId, tableId: 'patients', rowId: patientId, data });
     await logEvent(db, userId, tenantId, 'patient.updated', 'patient', patientId, 'Patient record updated');
     return { patient };
   }
