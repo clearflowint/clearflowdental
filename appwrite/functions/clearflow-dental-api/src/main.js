@@ -415,14 +415,14 @@ async function handle(db, storage, userId, body) {
   throw Object.assign(new Error('Unknown action.'), { status: 400 });
 }
 
-async function verifyActor(req) {
-  const jwt = req.headers?.['x-appwrite-user-jwt'] || req.headers?.['X-Appwrite-User-JWT'];
-  const headerUserId = req.headers?.['x-appwrite-user-id'] || req.headers?.['X-Appwrite-User-Id'];
-  if (!jwt || !headerUserId) return null;
+async function verifyActor(body) {
+  const jwt = body?.authContext?.jwt;
+  const claimedUserId = body?.authContext?.userId;
+  if (typeof jwt !== 'string' || !jwt || typeof claimedUserId !== 'string' || !claimedUserId) return null;
   const identityClient = new Client().setEndpoint(endpoint).setProject(projectId).setJWT(jwt);
   const account = new Account(identityClient);
   const user = await account.get();
-  return user.$id === headerUserId ? user.$id : null;
+  return user.$id === claimedUserId ? user.$id : null;
 }
 
 export default async ({ req, res, log, error }) => {
@@ -432,14 +432,18 @@ export default async ({ req, res, log, error }) => {
     error('Dental API function is missing its generated Appwrite API context.');
     return response(res, { error: 'API is not configured.' }, 503);
   }
+  const body = parseBody(req);
   let actorId;
-  try { actorId = await verifyActor(req); } catch { actorId = null; }
+  try { actorId = await verifyActor(body); } catch {
+    log('Appwrite session JWT verification failed.');
+    actorId = null;
+  }
   if (!actorId) return response(res, { error: 'A valid Appwrite user session is required.' }, 401);
   try {
     const requestClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(runtimeKey);
     const requestDb = new TablesDB(requestClient);
     const requestStorage = new Storage(requestClient);
-    const result = await handle(requestDb, requestStorage, actorId, parseBody(req));
+    const result = await handle(requestDb, requestStorage, actorId, body);
     return response(res, { ok: true, ...result });
   } catch (e) {
     const status = Number(e?.status) || 500;
