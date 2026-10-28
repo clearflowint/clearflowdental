@@ -458,7 +458,7 @@ export default async ({ req, res, log, error }) => {
     return response(res, { ok: true, ...result });
   } catch (e) {
     const status = Number(e?.status) || 500;
-    if (status >= 500) error(`Dental API operation failed: ${e?.message || 'unknown error'}`);
+    if (status >= 500) error(`Dental API operation failed: name=${String(e?.name || 'Error')}; code=${String(e?.code || '')}; type=${String(e?.type || '')}; message=${String(e?.message || 'unknown error').slice(0, 240)}; stack=${String(e?.stack || '').slice(0, 900)}`);
     return response(res, { ok: false, error: status >= 500 ? 'The operation could not be completed.' : e.message }, status);
   }
 };
