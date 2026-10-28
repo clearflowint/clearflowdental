@@ -75,3 +75,16 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - Appwrite localhost web platform was registered for local development.
 - App build workflow has passed for the previous application-shell/authentication revision: https://github.com/clearflowint/clearflowdental/actions/runs/40673684882 . A new build is required for the latest clinic/patient UI commit; check the run before calling that UI revision green.
 - Remaining verification: authenticated end-to-end clinic creation and patient CRUD, two-user/tenant isolation, Appwrite SDK response shape, and mobile browser rendering. No real patient data has been entered.
+
+
+### Batch status refresh — 2026-10-28
+- **Batch 1 — Schema:** Initial ten Appwrite TablesDB tables and nine indexes are applied; private source-document bucket `dental-source-documents` created with file-level security, encryption, create permission for signed-in users, and a 25 MiB limit for PDF/image types. The schema remains a prototype; a fully repeatable schema verification/migration artifact is still outstanding.
+- **Batch 2 — App shell/auth:** Mobile-first navigation and Appwrite sign-in/test-account creation are implemented. CI build passes.
+- **Batch 3 — Trusted API:** `clearflow-dental-api` deployed through GitHub Actions. It verifies the user JWT, enforces clinic membership server-side, and uses a per-execution Appwrite key scoped to rows.read/rows.write/files.read. Unauthenticated execution test returns 401. No elevated key is shipped to the browser.
+- **Batch 4 — Clinic and patient workflows:** Clinic bootstrap/list, patient list/create/update API and clinic/patient UI are in place. Authenticated CRUD still needs a browser end-to-end test.
+- **Batch 5 — Appointments and encounters:** Tenant-checked appointment list/create and encounter list/create API plus UI are implemented. Appointment and actual encounter remain separate; encounter purpose is separate from treatments.
+- **Batch 6 — Treatments and clinical drafts:** Treatment list/create and non-approved clinical draft list/create are implemented. Treatment status must explicitly distinguish discussed/planned/performed/not_performed. Drafts are saved as `draft`; no auto-approval.
+- **Batch 7 — Original documents:** Private file upload and metadata list/create UI/API are implemented. Originals are stored in Appwrite Storage and metadata is linked to the patient; upload is not approval. Validate file-view URL and metadata flow in a browser before declaring complete.
+- **Build evidence:** latest shell build passed at https://github.com/clearflowint/clearflowdental/actions/runs/40674884544 . Latest trusted API deployment passed at https://github.com/clearflowint/clearflowdental/actions/runs/40674825725 .
+- **Still not complete:** authenticated browser E2E, tenant-isolation test with two users/clinics, real mobile viewport check, appointment reminder workflow, realtime subscription, AI read-first/draft flow, deployment to a reachable prototype URL, and full end-to-end journey test.
+- Continue in batches; do not claim end-to-end completion until those gaps are tested. No real patient data has been used.
