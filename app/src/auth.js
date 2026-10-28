@@ -15,7 +15,7 @@ export function originalFileView(fileId){return storage.getFileView('dental-sour
 let activeRealtimeUnsubscribe=null;
 export function subscribeToClinic(tenantId,onChange){
   if(activeRealtimeUnsubscribe)activeRealtimeUnsubscribe();
-  const tables=['patients','appointments','encounters','encounter_treatments','patient_documents','clinical_drafts'];
+  const tables=['patients','patient_contacts','appointments','encounters','encounter_treatments','patient_documents','clinical_drafts','activity_events'];
   const channels=tables.map(tableId=>'tablesdb.clearflow_dental.tables.'+tableId+'.rows');
   activeRealtimeUnsubscribe=client.subscribe(channels,message=>{if(message&&message.payload&&message.payload.tenantId===tenantId)onChange(message)});
   return activeRealtimeUnsubscribe;
