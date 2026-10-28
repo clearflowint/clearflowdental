@@ -16,8 +16,36 @@
       "timeout": 15,
       "enabled": true,
       "logging": true,
-      "ignore": ["node_modules", ".git"],
+      "ignore": [
+        "node_modules",
+        ".git"
+      ],
       "scopes": [],
+      "vars": []
+    },
+    {
+      "$id": "clearflow-dental-api",
+      "name": "ClearFlow Dental API",
+      "runtime": "node-22",
+      "path": "appwrite/functions/clearflow-dental-api",
+      "entrypoint": "src/main.js",
+      "commands": "npm install",
+      "execute": [
+        "users"
+      ],
+      "events": [],
+      "schedule": "",
+      "timeout": 20,
+      "enabled": true,
+      "logging": true,
+      "ignore": [
+        "node_modules",
+        ".git"
+      ],
+      "scopes": [
+        "rows.read",
+        "rows.write"
+      ],
       "vars": []
     }
   ]
