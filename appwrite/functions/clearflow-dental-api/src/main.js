@@ -132,6 +132,28 @@ async function handle(db, storage, userId, body) {
     return { contacts: await listRows(db, 'patient_contacts', queries) };
   }
 
+  if (action === 'patient_contact.create') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const patientId = String(payload.patientId || '');
+    const patient = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
+    if (patient.tenantId !== tenantId) throw Object.assign(new Error('Patient not found in this clinic.'), { status: 404 });
+    const type = String(payload.type || '');
+    const value = normalizeContactValue(payload.value);
+    const label = String(payload.label || 'self');
+    if (!isContactType(type) || !value || !CONTACT_LABELS.includes(label)) throw Object.assign(new Error('Choose contact type, value and relationship.'), { status: 400 });
+    if (type === 'email' && (!value.includes('@') || !value.split('@')[1]?.includes('.'))) throw Object.assign(new Error('Enter a valid email address.'), { status: 400 });
+    if (payload.isPrimary === true) {
+      const existing = await listRows(db, 'patient_contacts', [Query.equal('tenantId', tenantId), Query.equal('patientId', patientId)]);
+      for (const item of existing.filter(contact => contact.isPrimary)) await db.updateRow({ databaseId, tableId: 'patient_contacts', rowId: item.$id, data: { isPrimary: false, updatedAt: now() } });
+    }
+    const timestamp = now();
+    const contactId = ID.unique();
+    const contact = await db.createRow({ databaseId, tableId: 'patient_contacts', rowId: contactId, data: { tenantId, patientId, type, value, label, isPrimary: payload.isPrimary === true, isVerified: false, createdAt: timestamp, updatedAt: timestamp }, permissions: userRead(userId) });
+    await logEvent(db, userId, tenantId, 'patient_contact.created', 'patient_contact', contactId, 'Patient contact channel added');
+    return { contact };
+  }
+
   if (action === 'patient.update') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
