@@ -21,8 +21,8 @@ async function listRows(db, tableId, queries) {
     return result.rows || [];
   } catch (e) {
     // Diagnostic context deliberately excludes query values, user IDs and credentials.
-    const endpointHost = (() => { try { return new URL(endpoint).host; } catch { return 'invalid-endpoint'; } })();
-    e.message = `listRows failed; database=${databaseId}; table=${tableId}; queryCount=${allQueries.length}; endpointHost=${endpointHost}; original=${String(e?.message || 'unknown').slice(0, 180)}`;
+    const endpointParts = (() => { try { const u = new URL(endpoint); return { host: u.host, path: u.pathname }; } catch { return { host: 'invalid-endpoint', path: '' }; } })();
+    e.message = `listRows failed; database=${databaseId}; table=${tableId}; queryCount=${allQueries.length}; queryMethods=${allQueries.map(q => { try { return JSON.parse(q).method; } catch { return 'non-json'; } }).join(',')}; endpointHost=${endpointParts.host}; endpointPath=${endpointParts.path}; original=${String(e?.message || 'unknown').slice(0, 180)}`;
     throw e;
   }
 }
