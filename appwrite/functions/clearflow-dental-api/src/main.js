@@ -1,4 +1,4 @@
-import { Client, Account, ID, Permission, Role, Query, TablesDB } from 'node-appwrite';
+import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
 
 const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
@@ -38,7 +38,7 @@ async function logEvent(db, userId, tenantId, action, entityType, entityId, summ
     });
   } catch { /* audit failures are not silently treated as successful in the response paths that require them */ }
 }
-async function handle(db, userId, body) {
+async function handle(db, storage, userId, body) {
   const { action, payload = {} } = body;
   if (!userId) throw Object.assign(new Error('Sign in is required.'), { status: 401 });
 
@@ -221,6 +221,48 @@ async function handle(db, userId, body) {
     return { treatment };
   }
 
+
+  if (action === 'document.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const queries = [Query.equal('tenantId', tenantId)];
+    if (payload.patientId) queries.push(Query.equal('patientId', String(payload.patientId)));
+    return { documents: await listRows(db, 'patient_documents', queries) };
+  }
+
+  if (action === 'document.create') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const patientId = String(payload.patientId || '');
+    const patient = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
+    if (patient.tenantId !== tenantId) throw Object.assign(new Error('Patient not found in this clinic.'), { status: 404 });
+    const fileId = String(payload.storageFileId || '');
+    if (!fileId) throw Object.assign(new Error('Upload the original source file first.'), { status: 400 });
+    const file = await storage.getFile({ bucketId: 'dental-source-documents', fileId });
+    const userReadPermission = `read("user:${userId}")`;
+    if (!(file.$permissions || []).includes(userReadPermission)) throw Object.assign(new Error('Uploaded file is not readable by the signed-in user.'), { status: 403 });
+    const categories = ['handwritten_prescription', 'report', 'image', 'referral', 'patient_supplied_history', 'other'];
+    const sourceCategory = String(payload.sourceCategory || 'other');
+    if (!categories.includes(sourceCategory)) throw Object.assign(new Error('Choose a valid source category.'), { status: 400 });
+    const timestamp = now();
+    const documentId = ID.unique();
+    const doc = await db.createRow({
+      databaseId, tableId: 'patient_documents', rowId: documentId,
+      data: {
+        tenantId, patientId, encounterId: String(payload.encounterId || '') || undefined,
+        storageFileId: file.$id, originalName: String(file.name || payload.originalName || '').slice(0, 255),
+        mimeType: String(file.mimeType || payload.mimeType || 'application/octet-stream').slice(0, 100),
+        sizeBytes: Number(file.sizeOriginal || file.size || 0), sourceCategory,
+        sourceDate: payload.sourceDate ? new Date(payload.sourceDate).toISOString() : undefined,
+        uploadedBy: userId, uploadedAt: timestamp, reviewStatus: 'not_reviewed',
+        sourceProviderName: String(payload.sourceProviderName || '').trim().slice(0, 180) || undefined
+      },
+      permissions: userRead(userId)
+    });
+    await logEvent(db, userId, tenantId, 'document.captured', 'patient_document', documentId, 'Original source document captured');
+    return { document: doc };
+  }
+
   throw Object.assign(new Error('Unknown action.'), { status: 400 });
 }
 
@@ -247,7 +289,8 @@ export default async ({ req, res, log, error }) => {
   try {
     const requestClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(runtimeKey);
     const requestDb = new TablesDB(requestClient);
-    const result = await handle(requestDb, actorId, parseBody(req));
+    const requestStorage = new Storage(requestClient);
+    const result = await handle(requestDb, requestStorage, actorId, parseBody(req));
     return response(res, { ok: true, ...result });
   } catch (e) {
     const status = Number(e?.status) || 500;
