@@ -7,11 +7,26 @@ export async function currentUser(){try{return await account.get()}catch(e){if(e
 export async function signIn(email,password){await account.createEmailPasswordSession(email,password);return account.get()}
 export async function signUp(name,email,password){await account.create(ID.unique(),email,password,name);await account.createEmailPasswordSession(email,password);return account.get()}
 export async function signOut(){await account.deleteSession('current')}
-export async function callApi(action,payload={}){const execution=await functions.createExecution('clearflow-dental-api',JSON.stringify({action,payload}),false,'/','POST');let result;try{result=JSON.parse(execution.responseBody||'{}')}catch{throw new Error('The clinic API returned an invalid response.')}if(!execution.responseStatusCode||execution.responseStatusCode<200||execution.responseStatusCode>=300||result.ok===false)throw new Error(result.error||'Clinic API request failed.');return result}
+export async function callApi(action,payload={}){
+  // Function executions do not reliably inherit the browser's Account session.
+  // Mint a short-lived Appwrite user JWT for this request; the trusted function
+  // validates it against Account before authorizing tenant-scoped operations.
+  const session = await account.createJWT();
+  const execution = await functions.createExecution(
+    'clearflow-dental-api',
+    JSON.stringify({action,payload}),
+    false,
+    '/',
+    'POST',
+    {'x-appwrite-user-jwt': session.jwt}
+  );
+  let result;
+  try{result=JSON.parse(execution.responseBody||'{}')}catch{throw new Error('The clinic API returned an invalid response.')}
+  if(!execution.responseStatusCode||execution.responseStatusCode<200||execution.responseStatusCode>=300||result.ok===false)throw new Error(result.error||'Clinic API request failed.');
+  return result;
+}
 export async function uploadOriginal(file,userId){return storage.createFile('dental-source-documents',ID.unique(),file,[Permission.read(Role.user(userId))])}
 export function originalFileView(fileId){return storage.getFileView('dental-source-documents',fileId)}
-
-
 let activeRealtimeUnsubscribe=null;
 export function subscribeToClinic(tenantId,onChange){
   if(activeRealtimeUnsubscribe)activeRealtimeUnsubscribe();
