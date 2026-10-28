@@ -222,6 +222,40 @@ async function handle(db, storage, userId, body) {
   }
 
 
+  if (action === 'clinical_draft.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const queries = [Query.equal('tenantId', tenantId)];
+    if (payload.encounterId) queries.push(Query.equal('encounterId', String(payload.encounterId)));
+    return { drafts: await listRows(db, 'clinical_drafts', queries) };
+  }
+
+  if (action === 'clinical_draft.create') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const patientId = String(payload.patientId || '');
+    const encounterId = String(payload.encounterId || '');
+    const patient = await db.getRow({ databaseId, tableId: 'patients', rowId: patientId });
+    const encounter = await db.getRow({ databaseId, tableId: 'encounters', rowId: encounterId });
+    if (patient.tenantId !== tenantId || encounter.tenantId !== tenantId || encounter.patientId !== patientId) throw Object.assign(new Error('The patient and visit must belong to this clinic.'), { status: 400 });
+    const draftContent = String(payload.draftContent || '').trim();
+    if (!draftContent || draftContent.length > 12000) throw Object.assign(new Error('Enter a draft note up to 12,000 characters.'), { status: 400 });
+    const sourceDocumentId = String(payload.sourceDocumentId || '');
+    if (sourceDocumentId) {
+      const source = await db.getRow({ databaseId, tableId: 'patient_documents', rowId: sourceDocumentId });
+      if (source.tenantId !== tenantId || source.patientId !== patientId) throw Object.assign(new Error('Source document must belong to this patient and clinic.'), { status: 400 });
+    }
+    const timestamp = now();
+    const draftId = ID.unique();
+    const draft = await db.createRow({
+      databaseId, tableId: 'clinical_drafts', rowId: draftId,
+      data: { tenantId, patientId, encounterId, sourceDocumentId: sourceDocumentId || undefined, draftContent, status: 'draft', createdBy: userId, version: 1, createdAt: timestamp, updatedAt: timestamp },
+      permissions: userRead(userId)
+    });
+    await logEvent(db, userId, tenantId, 'clinical_draft.created', 'clinical_draft', draftId, 'Clinical draft saved for review');
+    return { draft };
+  }
+
   if (action === 'document.list') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
