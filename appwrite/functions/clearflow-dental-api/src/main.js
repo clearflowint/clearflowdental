@@ -466,7 +466,7 @@ async function handle(db, storage, userId, body) {
     }
 
     const webhookUrl = process.env.WINDMILL_AI_WEBHOOK_URL;
-    const webhookKey = process.env.WINDMILL_AI_WEBHOOK_KEY;
+    const webhookKey = process.env.WINDMILL_WEBHOOK_KEY;
     if (!webhookUrl || !webhookKey) {
       throw Object.assign(new Error('Windmill AI endpoint is not configured on the server yet. No clinic data was changed.'), { status: 503 });
     }
