@@ -4,15 +4,14 @@ import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isA
 function normalizeAppwriteEndpoint(raw) {
   if (!raw) return raw;
   const url = new URL(raw);
-  // Some self-hosted deployments expose the function runtime endpoint with
-  // the realtime route accidentally appended. SDK REST calls must use /v1,
-  // not /v1/realtime/v1.
-  url.pathname = url.pathname.replace(/\\/realtime\\/v1\\/?$/, '').replace(/\\/+$/, '');
+  // Function runtime can expose a realtime route as the API endpoint. Database SDK calls must use the REST /v1 base.
+  if (url.pathname.endsWith('/realtime/v1')) url.pathname = url.pathname.slice(0, -12);
+  while (url.pathname.length > 1 && url.pathname.endsWith('/')) url.pathname = url.pathname.slice(0, -1);
   if (!url.pathname || url.pathname === '/') url.pathname = '/v1';
   else if (!url.pathname.endsWith('/v1')) url.pathname += '/v1';
   url.search = '';
   url.hash = '';
-  return url.toString().replace(/\\/$/, '');
+  return url.origin + url.pathname;
 }
 const endpoint = normalizeAppwriteEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT);
 const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
