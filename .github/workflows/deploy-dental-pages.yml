@@ -1,18 +1,15 @@
 name: Deploy ClearFlow Dental prototype
 
+# Cloudflare Pages Git integration already deploys commits from this repository.
+# Keep a manual-only workflow as an explicit fallback; do not deploy on every push.
 on:
-  push:
-    branches: [main, "prototype/**"]
-    paths:
-      - "app/**"
-      - ".github/workflows/deploy-dental-pages.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: clearflow-dental-pages-${{ github.ref }}
+  group: clearflow-dental-pages-manual
   cancel-in-progress: true
 
 jobs:
