@@ -1,0 +1,32 @@
+name: Verify Appwrite prototype schema
+
+on:
+  push:
+    branches: [main, "prototype/**"]
+    paths:
+      - "appwrite/schema/**"
+      - "scripts/appwrite-schema/**"
+      - ".github/workflows/verify-appwrite-schema.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install schema verifier dependencies
+        working-directory: scripts/appwrite-schema
+        run: npm install
+      - name: Verify live schema without mutations
+        working-directory: scripts/appwrite-schema
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+        run: node verify.mjs
