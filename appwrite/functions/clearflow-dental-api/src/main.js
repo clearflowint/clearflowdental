@@ -1,6 +1,7 @@
 import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
 import { AI_PROVIDERS, isSupportedProviderModel } from './ai-config.js';
+import { encryptProviderKey, decryptProviderKey } from './ai-credentials.js';
 
 function normalizeAppwriteEndpoint(raw) {
   if (!raw) return raw;
@@ -414,6 +415,34 @@ async function handle(db, storage, userId, body) {
     return { settings, providers: credentials.map(c => ({ providerId: c.providerId, status: c.status, maskedSuffix: c.maskedSuffix || '' })) };
   }
 
+  if (action === 'ai.credentials.save') {
+    const tenantId = String(payload.tenantId || '');
+    const membership = await requireMembership(db, userId, tenantId);
+    if (!['owner', 'admin'].includes(String(membership.role || '').toLowerCase())) {
+      throw Object.assign(new Error('Only clinic owners or admins can connect an AI provider.'), { status: 403 });
+    }
+    const providerId = String(payload.providerId || '');
+    if (!AI_PROVIDERS.some(provider => provider.id === providerId)) {
+      throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
+    }
+    const encrypted = encryptProviderKey(payload.apiKey);
+    const existingRows = await listRows(db, 'tenant_ai_provider_credentials', [
+      Query.equal('tenantId', tenantId), Query.equal('providerId', providerId)
+    ]);
+    const timestamp = now();
+    const data = {
+      tenantId, providerId, ...encrypted, status: 'connected',
+      createdBy: userId, updatedAt: timestamp
+    };
+    if (existingRows[0]) {
+      await db.updateRow({ databaseId, tableId: 'tenant_ai_provider_credentials', rowId: existingRows[0].$id, data });
+    } else {
+      await db.createRow({ databaseId, tableId: 'tenant_ai_provider_credentials', rowId: ID.unique(), data: { ...data, createdAt: timestamp } });
+    }
+    await logEvent(db, userId, tenantId, 'ai.credentials.connected', 'ai_provider', providerId, 'Clinic AI provider credential connected');
+    return { connected: true, providerId, status: 'connected', maskedSuffix: encrypted.maskedSuffix };
+  }
+
   if (action === 'ai.settings.update') {
     const tenantId = String(payload.tenantId || '');
     const membership = await requireMembership(db, userId, tenantId);
@@ -454,9 +483,6 @@ async function handle(db, storage, userId, body) {
     if (!message) throw Object.assign(new Error('Enter a question first.'), { status: 400 });
     if (message.length > 6000) throw Object.assign(new Error('Questions must be 6,000 characters or fewer.'), { status: 400 });
 
-    // Appwrite remains the authenticated PWA/API boundary. Windmill owns AI
-    // execution. Never accept provider/model choices from the browser for chat;
-    // resolve them from this tenant's saved preferences.
     const preferenceRows = await listRows(db, 'tenant_ai_preferences', [Query.equal('tenantId', tenantId)]);
     const preferences = preferenceRows[0] || {};
     const providerId = String(preferences.defaultProviderId || '');
@@ -464,39 +490,89 @@ async function handle(db, storage, userId, body) {
     if (!providerId || !isSupportedProviderModel(providerId, modelId)) {
       throw Object.assign(new Error('Choose and save a supported AI provider and model in AI settings first.'), { status: 409 });
     }
+    const credentialRows = await listRows(db, 'tenant_ai_provider_credentials', [
+      Query.equal('tenantId', tenantId), Query.equal('providerId', providerId), Query.equal('status', 'connected')
+    ]);
+    if (!credentialRows[0]) {
+      return { ok: false, status: 'provider_not_connected', message: 'Connect this clinic’s provider API key in AI settings before chatting.', clinicalDataChanged: false };
+    }
+    if (!process.env.CLEARFLOW_AI_ENCRYPTION_KEY) {
+      throw Object.assign(new Error('AI credential encryption is not configured on the server.'), { status: 503 });
+    }
+    if (Number.isSafeInteger(preferences.monthlyBudgetMinor) && preferences.monthlyBudgetMinor >= 0) {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
+      const usage = await listRows(db, 'tenant_ai_usage', [
+        Query.equal('tenantId', tenantId), Query.greaterThanEqual('occurredAt', monthStart.toISOString())
+      ]);
+      const spent = usage.reduce((sum, row) => sum + (Number(row.costMinor) || 0), 0);
+      if (spent >= preferences.monthlyBudgetMinor) {
+        return { ok: false, status: 'budget_exhausted', message: 'This clinic has reached its configured monthly AI budget.', clinicalDataChanged: false };
+      }
+    }
 
-    const webhookUrl = process.env.WINDMILL_AI_WEBHOOK_URL;
-    const webhookKey = process.env.WINDMILL_WEBHOOK_KEY;
-    if (!webhookUrl || !webhookKey) {
-      throw Object.assign(new Error('Windmill AI endpoint is not configured on the server yet. No clinic data was changed.'), { status: 503 });
+    const apiKey = decryptProviderKey(credentialRows[0]);
+    let targetUrl, headers, requestBody, extractReply, extractUsage;
+    if (providerId === 'anthropic') {
+      targetUrl = 'https://api.anthropic.com/v1/messages';
+      headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+      requestBody = { model: modelId, max_tokens: 1200, messages: [{ role: 'user', content: message }] };
+      extractReply = data => (data.content || []).filter(part => part.type === 'text').map(part => part.text).join('\n');
+      extractUsage = data => ({ input: data.usage?.input_tokens || 0, output: data.usage?.output_tokens || 0 });
+    } else if (providerId === 'google') {
+      targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modelId) + ':generateContent?key=' + encodeURIComponent(apiKey);
+      headers = { 'Content-Type': 'application/json' };
+      requestBody = { contents: [{ parts: [{ text: message }] }], generationConfig: { maxOutputTokens: 1200 } };
+      extractReply = data => (data.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('\n');
+      extractUsage = data => ({ input: data.usageMetadata?.promptTokenCount || 0, output: data.usageMetadata?.candidatesTokenCount || 0 });
+    } else {
+      const base = providerId === 'groq' ? 'https://api.groq.com/openai/v1' :
+        providerId === 'mistral' ? 'https://api.mistral.ai/v1' :
+        providerId === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1';
+      targetUrl = base + '/chat/completions';
+      headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey };
+      requestBody = { model: modelId, messages: [{ role: 'user', content: message }], max_tokens: 1200 };
+      extractReply = data => data.choices?.[0]?.message?.content || '';
+      extractUsage = data => ({ input: data.usage?.prompt_tokens || 0, output: data.usage?.completion_tokens || 0 });
     }
-    let target;
-    try { target = new URL(webhookUrl); } catch {
-      throw Object.assign(new Error('Windmill AI endpoint configuration is invalid.'), { status: 503 });
-    }
-    if (target.protocol !== 'https:') throw Object.assign(new Error('Windmill AI endpoint must use HTTPS.'), { status: 503 });
 
     const requestId = ID.unique();
     const startedAt = Date.now();
-    let upstream;
+    let upstream, result;
     try {
-      upstream = await fetch(target.toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-ClearFlow-Webhook-Key': webhookKey },
-        body: JSON.stringify({ tenantId, actorId: userId, message, providerId, modelId, requestId }),
-        signal: AbortSignal.timeout(12000)
+      upstream = await fetch(targetUrl, {
+        method: 'POST', headers, body: JSON.stringify(requestBody), signal: AbortSignal.timeout(45000)
       });
+      result = await upstream.json();
     } catch {
-      throw Object.assign(new Error('Windmill AI service is unavailable. No clinic data was changed.'), { status: 502 });
+      throw Object.assign(new Error('The AI provider could not be reached. Check the clinic provider key and try again.'), { status: 502 });
     }
-    let result;
-    try { result = await upstream.json(); } catch { result = {}; }
-    if (!upstream.ok) throw Object.assign(new Error('Windmill AI request failed. No clinic data was changed.'), { status: 502 });
+    if (!upstream.ok) {
+      const providerMessage = String(result?.error?.message || result?.message || '');
+      if (upstream.status === 401 || upstream.status === 403) {
+        throw Object.assign(new Error('The provider rejected this clinic API key. Reconnect the key in AI settings.'), { status: 422 });
+      }
+      if (upstream.status === 429) throw Object.assign(new Error('The provider rate limit was reached. Try again shortly.'), { status: 429 });
+      throw Object.assign(new Error('The AI provider returned an error' + (providerMessage ? ': ' + providerMessage.slice(0, 180) : '.') ), { status: 502 });
+    }
+    const reply = String(extractReply(result) || '').trim();
+    if (!reply) throw Object.assign(new Error('The provider returned an empty response. Try again.'), { status: 502 });
+    const tokenUsage = extractUsage(result);
     const latencyMs = Math.max(0, Date.now() - startedAt);
-    if (result?.status !== 'completed' || typeof result?.reply !== 'string') {
-      return { ok: false, status: result?.status || 'provider_not_connected', requestId, message: String(result?.message || 'AI provider is not connected yet.'), clinicalDataChanged: false, latencyMs };
-    }
-    return { ok: true, status: 'completed', requestId, reply: result.reply.slice(0, 12000), clinicalDataChanged: false, latencyMs };
+    // Usage rows are recorded without storing prompts, responses, or API keys.
+    // Initial prototype cost is left at zero until per-model price tables are added.
+    try {
+      await db.createRow({
+        databaseId, tableId: 'tenant_ai_usage', rowId: ID.unique(),
+        data: {
+          tenantId, actorId: userId, providerId, modelId, requestId,
+          inputTokens: tokenUsage.input, outputTokens: tokenUsage.output,
+          costMinor: 0, currency: 'INR', status: 'completed', latencyMs, occurredAt: now()
+        },
+        permissions: userRead(userId)
+      });
+    } catch (e) { log('AI reply succeeded but usage logging failed; no prompt or credential data logged.'); }
+    return { ok: true, status: 'completed', requestId, reply: reply.slice(0, 12000), clinicalDataChanged: false, latencyMs, usage: tokenUsage };
   }
 
   if (action === 'workspace.search') {
