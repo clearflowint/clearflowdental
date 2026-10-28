@@ -79,9 +79,20 @@ function wireAI(){
    e.preventDefault();const message=String(input.value||'').trim();if(!message)return;
    aiMessages.push({role:'user',content:message});input.value='';workspace();
    const sendForm=root.querySelector('#ai-form');const sendStatus=root.querySelector('#ai-status');
-   sendStatus.textContent='Contacting the secured AI gateway…';sendForm.querySelector('button[type="submit"]').disabled=true;
-   try{const result=await callApi('ai.chat',{tenantId:clinic.$id,message});aiMessages.push({role:'assistant',content:String(result.answer||'No response was returned.')})}
-   catch(err){aiMessages.push({role:'assistant',content:err.message||'AI service is not available. No clinic data was changed.'})}
+   sendStatus.textContent='Sending securely through Appwrite to Windmill…';sendForm.querySelector('button[type="submit"]').disabled=true;
+   try{
+     const result=await callApi('ai.chat',{tenantId:clinic.$id,message});
+     if(result.status==='completed'&&typeof result.reply==='string'){
+       aiMessages.push({role:'assistant',content:result.reply});
+       sendStatus.textContent='Response received from the clinic AI service.';
+     }else{
+       aiMessages.push({role:'assistant',content:String(result.message||'AI provider is not connected yet. No clinic data was changed.')});
+       sendStatus.textContent='AI execution is not enabled yet.';
+     }
+   }catch(err){
+     aiMessages.push({role:'assistant',content:err.message||'AI service is not available. No clinic data was changed.'});
+     sendStatus.textContent='AI request did not complete.';
+   }
    workspace();const nextChat=root.querySelector('#ai-chat');if(nextChat)nextChat.scrollTop=nextChat.scrollHeight;
  };
 }
