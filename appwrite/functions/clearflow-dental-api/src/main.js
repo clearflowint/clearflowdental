@@ -60,7 +60,7 @@ async function handle(db, userId, body) {
     if (name.length < 2 || name.length > 150 || slug.length < 3 || slug.length > 80) {
       throw Object.assign(new Error('Enter a clinic name and a workspace slug of at least 3 characters.'), { status: 400 });
     }
-    const existing = await listRows('clinic_memberships', [Query.equal('userId', userId), Query.equal('status', 'active')]);
+    const existing = await listRows(db, 'clinic_memberships', [Query.equal('userId', userId), Query.equal('status', 'active')]);
     if (existing.length) throw Object.assign(new Error('This account already belongs to a clinic. Choose an existing workspace.'), { status: 409 });
     const clinicId = ID.unique();
     const timestamp = now();
@@ -94,7 +94,7 @@ async function handle(db, userId, body) {
 
   if (action === 'patient.create') {
     const tenantId = String(payload.tenantId || '');
-    await requireMembership(userId, tenantId);
+    await requireMembership(db, userId, tenantId);
     const givenName = String(payload.givenName || '').trim();
     const familyName = String(payload.familyName || '').trim();
     if (!givenName || givenName.length > 100 || familyName.length > 100) {
