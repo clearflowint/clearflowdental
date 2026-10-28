@@ -1,4 +1,5 @@
 import unittest
+import json
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -16,7 +17,7 @@ class ReminderCandidateTests(unittest.TestCase):
         ]
 
     def test_only_scheduled_or_confirmed_in_window_are_candidates(self):
-        result = main(self.rows, 'clinic-a', self.now, 24)
+        result = main(json.dumps(self.rows), 'clinic-a', self.now, 24)
         self.assertEqual(result["candidateCount"], 1)
         self.assertEqual(result["candidates"][0]["appointmentId"], "a1")
         self.assertEqual(result["sent"], 0)
@@ -28,11 +29,11 @@ class ReminderCandidateTests(unittest.TestCase):
 
     def test_timezone_is_required(self):
         with self.assertRaises(ValueError):
-            main([], "clinic-a", "2026-10-28T10:00:00", 24)
+            main("[]", "clinic-a", "2026-10-28T10:00:00", 24)
 
     def test_window_is_bounded(self):
         with self.assertRaises(ValueError):
-            main([], 'clinic-a', self.now, 1000)
+            main('[]', 'clinic-a', self.now, 1000)
 
     def test_other_tenants_are_excluded(self):
         mixed = self.rows + [{"$id": "foreign", "tenantId": "clinic-b", "patientId": "p9", "startsAt": "2026-10-28T11:00:00Z", "status": "scheduled"}]
@@ -41,7 +42,7 @@ class ReminderCandidateTests(unittest.TestCase):
 
     def test_tenant_is_required(self):
         with self.assertRaises(ValueError):
-            main(self.rows, '', self.now, 24)
+            main(json.dumps(self.rows), '', self.now, 24)
 
 
 if __name__ == "__main__":
