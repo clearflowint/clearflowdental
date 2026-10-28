@@ -159,6 +159,27 @@ async function handle(db, storage, userId, body) {
     return { appointment };
   }
 
+  if (action === 'appointment.update') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const appointmentId = String(payload.appointmentId || '');
+    const existing = await db.getRow({ databaseId, tableId: 'appointments', rowId: appointmentId });
+    if (existing.tenantId !== tenantId) throw Object.assign(new Error('Appointment not found in this clinic.'), { status: 404 });
+    const allowed = ['scheduled', 'confirmed', 'arrived', 'cancelled', 'completed', 'no_show'];
+    const status = String(payload.status || existing.status);
+    if (!allowed.includes(status)) throw Object.assign(new Error('Choose a valid appointment status.'), { status: 400 });
+    const data = { status, updatedBy: userId, updatedAt: now() };
+    if (payload.startsAt || payload.endsAt) {
+      const startsAt = new Date(payload.startsAt || existing.startsAt);
+      const endsAt = new Date(payload.endsAt || existing.endsAt);
+      if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) throw Object.assign(new Error('Choose a valid appointment time range.'), { status: 400 });
+      data.startsAt = startsAt.toISOString(); data.endsAt = endsAt.toISOString();
+    }
+    const appointment = await db.updateRow({ databaseId, tableId: 'appointments', rowId: appointmentId, data });
+    await logEvent(db, userId, tenantId, 'appointment.updated', 'appointment', appointmentId, 'Appointment status or time updated');
+    return { appointment };
+  }
+
   if (action === 'encounter.list') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
@@ -186,6 +207,18 @@ async function handle(db, storage, userId, body) {
       permissions: userRead(userId)
     });
     await logEvent(db, userId, tenantId, 'encounter.created', 'encounter', encounterId, 'Encounter opened');
+    return { encounter };
+  }
+
+  if (action === 'encounter.complete') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const encounterId = String(payload.encounterId || '');
+    const existing = await db.getRow({ databaseId, tableId: 'encounters', rowId: encounterId });
+    if (existing.tenantId !== tenantId) throw Object.assign(new Error('Visit not found in this clinic.'), { status: 404 });
+    if (existing.status !== 'in_progress') throw Object.assign(new Error('Only an in-progress visit can be completed.'), { status: 409 });
+    const encounter = await db.updateRow({ databaseId, tableId: 'encounters', rowId: encounterId, data: { status: 'completed', endedAt: now(), updatedBy: userId, updatedAt: now() } });
+    await logEvent(db, userId, tenantId, 'encounter.completed', 'encounter', encounterId, 'Visit marked completed');
     return { encounter };
   }
 
