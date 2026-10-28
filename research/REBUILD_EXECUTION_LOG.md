@@ -109,3 +109,13 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - Rechecked unauthenticated API execution after the new search operation; it returned HTTP 401 with “A valid Appwrite user session is required.” No records were created.
 - The app build passed for the Quick Find UI revision: https://github.com/clearflowint/clearflowdental/actions/runs/40676119090 . Latest styling/import revision is awaiting its own CI completion.
 - Windmill candidate script is deployed and tested, but its trigger is not yet wired to live appointment rows. No outbound messages are sent.
+
+
+### Batch 13 — PWA shell, deterministic quick find and test plan — 2026-10-28
+- Added static-shell service worker and PWA SVG icon/manifest entry. The service worker caches only the shell/static assets and explicitly bypasses Appwrite API/function/storage paths; clinical records are not cached offline.
+- Added the machine-readable schema manifest and read-only schema verifier; live schema verification is green.
+- Added deterministic tenant-scoped Quick Find for patients, appointments, visits and source document metadata. This is a reusable retrieval tool foundation, not the final AI conversational assistant.
+- Added `research/PROTOTYPE_E2E_TEST_PLAN.md` with synthetic-data acceptance tests covering auth, tenant isolation, patient records, appointments, encounters, treatments, drafts, source documents, realtime, PWA, and Windmill candidate behavior.
+- Current latest application build evidence before the PWA icon/service-worker commits: https://github.com/clearflowint/clearflowdental/actions/runs/40676501664 . A newer build is running for the latest PWA registration change.
+- Latest trusted API deployment is ready in Appwrite, including tenant-scoped search and document metadata validation. Unauthenticated execution continues to return HTTP 401.
+- **Only external blocker:** Cloudflare Pages workflow cannot deploy until repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are configured. No public preview URL exists; authenticated browser/mobile end-to-end testing remains pending.
