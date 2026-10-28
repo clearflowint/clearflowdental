@@ -1,3 +1,4 @@
+import './style.css';
 import './auth.css';
 import './records.css';
 import './clinical.css';
