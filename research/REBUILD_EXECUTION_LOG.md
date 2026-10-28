@@ -50,3 +50,16 @@ Record date, commit/PR, files changed, test commands and results, observed gaps,
 - Important technical correction: keep the initial prototype lean with plain JavaScript + Vite + Appwrite SDK; no Vue dependency is needed for the current shell.
 - Verification so far: Git tree confirms app files and CI workflow are present; Appwrite list operation returned 10 tables. The CI build has not yet been observed passing, and live browser rendering has not yet been tested.
 - Next: inspect the CI run result, fix any build failures, then implement a repeatable schema setup artifact and the safe clinic bootstrap/membership path before connecting patient UI.
+
+
+### Batch 2 progress — 2026-10-28
+- Added mobile-first application shell with Overview, Patients, Appointments, Visits and Documents navigation.
+- Added Appwrite account helper using the official JavaScript SDK, including sign-in, test-account creation, session restore and sign-out. This is account authentication only; clinic membership and clinical records are not yet connected.
+- Added auth-screen styling in `app/src/auth.css` and public configuration example `app/.env.example`. No API key or secret is included in frontend files.
+- GitHub Actions build passed for the shell and authentication implementation: https://github.com/clearflowint/clearflowdental/actions/runs/40673355062
+- A newer CI run is queued for the public config example commit; verify it before declaring the current head green.
+- Appwrite TablesDB currently has 10 prototype tables. The full applied-schema record is `research/APPWRITE_SCHEMA_APPLIED_2026-10-28.md`.
+- Current blocker for real patient CRUD: tables have row security enabled and no broad table permissions by design. A trusted clinic bootstrap/data API must verify the Appwrite-authenticated user and clinic membership; do not weaken tables to public read/write or trust client-supplied tenant IDs.
+
+### Next batch
+Implement and deploy a small trusted Appwrite API/function for clinic bootstrap and tenant-scoped patient operations, or use another existing trusted execution path only if its identity verification is equivalent. Then wire the patient directory through one shared data-access module and add synthetic tenant-isolation tests.
