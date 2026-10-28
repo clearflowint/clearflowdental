@@ -44,7 +44,8 @@
       ],
       "scopes": [
         "rows.read",
-        "rows.write"
+        "rows.write",
+        "files.read"
       ],
       "vars": []
     }
