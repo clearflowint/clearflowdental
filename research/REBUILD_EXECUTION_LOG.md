@@ -189,3 +189,12 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - GitHub Actions Prototype build passed for commit `7b792734bc5e694909bd47613ce417646aee2179` (run `40721292103`).
 - Remaining delivery gap: the build workflow is not the same as a Cloudflare Pages deployment. Confirm which branch the production Pages hostname serves; current source changes are on `prototype/rebuild-from-scratch`, while production Pages is configured around `main`. Do not report the mobile fix as live until deployment/browser evidence confirms it.
 - Next implementation slice: complete the synthetic end-to-end journey in a real mobile browser—account/session restore, clinic create/list, patient create/edit/contact, appointment lifecycle, walk-in and appointment-linked visit, treatment status, unapproved draft, original file upload/metadata, and second-tenant denial. Fix observed failures before starting AI assistant work. Reminder delivery remains disabled.
+
+
+### 2026-10-28 — AI workspace entry and safe API boundary
+- Added an **AI Assistant** item to the workspace navigation and a mobile-friendly chat UI in `app/src/main.js` and `app/src/ai.css`.
+- Added `ai.chat` API action with active clinic membership validation, input length bound, and no-write policy. The endpoint explicitly refuses to pretend an AI response exists when the provider adapter is not configured.
+- Added `research/AI_PLATFORM_INTEGRATION.md` describing the provider boundary, required server-side configuration, privacy requirements, and acceptance tests.
+- Build evidence: the CSS commit `5a8df2491f7d95c4973496a19c67a14a6408d471` passed Prototype build (run `40722496231`). The immediately preceding frontend commit ran before the new CSS file existed and failed; the later commit including the CSS passed. Function deployment for the API boundary passed run `40722519765`; safe AI error messaging is being deployed in run `40722670773`.
+- AI is **not yet live**: no verified gateway URL, model ID or secret is configured; the provider round-trip still needs implementation and a synthetic test. Do not mark the AI batch complete or send patient data to an AI provider.
+- Remaining global blocker: the production Cloudflare Pages branch/secret configuration and real mobile browser E2E need verification. CI build success alone is not proof of deployment or complete clinic workflows.
