@@ -1,4 +1,4 @@
-import { Account, Client, ID, Functions, Storage, Permission, Role, Realtime, Channel, Query } from 'appwrite';
+import { Account, Client, ID, Functions, Storage, Permission, Role } from 'appwrite';
 const client = new Client().setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://clearflowappwrite.duckdns.org/v1').setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID || '6adcea89003c9613425b');
 const account = new Account(client);
 const functions = new Functions(client);
@@ -11,9 +11,13 @@ export async function callApi(action,payload={}){const execution=await functions
 export async function uploadOriginal(file,userId){return storage.createFile('dental-source-documents',ID.unique(),file,[Permission.read(Role.user(userId))])}
 export function originalFileView(fileId){return storage.getFileView('dental-source-documents',fileId)}
 
-const realtime = new Realtime(client);
-export async function subscribeToClinic(tenantId,onChange){
-  const channels=['patients','appointments','encounters','encounter_treatments','patient_documents','clinical_drafts'].map(tableId=>Channel.tablesdb('clearflow_dental').table(tableId).row());
-  return realtime.subscribe(channels,message=>{if(message?.payload?.tenantId===tenantId)onChange(message)},[Query.equal('tenantId',[tenantId])]);
+
+let activeRealtimeUnsubscribe=null;
+export function subscribeToClinic(tenantId,onChange){
+  if(activeRealtimeUnsubscribe)activeRealtimeUnsubscribe();
+  const tables=['patients','appointments','encounters','encounter_treatments','patient_documents','clinical_drafts'];
+  const channels=tables.map(tableId=>'tablesdb.clearflow_dental.tables.'+tableId+'.rows');
+  activeRealtimeUnsubscribe=client.subscribe(channels,message=>{if(message&&message.payload&&message.payload.tenantId===tenantId)onChange(message)});
+  return activeRealtimeUnsubscribe;
 }
-export function disconnectRealtime(){return realtime.disconnect()}
+export function disconnectRealtime(){if(activeRealtimeUnsubscribe)activeRealtimeUnsubscribe();activeRealtimeUnsubscribe=null}
