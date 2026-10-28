@@ -173,3 +173,9 @@ Implement and deploy a small trusted Appwrite API/function for clinic bootstrap 
 - Investigated the reported “Load failed” on login. The Appwrite project had a web platform for `clearflowdental.pages.dev` but did not have the unique preview hostname registered. Added web platform `clearflow-preview-1eb0e9ed` for `1eb0e9ed.clearflowdental.pages.dev` and re-listed platforms to verify it is present. This is a plausible browser-origin/CORS cause, not yet confirmed as the only cause; owner is testing.
 - Confirmed deterministic Python reminder-candidate CI run `40678306881` passed. The deployed Windmill script still has the older list-of-dicts input schema, so it must remain disabled/not scheduled until the canonical JSON-input version is deployed and runtime-verified.
 - Authenticated browser E2E, mobile viewport behavior, patient/contact CRUD, appointment-to-visit journey, original document upload/view, Realtime, two-tenant isolation and live reminder integration remain unverified. Continue synthetic data only; do not claim end-to-end acceptance or production readiness.
+
+
+### Batch 19 — Windmill reminder candidate input schema corrected — 2026-10-28
+- Updated the deployed workspace script `f/dental/appointment_reminder_candidates` to the canonical `appointments_json` input schema, avoiding Windmill's unreliable nested `list[dict]` form.
+- Ran the draft and then the deployed version with synthetic appointments for two tenants and a cancelled appointment. Result: exactly one eligible tenant-a scheduled appointment returned; tenant-b row and cancelled row were excluded. Output contained no phone/email/message content and reported `sent: 0`.
+- The workflow remains candidate-only: it does not send reminders, access contact channels, or read live Appwrite data. It must remain unscheduled until a trusted, tenant-scoped appointment fetch path and a separate approved delivery lifecycle are designed and tested.
