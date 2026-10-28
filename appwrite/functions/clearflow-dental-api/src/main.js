@@ -346,6 +346,7 @@ async function handle(db, storage, userId, body) {
     const mimeType = String(file.mimeType || payload.mimeType || 'application/octet-stream');
     const sizeBytes = Number(file.sizeOriginal || file.size || 0);
     if (sizeBytes <= 0 || sizeBytes > 26214400) throw Object.assign(new Error('Source file exceeds the allowed size.'), { status: 400 });
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) throw Object.assign(new Error('Only PDF and supported image files are accepted.'), { status: 400 });
     const timestamp = now();
     const documentId = ID.unique();
     const doc = await db.createRow({
