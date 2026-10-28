@@ -28,7 +28,7 @@ class ReminderCandidateTests(unittest.TestCase):
 
     def test_timezone_is_required(self):
         with self.assertRaises(ValueError):
-            main([], "2026-10-28T10:00:00", 24)
+            main([], "clinic-a", "2026-10-28T10:00:00", 24)
 
     def test_window_is_bounded(self):
         with self.assertRaises(ValueError):
