@@ -557,9 +557,20 @@ async function handle(db, storage, userId, body) {
     const apiKey = decryptProviderKey(credentialRows[0]);
     const requestId = ID.unique();
     const startedAt = Date.now();
+    const historyRows = await listRows(db, 'tenant_ai_messages', [
+      Query.equal('tenantId', tenantId), Query.equal('actorId', userId),
+      Query.equal('conversationId', conversationId), Query.orderAsc('createdAt')
+    ]);
+    const conversation = historyRows
+      .filter(item => ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
+      .slice(-12)
+      .map(item => ({ role: item.role, content: item.content.slice(-4000) }));
     let completion;
     try {
-      completion = await generateChat({ providerId, modelId, apiKey, message });
+      completion = await generateChat({
+        providerId, modelId, apiKey, message,
+        messages: [...conversation, { role: 'user', content: message }]
+      });
     } catch (cause) {
       throw Object.assign(
         new Error(cause?.message || 'The AI provider could not complete the request.'),
