@@ -15,7 +15,8 @@ Multi-tenant dental clinic workspace using Vue 3, Appwrite, and Windmill for sep
 - `f/dental/` — Git-managed Windmill assets; secrets and resources are configured in Windmill, not committed here.
 - `appwrite.config.json` — Appwrite function deployment configuration.
 - `.github/workflows/` — frontend/backend validation and scoped deployment workflows.
-- [Repository architecture audit](docs/architecture/repository-audit-2026-10-29.md) — file inventory, findings, priorities, and a staged improvement plan.
+- [Architecture goal](docs/architecture/architecture-goal.md) — the agreed principles and end-to-end prototype acceptance criteria.
+- [Repository architecture audit](docs/architecture/repository-audit-2026-10-29.md) — current-state inventory, findings, priorities, and staged improvement plan.
 
 ## Frontend
 
