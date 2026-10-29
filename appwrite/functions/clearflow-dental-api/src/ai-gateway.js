@@ -77,7 +77,7 @@ export async function listProviderModels(providerId, apiKey) {
   return normalizeModels(providerId, payload).map(id => ({ id, name: id }));
 }
 
-export async function generateChat({ providerId, modelId, apiKey, message }) {
+export async function generateChat({ providerId, modelId, apiKey, message, messages = [] }) {
   const provider = getProvider(providerId);
   if (!provider) throw httpError('Choose a supported AI provider.', 400);
   if (typeof modelId !== 'string' || !modelId.trim() || modelId.length > 200) {
@@ -86,6 +86,9 @@ export async function generateChat({ providerId, modelId, apiKey, message }) {
 
   const key = String(apiKey || '').trim();
   const content = String(message || '').trim();
+  const conversation = Array.isArray(messages) && messages.length
+    ? messages.filter(item => ['user', 'assistant'].includes(item?.role) && typeof item?.content === 'string' && item.content.trim())
+    : [{ role: 'user', content }];
   let url = provider.chatUrl;
   let headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
   let body;
@@ -93,13 +96,13 @@ export async function generateChat({ providerId, modelId, apiKey, message }) {
   if (provider.apiStyle === 'anthropic') {
     headers['x-api-key'] = key;
     headers['anthropic-version'] = '2023-06-01';
-    body = { model: modelId, max_tokens: 1200, messages: [{ role: 'user', content }] };
+    body = { model: modelId, max_tokens: 1200, messages: conversation.map(item => ({ role: item.role, content: item.content })) };
   } else if (provider.apiStyle === 'google') {
     url += '/' + encodeURIComponent(modelId) + ':generateContent?key=' + encodeURIComponent(key);
-    body = { contents: [{ parts: [{ text: content }] }], generationConfig: { maxOutputTokens: 1200 } };
+    body = { contents: conversation.map(item => ({ role: item.role === 'assistant' ? 'model' : 'user', parts: [{ text: item.content }] })), generationConfig: { maxOutputTokens: 1200 } };
   } else {
     headers.Authorization = 'Bearer ' + key;
-    body = { model: modelId, messages: [{ role: 'user', content }], max_tokens: 1200 };
+    body = { model: modelId, messages: conversation.map(item => ({ role: item.role, content: item.content })), max_tokens: 1200 };
   }
 
   const data = await fetchJson(url, {
