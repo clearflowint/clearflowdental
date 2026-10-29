@@ -1,6 +1,6 @@
 export async function runWindmillAi(payload) {
-  const url = process.env.CLEARFLOW_WINDMILL_AI_URL || 'https://clearflowwindmill.duckdns.org/api/dental/ai/chat';
-  const secret = process.env.CLEARFLOW_WINDMILL_WEBHOOK_SECRET;
+  const url = process.env.CLEARFLOW_WINDMILL_AI_URL || process.env.WINDMILL_AI_WEBHOOK_URL || 'https://clearflowwindmill.duckdns.org/api/dental/ai/chat';
+  const secret = process.env.CLEARFLOW_WINDMILL_WEBHOOK_SECRET || process.env.WINDMILL_WEBHOOK_KEY;
   if (!secret) {
     throw Object.assign(new Error('Windmill AI bridge is not configured on the server.'), { status: 503 });
   }
