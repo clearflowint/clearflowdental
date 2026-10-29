@@ -16,3 +16,6 @@
 .settings-card .save-status{display:block;margin-top:10px;overflow-wrap:anywhere}
 #credential-status{font-size:13px;color:#547174}
 @media(max-width:600px){.auth-card{border-radius:18px}.user-chip>span:nth-child(2){max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+
+/* Vue authentication feedback */
+.auth-error{margin:14px 0;color:#a33f2d;font-size:14px;line-height:1.5;overflow-wrap:anywhere}.auth-card form button:disabled{opacity:.65;cursor:wait}.auth-card input:focus-visible,.auth-card button:focus-visible{outline:3px solid #8bcac2;outline-offset:2px}
