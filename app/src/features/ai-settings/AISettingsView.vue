@@ -10,6 +10,7 @@ const providerId = ref('');
 const modelId = ref('');
 const apiKey = ref('');
 const monthlyBudget = ref('');
+const memoryEnabled = ref(false);
 const credentialStatus = ref('Loading provider connection…');
 const status = ref('');
 const loading = ref(false);
@@ -35,6 +36,7 @@ async function loadSettings() {
     monthlyBudget.value = Number.isFinite(settings.value.monthlyBudgetMinor)
       ? String(settings.value.monthlyBudgetMinor / 100)
       : '';
+    memoryEnabled.value = settings.value.memoryEnabled === true;
     const credential = (result.providers || []).find(item =>
       item.providerId === providerId.value && item.status === 'connected'
     );
@@ -83,7 +85,8 @@ async function saveSettings() {
       tenantId: props.tenantId,
       defaultProviderId: providerId.value,
       defaultModelId: modelId.value,
-      monthlyBudgetMinor: Math.round(Math.max(0, budget) * 100)
+      monthlyBudgetMinor: Math.round(Math.max(0, budget) * 100),
+      memoryEnabled: memoryEnabled.value
     });
     status.value = 'Settings saved.';
     await loadSettings();
@@ -128,7 +131,7 @@ onMounted(loadSettings);
       <p>Controls intended to be managed separately from conversations.</p>
       <div class="form-row">
         <div class="field"><label for="monthly-budget">Monthly AI budget (INR)</label><input id="monthly-budget" v-model="monthlyBudget" type="number" min="0" :disabled="saving"></div>
-        <div class="field"><label for="clinical-mode">Clinical data handling</label><select id="clinical-mode"><option value="review">Require user review for all drafts</option><option value="admin">General administrative assistance only</option></select></div>
+        <div class="field"><label for="memory-enabled">Assistant memory</label><label class="checkbox-line"><input id="memory-enabled" v-model="memoryEnabled" type="checkbox" :disabled="saving"> Enable assistant memory (preference only)</label></div>
       </div>
       <div class="settings-actions"><button class="primary-button" id="save-ai-settings" type="button" :disabled="saving || loading" @click="saveSettings">{{ saving ? 'Saving…' : 'Save settings' }}</button><span id="settings-status" class="save-status" role="status">{{ status }}</span></div>
     </section>
