@@ -2,8 +2,19 @@
   "name": "clearflow-dental-web",
   "private": true,
   "version": "1.0.0",
-  "description": "Static ClearFlow Dental Clinic frontend",
+  "type": "module",
   "scripts": {
-    "build": "node build.mjs"
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "appwrite": "^17.0.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "overrides": {
+    "rollup": "4.65.1"
   }
 }
