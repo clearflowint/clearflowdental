@@ -1,0 +1,50 @@
+name: Verify Appwrite schema
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_verify:
+        description: "Run read-only verification against the configured Appwrite project"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clearflow-schema-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ inputs.confirm_verify == 'yes' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install verification dependencies
+        working-directory: scripts/appwrite-schema
+        run: npm install
+
+      - name: Verify live Appwrite schema (read-only)
+        working-directory: scripts/appwrite-schema
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$APPWRITE_ENDPOINT" || { echo "Missing APPWRITE_ENDPOINT secret"; exit 1; }
+          test -n "$APPWRITE_PROJECT_ID" || { echo "Missing APPWRITE_PROJECT_ID secret"; exit 1; }
+          test -n "$APPWRITE_API_KEY" || { echo "Missing APPWRITE_API_KEY secret"; exit 1; }
+          node verify.mjs
