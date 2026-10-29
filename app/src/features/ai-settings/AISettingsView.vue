@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { aiService } from '../../services/ai-service.js';
+import { aiService } from '../../services/index.js';
 
 const props = defineProps({ tenantId: { type: String, required: true } });
 const providers = ref([]);
