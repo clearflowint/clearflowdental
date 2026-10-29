@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { patientService, appointmentService, visitService } from '../../services/clinical-service.js';
-import { callApi, uploadSourceDocument } from '../../appwrite-client.js';
+import { documentService } from '../../services/document-service.js';
 
 const props = defineProps({
   view: { type: String, required: true },
@@ -44,8 +44,7 @@ async function load() {
     appointments.value = a.sort((x,y) => String(x.startsAt).localeCompare(String(y.startsAt)));
     visits.value = v.sort((x,y) => String(y.startedAt).localeCompare(String(x.startedAt)));
     if (props.view === 'documents') {
-      const result = await callApi('document.list', { tenantId: props.tenantId });
-      documents.value = result.documents || [];
+      documents.value = await documentService.list(props.tenantId);
     }
     if (!appointmentForm.value.patientId && p[0]) appointmentForm.value.patientId = p[0].$id;
     if (!visitForm.value.patientId && p[0]) visitForm.value.patientId = p[0].$id;
@@ -102,8 +101,8 @@ async function uploadDocument() {
   if (file.size <= 0 || file.size > 25 * 1024 * 1024) { error.value = 'File must be smaller than 25 MB.'; return; }
   busy.value = true; error.value = ''; notice.value = '';
   try {
-    const uploaded = await uploadSourceDocument(file);
-    await callApi('document.create', { tenantId: props.tenantId, patientId: documentForm.value.patientId, storageFileId: uploaded.$id, originalName: file.name, mimeType: file.type, sourceCategory: documentForm.value.sourceCategory, sourceProviderName: documentForm.value.sourceProviderName, sourceDate: documentForm.value.sourceDate || undefined });
+    const uploaded = await documentService.uploadFile(file);
+    await documentService.create(props.tenantId, { patientId: documentForm.value.patientId, storageFileId: uploaded.$id, originalName: file.name, mimeType: file.type, sourceCategory: documentForm.value.sourceCategory, sourceProviderName: documentForm.value.sourceProviderName, sourceDate: documentForm.value.sourceDate || undefined });
     documentFile.value = null;
     const picker = document.querySelector('#source-document-file'); if (picker) picker.value = '';
     notice.value = 'Source document uploaded and recorded.';
