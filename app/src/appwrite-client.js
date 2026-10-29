@@ -1,4 +1,4 @@
-import { Client, Account, Functions, ID } from 'https://cdn.jsdelivr.net/npm/appwrite@17.0.0/+esm';
+import { Client, Account, Functions, ID } from 'appwrite';
 
 export const APPWRITE_ENDPOINT = 'https://clearflowappwrite.duckdns.org/v1';
 export const APPWRITE_PROJECT_ID = '6adcea89003c9613425b';
