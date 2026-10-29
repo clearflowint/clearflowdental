@@ -30,7 +30,7 @@ function render() {
   <div class="app-layout">
     <aside class="sidebar">
       <div class="brand-lockup"><div class="brand-mark small">CF</div><div><strong>ClearFlow</strong><small>Dental Clinic</small></div></div>
-      <nav aria-label="Main navigation">${Object.entries(views).map(([key,label],i)=>`<button class="nav-item ${activeView===key?'active':''}" data-view="${key}"><span class="nav-symbol">${['◫','◎','▦','＋','▤','⚙'][i]}</span><span>${label}</span></button>`).join('')}</nav>
+      <div id="workspace-navigation"></div>
       <div class="sidebar-bottom"><span class="status-dot"></span><span>Prototype workspace</span></div>
     </aside>
     <main class="main-panel">
