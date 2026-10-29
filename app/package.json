@@ -1,0 +1,9 @@
+{
+  "name": "clearflow-dental-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static ClearFlow Dental Clinic frontend",
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}
