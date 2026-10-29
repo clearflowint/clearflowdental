@@ -11,9 +11,8 @@ const functions = new Functions(client);
 export async function currentUser() {
   try { return await account.get(); } catch { return null; }
 }
-export async function signInWithGoogle() {
-  const redirect = window.location.origin + window.location.pathname;
-  account.createOAuth2Session('google', redirect, redirect);
+export async function signInWithEmail(email, password) {
+  return await account.createEmailPasswordSession(email.trim(), password);
 }
 export async function signOut() {
   await account.deleteSession('current');
