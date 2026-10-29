@@ -1,0 +1,52 @@
+name: Deploy Appwrite Windmill Bridge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "appwrite.config.json"
+      - "appwrite/functions/clearflow-windmill-bridge/**"
+      - ".github/workflows/deploy-appwrite-windmill-bridge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appwrite-windmill-bridge-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy one Appwrite function
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Appwrite CLI
+        run: npm install --global appwrite-cli
+
+      - name: Configure Appwrite CLI
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$APPWRITE_ENDPOINT" || { echo "Missing APPWRITE_ENDPOINT secret"; exit 1; }
+          test -n "$APPWRITE_PROJECT_ID" || { echo "Missing APPWRITE_PROJECT_ID secret"; exit 1; }
+          test -n "$APPWRITE_API_KEY" || { echo "Missing APPWRITE_API_KEY secret"; exit 1; }
+          appwrite client --endpoint "$APPWRITE_ENDPOINT" --project-id "$APPWRITE_PROJECT_ID" --key "$APPWRITE_API_KEY"
+
+      - name: Deploy ClearFlow Windmill Bridge only
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+        run: appwrite push function --function-id clearflow-windmill-bridge --activate --force
