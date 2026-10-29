@@ -19,3 +19,15 @@
 
 /* Vue authentication feedback */
 .auth-error{margin:14px 0;color:#a33f2d;font-size:14px;line-height:1.5;overflow-wrap:anywhere}.auth-card form button:disabled{opacity:.65;cursor:wait}.auth-card input:focus-visible,.auth-card button:focus-visible{outline:3px solid #8bcac2;outline-offset:2px}
+
+
+/* Dynamic AI provider/model selectors */
+.provider-select-row{display:flex;align-items:center;gap:8px;min-width:0}
+.provider-select-row select{flex:1;min-width:0}
+.provider-mark{display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:32px;border-radius:10px;background:#eaf5f3;color:#087f74;font-size:12px;font-weight:750}
+.chat-model-bar{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(170px,1.2fr);gap:10px 14px;padding:12px 20px;background:#fbfdfd;border-bottom:1px solid #e5eded}
+.chat-model-field{display:grid;gap:5px;min-width:0}
+.chat-model-field label{font-size:10px;font-weight:700;letter-spacing:.04em;color:#72858a;text-transform:uppercase}
+.chat-model-field select{width:100%;min-width:0;border:1px solid #dce6e4;border-radius:9px;background:#fff;color:#20383d;padding:9px 10px;font-size:12px}
+.chat-model-status{grid-column:1/-1;color:#73868b;font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+@media(max-width:600px){.chat-model-bar{padding:10px 13px;gap:8px}.chat-model-field select{padding:9px 7px;font-size:11px}.chat-model-status{font-size:10px}}
