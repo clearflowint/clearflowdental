@@ -21,7 +21,7 @@ export const aiService = {
       tenantId, defaultProviderId, defaultModelId, monthlyBudgetMinor, memoryEnabled
     });
   },
-  chat({ tenantId, conversationId, message }) {
-    return callApi('ai.chat', { tenantId, conversationId, message });
+  chat({ tenantId, conversationId, message, providerId, modelId }) {
+    return callApi('ai.chat', { tenantId, conversationId, message, providerId, modelId });
   }
 };
