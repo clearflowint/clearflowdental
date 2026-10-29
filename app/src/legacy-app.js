@@ -1,4 +1,5 @@
-import { overviewMarkup } from './features/overview/overview-view.js';
+import { createApp } from 'vue';
+import OverviewView from './features/overview/OverviewView.vue';
 import { aiService } from './services/index.js';
 const root = document.querySelector('#legacy-app');
 const views = { overview: 'Overview', patients: 'Patients', appointments: 'Appointments', visits: 'Visits', documents: 'Documents', settings: 'AI Settings' };
@@ -9,6 +10,7 @@ let sending = false;
 let sessionUser = null, sessionReady = false, clinics = [], activeTenantId = '';
 let aiProviders = [], aiSettings = null, aiBusy = false, aiSettingsLoaded = false, aiSettingsLoading = false;
 let conversationId = crypto.randomUUID();
+let overviewApp = null;
 
 export function startLegacyWorkspace(user, clinicList = []) {
   sessionUser = user;
@@ -18,6 +20,7 @@ export function startLegacyWorkspace(user, clinicList = []) {
   render();
 }
 function render() {
+  if (overviewApp) { overviewApp.unmount(); overviewApp = null; }
   if (!sessionReady) { root.innerHTML = '<main class="auth-screen"><div class="auth-card"><div class="brand-mark">CF</div><h1>ClearFlow Dental</h1><p>Connecting securely…</p></div></main>'; return; }
   if (!sessionUser) { root.innerHTML = '<main class="auth-screen"><div class="auth-card"><div class="brand-mark">CF</div><p class="eyebrow">CLINIC WORKSPACE</p><h1>Welcome to ClearFlow</h1><p>Sign in using your existing Appwrite email account.</p><form id="email-signin-form"><div class="field"><label for="login-email">Email address</label><input id="login-email" type="email" autocomplete="username" required placeholder="you@example.com"></div><div class="field"><label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required placeholder="Your Appwrite password"></div><button class="primary-button" id="email-signin" type="submit">Sign in</button><p id="signin-status" role="status"></p></form><small>Use your existing Appwrite account. No new account or Google OAuth is created.</small></div></main>'; return; }
   if (!activeTenantId) { root.innerHTML = '<main class="auth-screen"><div class="auth-card clinic-setup"><div class="brand-mark">CF</div><h1>Create your clinic workspace</h1><p>This account has no active clinic membership yet.</p><form id="clinic-create-form"><div class="field"><label for="clinic-name">Clinic name</label><input id="clinic-name" required minlength="2" maxlength="150" placeholder="ClearFlow Dental Clinic"></div><div class="field"><label for="clinic-slug">Workspace slug</label><input id="clinic-slug" required minlength="3" maxlength="80" pattern="[a-zA-Z0-9-]+" placeholder="clearflow-dental"></div><button class="primary-button" type="submit">Create workspace</button><p id="clinic-setup-status" role="status"></p></form><button class="text-button" id="signout-setup">Sign out</button></div></main>'; document.getElementById('clinic-create-form').addEventListener('submit', async e => { e.preventDefault(); const status=document.getElementById('clinic-setup-status'); status.textContent='Creating workspace…'; try { await clinicService.create({name:document.getElementById('clinic-name').value,slug:document.getElementById('clinic-slug').value}); clinics=await clinicService.list(); activeTenantId=clinics[0]?.$id||''; render(); } catch(error) { status.textContent=error.message; } }); document.getElementById('signout-setup').addEventListener('click',()=>window.dispatchEvent(new CustomEvent('clearflow:signout'))); return; }
@@ -63,6 +66,10 @@ function render() {
       </div>
     </section>
   </div>`;
+  if (activeView === 'overview') {
+    const mountPoint = root.querySelector('#overview-mount');
+    if (mountPoint) { overviewApp = createApp(OverviewView); overviewApp.mount(mountPoint); }
+  }
   root.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{activeView=button.dataset.view;render();}));
   document.getElementById('signout')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('clearflow:signout')));
   document.querySelector('#open-chat').addEventListener('click',()=>{chatOpen=true;render();setTimeout(()=>document.querySelector('#chat-input')?.focus(),50);});
@@ -78,7 +85,7 @@ function render() {
   document.getElementById('clear-key')?.addEventListener('click',()=>{document.getElementById('provider-key').value='';document.getElementById('settings-status').textContent='Key field cleared. Nothing was stored.';});
 }
 function pageContent(){
-  if(activeView==='overview')return overviewMarkup();
+  if(activeView==='overview')return '<div id="overview-mount"></div>';
   const descriptions={patients:'Patient registration, search, contact channels and patient details will connect after the Appwrite schema batch.',appointments:'Create, reschedule and cancel appointments after patient records are connected.',visits:'A visit timeline will link appointments, visit purpose, treatments and original source documents.',documents:'Upload and preserve original prescriptions, reports, images and referral documents.'};
   return `<section class="empty-state"><div class="empty-icon">${['◎','▦','＋','▤'][['patients','appointments','visits','documents'].indexOf(activeView)]||'◫'}</div><h2>${views[activeView]} module</h2><p>${descriptions[activeView]||'This module is planned for a later prototype batch.'}</p><span class="pill">Not connected yet</span></section>`;
 }
