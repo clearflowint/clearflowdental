@@ -1,9 +1,12 @@
 <script setup>
-import { nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
-import { AuthScreen } from './components/index.js';
+import { nextTick, onMounted, onBeforeUnmount, watch, ref } from 'vue';
+import { AuthScreen, ClinicSetup } from './components/index.js';
+import { useClinicWorkspace } from './composables/useClinicWorkspace.js';
 import { useSession } from './composables/useSession.js';
 
 const session = useSession();
+const clinic = useClinicWorkspace();
+const activeClinicId = ref('');
 
 async function startWorkspace(user) {
   if (!user) return;
@@ -17,12 +20,27 @@ async function startWorkspace(user) {
   }
 }
 
+async function createClinic(input) {
+  try {
+    const clinics = await clinic.create(input);
+    activeClinicId.value = clinics[0]?.$id || '';
+    if (activeClinicId.value) await startWorkspace(session.user.value);
+  } catch (error) {
+    console.error('Clinic creation failed:', error);
+  }
+}
+
 function handleSignOut() {
   session.signOutCurrent().catch(() => {});
 }
 
 watch(session.user, user => {
-  if (user) startWorkspace(user);
+  if (user) {
+    clinic.load().then(clinics => {
+      activeClinicId.value = clinics[0]?.$id || '';
+      if (activeClinicId.value) startWorkspace(user);
+    }).catch(error => { console.error('Clinic loading failed:', error); });
+  } else { activeClinicId.value = ''; }
 });
 
 onMounted(() => window.addEventListener('clearflow:signout', handleSignOut));
@@ -44,7 +62,8 @@ onBeforeUnmount(() => window.removeEventListener('clearflow:signout', handleSign
       :error="session.error.value"
       @submit="({ email, password }) => session.signIn(email, password).catch(() => {})"
     />
-    <div v-else id="legacy-app">
+    <ClinicSetup v-else-if="session.user.value && clinic.clinics.value.length === 0 && !clinic.loading.value" :busy="clinic.creating.value" :error="clinic.error.value" @create="createClinic" @signout="session.signOutCurrent" />
+    <div v-else-if="session.user.value" id="legacy-app">
       <main class="auth-screen">
         <section class="auth-card">
           <div class="brand-mark">CF</div>
