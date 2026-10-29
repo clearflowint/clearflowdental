@@ -1,9 +1,9 @@
 import { createApp } from 'vue';
-import OverviewView from './features/overview/OverviewView.vue';
-import WorkspaceNavigation from './features/workspace/WorkspaceNavigation.vue';
-import AISettingsView from './features/ai-settings/AISettingsView.vue';
-import ClinicalDataView from './features/clinical/ClinicalDataView.vue';
-import { aiService } from './services/index.js';
+import OverviewView from '../overview/OverviewView.vue';
+import WorkspaceNavigation from './WorkspaceNavigation.vue';
+import AISettingsView from '../ai-settings/AISettingsView.vue';
+import ClinicalDataView from '../clinical/ClinicalDataView.vue';
+import { aiService } from '../../services/index.js';
 const root = document.querySelector('#workspace-shell');
 const views = { overview: 'Overview', patients: 'Patients', appointments: 'Appointments', visits: 'Visits', documents: 'Documents', settings: 'AI Settings' };
 let activeView = 'overview';
