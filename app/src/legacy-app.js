@@ -1,5 +1,5 @@
 import { overviewMarkup } from './features/overview/overview-view.js';
-import { clinicService, aiService } from './services/index.js';
+import { aiService } from './services/index.js';
 const root = document.querySelector('#legacy-app');
 const views = { overview: 'Overview', patients: 'Patients', appointments: 'Appointments', visits: 'Visits', documents: 'Documents', settings: 'AI Settings' };
 let activeView = 'overview';
