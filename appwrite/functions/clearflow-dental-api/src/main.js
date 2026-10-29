@@ -2,7 +2,7 @@ import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
 import { AI_PROVIDERS, isSupportedProvider, isSupportedProviderModel } from './ai-config.js';
 import { listProviderModels } from './ai-gateway.js';
-import { encryptProviderKey, decryptProviderKey } from './ai-credentials.js';
+import { encryptProviderKey } from './ai-credentials.js';
 
 function normalizeAppwriteEndpoint(raw) {
   if (!raw) return raw;
@@ -88,7 +88,11 @@ async function runWindmillAi(payload) {
     if (cause?.status) throw cause;
     throw Object.assign(new Error('Could not reach the AI execution service. Try again.'), { status: 502 });
   }
-  if (!result || result.ok !== true || result.status !== 'completed' || typeof result.reply !== 'string') {
+  const expectedStatus = payload.action === 'models' ? 'ready' : 'completed';
+  const hasExpectedPayload = payload.action === 'models'
+    ? Array.isArray(result?.models)
+    : typeof result?.reply === 'string';
+  if (!result || result.ok !== true || result.status !== expectedStatus || !hasExpectedPayload) {
     const status = result?.status === 'provider_not_connected' ? 409 : result?.status === 'budget_exhausted' ? 429 : 502;
     throw Object.assign(new Error(
       typeof result?.message === 'string' ? result.message.slice(0, 240) : 'The AI execution service returned an incomplete response.'
@@ -449,17 +453,17 @@ async function handle(db, storage, userId, body) {
     }
 
     // A key entered in the settings form is used only for discovery and is not stored here.
-    let apiKey = String(payload.apiKey || '').trim();
+    const apiKey = String(payload.apiKey || '').trim();
     if (!apiKey) {
       const credentials = await listRows(db, 'tenant_ai_provider_credentials', [
         Query.equal('tenantId', tenantId), Query.equal('providerId', providerId),
         Query.equal('status', 'connected')
       ]);
       if (!credentials[0]) return { models: [], status: 'provider_not_connected' };
-      if (!process.env.CLEARFLOW_AI_ENCRYPTION_KEY) {
-        throw Object.assign(new Error('AI credential encryption is not configured on the server.'), { status: 503 });
-      }
-      apiKey = decryptProviderKey(credentials[0]);
+      const result = await runWindmillAi({
+        action: 'models', tenantId, actorId: userId, providerId, requestId: ID.unique()
+      });
+      return { models: result.models, status: 'ready' };
     }
 
     const models = await listProviderModels(providerId, apiKey);
