@@ -1,7 +1,7 @@
 import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
 import { AI_PROVIDERS, isSupportedProvider, isSupportedProviderModel } from './ai-config.js';
-import { listProviderModels, generateChat } from './ai-gateway.js';
+import { listProviderModels } from './ai-gateway.js';
 import { encryptProviderKey, decryptProviderKey } from './ai-credentials.js';
 
 function normalizeAppwriteEndpoint(raw) {
@@ -62,6 +62,41 @@ async function logEvent(db, userId, tenantId, action, entityType, entityId, summ
     });
   } catch { /* audit failures are not silently treated as successful in the response paths that require them */ }
 }
+async function runWindmillAi(payload) {
+  const url = process.env.CLEARFLOW_WINDMILL_AI_URL || 'https://clearflowwindmill.duckdns.org/api/dental/ai/chat';
+  const secret = process.env.CLEARFLOW_WINDMILL_WEBHOOK_SECRET;
+  if (!secret) {
+    throw Object.assign(new Error('Windmill AI bridge is not configured on the server.'), { status: 503 });
+  }
+  let result;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-ClearFlow-Webhook-Key': secret
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(25000)
+    });
+    result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw Object.assign(new Error('Windmill AI execution failed.'), { status: response.status >= 500 ? 502 : response.status });
+    }
+  } catch (cause) {
+    if (cause?.status) throw cause;
+    throw Object.assign(new Error('Could not reach the AI execution service. Try again.'), { status: 502 });
+  }
+  if (!result || result.ok !== true || result.status !== 'completed' || typeof result.reply !== 'string') {
+    const status = result?.status === 'provider_not_connected' ? 409 : result?.status === 'budget_exhausted' ? 429 : 502;
+    throw Object.assign(new Error(
+      typeof result?.message === 'string' ? result.message.slice(0, 240) : 'The AI execution service returned an incomplete response.'
+    ), { status });
+  }
+  return result;
+}
+
 async function handle(db, storage, userId, body) {
   const { action, payload = {} } = body;
   if (!userId) throw Object.assign(new Error('Sign in is required.'), { status: 401 });
@@ -539,9 +574,6 @@ async function handle(db, storage, userId, body) {
     if (!credentialRows[0]) {
       return { ok: false, status: 'provider_not_connected', message: 'Connect this clinic’s provider API key in AI settings before chatting.', clinicalDataChanged: false };
     }
-    if (!process.env.CLEARFLOW_AI_ENCRYPTION_KEY) {
-      throw Object.assign(new Error('AI credential encryption is not configured on the server.'), { status: 503 });
-    }
     if (Number.isSafeInteger(preferences.monthlyBudgetMinor) && preferences.monthlyBudgetMinor >= 0) {
       const monthStart = new Date();
       monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
@@ -554,7 +586,6 @@ async function handle(db, storage, userId, body) {
       }
     }
 
-    const apiKey = decryptProviderKey(credentialRows[0]);
     const requestId = ID.unique();
     const startedAt = Date.now();
     const historyRows = await listRows(db, 'tenant_ai_messages', [
@@ -562,14 +593,14 @@ async function handle(db, storage, userId, body) {
       Query.orderAsc('createdAt')
     ]);
     const conversation = historyRows
-      .filter(item => ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
+      .filter(item => item.actorId === userId && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
       .slice(-12)
       .map(item => ({ role: item.role, content: item.content.slice(-4000) }));
     let completion;
     try {
-      completion = await generateChat({
-        providerId, modelId, apiKey, message,
-        messages: [...conversation, { role: 'user', content: message }]
+      completion = await runWindmillAi({
+        action: 'chat', tenantId, actorId: userId, providerId, modelId,
+        message, messages: [...conversation, { role: 'user', content: message }], requestId
       });
     } catch (cause) {
       throw Object.assign(
@@ -578,8 +609,8 @@ async function handle(db, storage, userId, body) {
       );
     }
     const reply = completion.reply;
-    const tokenUsage = completion.usage;
-    const latencyMs = Math.max(0, Date.now() - startedAt);
+    const tokenUsage = completion.usage || { input: 0, output: 0 };
+    const latencyMs = Number(completion.latencyMs) || Math.max(0, Date.now() - startedAt);
     try {
       await db.createRow({
         databaseId, tableId: 'tenant_ai_messages', rowId: ID.unique(),
