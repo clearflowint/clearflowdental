@@ -1,6 +1,7 @@
 import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
-import { AI_PROVIDERS, isSupportedProviderModel } from './ai-config.js';
+import { AI_PROVIDERS, isSupportedProvider, isSupportedProviderModel } from './ai-config.js';
+import { listProviderModels, generateChat } from './ai-gateway.js';
 import { encryptProviderKey, decryptProviderKey } from './ai-credentials.js';
 
 function normalizeAppwriteEndpoint(raw) {
@@ -399,7 +400,35 @@ async function handle(db, storage, userId, body) {
   if (action === 'ai.providers.list') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
-    return { providers: AI_PROVIDERS.map(provider => ({ id: provider.id, name: provider.name, models: [...provider.models] })) };
+    return {
+      providers: AI_PROVIDERS.map(({ id, name, icon }) => ({ id, name, icon }))
+    };
+  }
+
+  if (action === 'ai.models.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const providerId = String(payload.providerId || '');
+    if (!isSupportedProvider(providerId)) {
+      throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
+    }
+
+    // A key entered in the settings form is used only for discovery and is not stored here.
+    let apiKey = String(payload.apiKey || '').trim();
+    if (!apiKey) {
+      const credentials = await listRows(db, 'tenant_ai_provider_credentials', [
+        Query.equal('tenantId', tenantId), Query.equal('providerId', providerId),
+        Query.equal('status', 'connected')
+      ]);
+      if (!credentials[0]) return { models: [], status: 'provider_not_connected' };
+      if (!process.env.CLEARFLOW_AI_ENCRYPTION_KEY) {
+        throw Object.assign(new Error('AI credential encryption is not configured on the server.'), { status: 503 });
+      }
+      apiKey = decryptProviderKey(credentials[0]);
+    }
+
+    const models = await listProviderModels(providerId, apiKey);
+    return { models, status: 'ready' };
   }
 
   if (action === 'ai.settings.get') {
@@ -451,7 +480,7 @@ async function handle(db, storage, userId, body) {
     }
     const providerId = String(payload.defaultProviderId || '');
     const modelId = String(payload.defaultModelId || '');
-    if (providerId && !AI_PROVIDERS.some(provider => provider.id === providerId)) throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
+    if (providerId && !isSupportedProvider(providerId)) throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
     if (providerId && !isSupportedProviderModel(providerId, modelId)) throw Object.assign(new Error('Choose a model from the selected provider.'), { status: 400 });
     const budget = payload.monthlyBudgetMinor === '' || payload.monthlyBudgetMinor == null ? null : Number(payload.monthlyBudgetMinor);
     if (budget !== null && (!Number.isSafeInteger(budget) || budget < 0 || budget > 100000000000)) throw Object.assign(new Error('Enter a valid non-negative monthly budget in paise.'), { status: 400 });
@@ -526,52 +555,19 @@ async function handle(db, storage, userId, body) {
     }
 
     const apiKey = decryptProviderKey(credentialRows[0]);
-    let targetUrl, headers, requestBody, extractReply, extractUsage;
-    if (providerId === 'anthropic') {
-      targetUrl = 'https://api.anthropic.com/v1/messages';
-      headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
-      requestBody = { model: modelId, max_tokens: 1200, messages: [{ role: 'user', content: message }] };
-      extractReply = data => (data.content || []).filter(part => part.type === 'text').map(part => part.text).join('\n');
-      extractUsage = data => ({ input: data.usage?.input_tokens || 0, output: data.usage?.output_tokens || 0 });
-    } else if (providerId === 'google') {
-      targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modelId) + ':generateContent?key=' + encodeURIComponent(apiKey);
-      headers = { 'Content-Type': 'application/json' };
-      requestBody = { contents: [{ parts: [{ text: message }] }], generationConfig: { maxOutputTokens: 1200 } };
-      extractReply = data => (data.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('\n');
-      extractUsage = data => ({ input: data.usageMetadata?.promptTokenCount || 0, output: data.usageMetadata?.candidatesTokenCount || 0 });
-    } else {
-      const base = providerId === 'groq' ? 'https://api.groq.com/openai/v1' :
-        providerId === 'mistral' ? 'https://api.mistral.ai/v1' :
-        providerId === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1';
-      targetUrl = base + '/chat/completions';
-      headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey };
-      requestBody = { model: modelId, messages: [{ role: 'user', content: message }], max_tokens: 1200 };
-      extractReply = data => data.choices?.[0]?.message?.content || '';
-      extractUsage = data => ({ input: data.usage?.prompt_tokens || 0, output: data.usage?.completion_tokens || 0 });
-    }
-
     const requestId = ID.unique();
     const startedAt = Date.now();
-    let upstream, result;
+    let completion;
     try {
-      upstream = await fetch(targetUrl, {
-        method: 'POST', headers, body: JSON.stringify(requestBody), signal: AbortSignal.timeout(45000)
-      });
-      result = await upstream.json();
-    } catch {
-      throw Object.assign(new Error('The AI provider could not be reached. Check the clinic provider key and try again.'), { status: 502 });
+      completion = await generateChat({ providerId, modelId, apiKey, message });
+    } catch (cause) {
+      throw Object.assign(
+        new Error(cause?.message || 'The AI provider could not complete the request.'),
+        { status: Number(cause?.status) || 502 }
+      );
     }
-    if (!upstream.ok) {
-      const providerMessage = String(result?.error?.message || result?.message || '');
-      if (upstream.status === 401 || upstream.status === 403) {
-        throw Object.assign(new Error('The provider rejected this clinic API key. Reconnect the key in AI settings.'), { status: 422 });
-      }
-      if (upstream.status === 429) throw Object.assign(new Error('The provider rate limit was reached. Try again shortly.'), { status: 429 });
-      throw Object.assign(new Error('The AI provider returned an error' + (providerMessage ? ': ' + providerMessage.slice(0, 180) : '.') ), { status: 502 });
-    }
-    const reply = String(extractReply(result) || '').trim();
-    if (!reply) throw Object.assign(new Error('The provider returned an empty response. Try again.'), { status: 502 });
-    const tokenUsage = extractUsage(result);
+    const reply = completion.reply;
+    const tokenUsage = completion.usage;
     const latencyMs = Math.max(0, Date.now() - startedAt);
     try {
       await db.createRow({
