@@ -34,7 +34,6 @@ onMounted(loadSummary);
 
     <section v-if="error" class="section-card" role="alert">
       <p>{{ error }}</p>
-      <button class="secondary-button" type="button" :disabled="loading" @click="loadSummary">Retry</button>
     </section>
 
     <div class="stats-grid">
