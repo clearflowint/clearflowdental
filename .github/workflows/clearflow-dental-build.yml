@@ -8,6 +8,8 @@ on:
       - "app/**"
       - "appwrite/functions/clearflow-dental-api/**"
       - ".github/workflows/clearflow-dental-build.yml"
+      - ".github/workflows/deploy-appwrite-windmill-bridge.yml"
+      - ".github/workflows/deploy-dental-api.yml"
   pull_request:
     branches:
       - main
