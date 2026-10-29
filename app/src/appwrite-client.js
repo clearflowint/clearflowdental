@@ -1,4 +1,4 @@
-import { Client, Account, Functions, ID } from 'appwrite';
+import { Client, Account, Functions, Storage, ID, Permission, Role } from 'appwrite';
 
 export const APPWRITE_ENDPOINT = 'https://clearflowappwrite.duckdns.org/v1';
 export const APPWRITE_PROJECT_ID = '6adcea89003c9613425b';
@@ -7,6 +7,8 @@ export const API_FUNCTION_ID = 'clearflow-dental-api';
 const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
 const account = new Account(client);
 const functions = new Functions(client);
+const storage = new Storage(client);
+export const DOCUMENT_BUCKET_ID = 'dental-source-documents';
 
 export async function currentUser() {
   try {
@@ -24,6 +26,10 @@ export async function signUpWithEmail(name, email, password) {
 }
 export async function signOut() {
   await account.deleteSession('current');
+}
+export async function uploadSourceDocument(file) {
+  const user = await account.get();
+  return await storage.createFile(DOCUMENT_BUCKET_ID, ID.unique(), file, [Permission.read(Role.user(user.$id))]);
 }
 export async function callApi(action, payload = {}) {
   const user = await account.get();
