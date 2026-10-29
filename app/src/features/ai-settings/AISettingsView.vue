@@ -5,6 +5,7 @@ import { aiService } from '../../services/ai-service.js';
 const props = defineProps({ tenantId: { type: String, required: true } });
 const providers = ref([]);
 const settings = ref({});
+const credentials = ref([]);
 const providerId = ref('');
 const modelId = ref('');
 const apiKey = ref('');
@@ -28,6 +29,7 @@ async function loadSettings() {
     ]);
     providers.value = providerList || [];
     settings.value = result.settings || {};
+    credentials.value = result.providers || [];
     providerId.value = settings.value.defaultProviderId || providers.value[0]?.id || '';
     modelId.value = settings.value.defaultModelId || selectedProvider.value?.models?.[0] || '';
     monthlyBudget.value = Number.isFinite(settings.value.monthlyBudgetMinor)
@@ -50,7 +52,7 @@ async function loadSettings() {
 watch(providerId, nextProviderId => {
   const models = providers.value.find(provider => provider.id === nextProviderId)?.models || [];
   if (!models.includes(modelId.value)) modelId.value = models[0] || '';
-  const credential = settings.value.providers?.find(item =>
+  const credential = credentials.value.find(item =>
     item.providerId === nextProviderId && item.status === 'connected'
   );
   credentialStatus.value = credential
