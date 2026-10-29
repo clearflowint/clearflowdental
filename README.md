@@ -16,6 +16,7 @@ Multi-tenant dental clinic workspace using Vue 3, Appwrite, and Windmill for sep
 - `appwrite.config.json` — Appwrite function deployment configuration.
 - `.github/workflows/` — frontend/backend validation and scoped deployment workflows.
 - [Architecture goal](docs/architecture/architecture-goal.md) — the agreed principles and end-to-end prototype acceptance criteria.
+- [Implementation roadmap](docs/architecture/implementation-roadmap.md) — grouped stages, detailed tasks, deliverables, and exit gates for completing the prototype end to end.
 - [Repository architecture audit](docs/architecture/repository-audit-2026-10-29.md) — current-state inventory, findings, priorities, and staged improvement plan.
 
 ## Frontend
