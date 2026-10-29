@@ -1,5 +1,5 @@
 import { onMounted, ref } from 'vue';
-import { currentUser, signInWithEmail, signOut } from '../appwrite-client.js';
+import { currentUser, signInWithEmail, signUpWithEmail, signOut } from '../appwrite-client.js';
 
 export function useSession() {
   const user = ref(null);
@@ -34,6 +34,23 @@ export function useSession() {
     }
   }
 
+  async function createAccount({ name, email, password }) {
+    busy.value = true;
+    error.value = '';
+    try {
+      await signUpWithEmail(name, email, password);
+      await signInWithEmail(email, password);
+      user.value = await currentUser();
+      if (!user.value) throw new Error('Account created, but the session could not be loaded. Please sign in.');
+      return user.value;
+    } catch (cause) {
+      error.value = cause?.message || 'Account creation failed. Check the email and password requirements.';
+      throw cause;
+    } finally {
+      busy.value = false;
+    }
+  }
+
   async function signOutCurrent() {
     busy.value = true;
     error.value = '';
@@ -49,5 +66,5 @@ export function useSession() {
   }
 
   onMounted(refresh);
-  return { user, ready, busy, error, signIn, signOutCurrent, refresh };
+  return { user, ready, busy, error, signIn, createAccount, signOutCurrent, refresh };
 }
