@@ -20,6 +20,10 @@ async function startWorkspace(user) {
   }
 }
 
+function retryClinicLoad() {
+  clinic.load().catch(() => {});
+}
+
 async function createClinic(input) {
   try {
     const clinics = await clinic.create(input);
@@ -62,7 +66,7 @@ onBeforeUnmount(() => window.removeEventListener('clearflow:signout', handleSign
       :error="session.error.value"
       @submit="({ email, password }) => session.signIn(email, password).catch(() => {})"
     />
-    <main v-else-if="session.user.value && clinic.error.value && !clinic.loading.value && clinic.clinics.value.length === 0" class="auth-screen"><section class="auth-card" role="alert"><div class="brand-mark">CF</div><h1>Couldn’t load your clinic</h1><p>{{ clinic.error.value }}</p><button class="primary-button" type="button" :disabled="clinic.loading.value" @click="clinic.load()">{{ clinic.loading.value ? "Retrying…" : "Retry connection" }}</button><button class="text-button" type="button" @click="session.signOutCurrent">Sign out</button></section></main>
+    <main v-else-if="session.user.value && clinic.error.value && !clinic.loading.value && clinic.clinics.value.length === 0" class="auth-screen"><section class="auth-card" role="alert"><div class="brand-mark">CF</div><h1>Couldn’t load your clinic</h1><p>{{ clinic.error.value }}</p><button class="primary-button" type="button" :disabled="clinic.loading.value" @click="retryClinicLoad">{{ clinic.loading.value ? "Retrying…" : "Retry connection" }}</button><button class="text-button" type="button" @click="session.signOutCurrent">Sign out</button></section></main>
     <ClinicSetup v-else-if="session.user.value && clinic.clinics.value.length === 0 && !clinic.loading.value" :busy="clinic.creating.value" :error="clinic.error.value" @create="createClinic" @signout="session.signOutCurrent" />
     <div v-else-if="session.user.value" id="legacy-app">
       <main class="auth-screen">
