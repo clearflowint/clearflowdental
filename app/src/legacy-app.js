@@ -9,11 +9,11 @@ let sessionUser = null, sessionReady = false, clinics = [], activeTenantId = '';
 let aiProviders = [], aiSettings = null, aiBusy = false;
 let conversationId = crypto.randomUUID();
 
-export async function startLegacyWorkspace(user) {
+export function startLegacyWorkspace(user, clinicList = []) {
   sessionUser = user;
   sessionReady = true;
-  try { clinics = await clinicService.list(); activeTenantId = clinics[0]?.$id || ''; }
-  catch (error) { console.error('Clinic loading failed:', error); }
+  clinics = Array.isArray(clinicList) ? clinicList : [];
+  activeTenantId = clinics[0]?.$id || '';
   render();
 }
 function render() {
