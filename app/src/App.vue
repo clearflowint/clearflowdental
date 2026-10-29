@@ -1,23 +1,12 @@
 <script setup>
-import { nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
+import { onMounted, onBeforeUnmount, watch } from 'vue';
 import { AuthScreen, ClinicSetup } from './components/index.js';
+import WorkspaceShell from './features/workspace/WorkspaceShell.vue';
 import { useClinicWorkspace } from './composables/useClinicWorkspace.js';
 import { useSession } from './composables/useSession.js';
 
 const session = useSession();
 const clinic = useClinicWorkspace();
-
-async function startWorkspace(user, clinics = clinic.clinics.value) {
-  if (!user) return;
-  await nextTick();
-  try {
-    const workspace = await import('./features/workspace/workspace-shell.js');
-    await workspace.startWorkspace(user, clinics);
-  } catch (error) {
-    console.error('ClearFlow Dental workspace failed to start:', error);
-    session.error.value = error?.message || 'The clinic workspace could not start.';
-  }
-}
 
 function retryClinicLoad() {
   clinic.load().catch(() => {});
@@ -25,8 +14,7 @@ function retryClinicLoad() {
 
 async function createClinic(input) {
   try {
-    const clinics = await clinic.create(input);
-    if (clinics[0]?.$id) await startWorkspace(session.user.value, clinics);
+    await clinic.create(input);
   } catch (error) {
     console.error('Clinic creation failed:', error);
   }
@@ -38,9 +26,7 @@ function handleSignOut() {
 
 watch(session.user, user => {
   if (user) {
-    clinic.load().then(clinics => {
-      if (clinics[0]?.$id) startWorkspace(user, clinics);
-    }).catch(error => { console.error('Clinic loading failed:', error); });
+    clinic.load().catch(error => { console.error('Clinic loading failed:', error); });
   }
 });
 
@@ -66,14 +52,13 @@ onBeforeUnmount(() => window.removeEventListener('clearflow:signout', handleSign
     />
     <main v-else-if="session.user.value && clinic.error.value && !clinic.loading.value && clinic.clinics.value.length === 0" class="auth-screen"><section class="auth-card" role="alert"><div class="brand-mark">CF</div><h1>Couldn’t load your clinic</h1><p>{{ clinic.error.value }}</p><button class="primary-button" type="button" :disabled="clinic.loading.value" @click="retryClinicLoad">{{ clinic.loading.value ? "Retrying…" : "Retry connection" }}</button><button class="text-button" type="button" @click="session.signOutCurrent">Sign out</button></section></main>
     <ClinicSetup v-else-if="session.user.value && clinic.clinics.value.length === 0 && !clinic.loading.value" :busy="clinic.creating.value" :error="clinic.error.value" @create="createClinic" @signout="session.signOutCurrent" />
-    <div v-else-if="session.user.value" id="workspace-shell">
-      <main class="auth-screen">
-        <section class="auth-card">
-          <div class="brand-mark">CF</div>
-          <h1>ClearFlow Dental</h1>
-          <p>Loading your clinic workspace…</p>
-        </section>
-      </main>
-    </div>
+    <WorkspaceShell
+      v-else-if="session.user.value && clinic.clinics.value.length > 0"
+      :user="session.user.value"
+      :tenant-id="clinic.clinics.value[0].$id"
+    />
+    <main v-else-if="session.user.value" class="auth-screen">
+      <section class="auth-card"><div class="brand-mark">CF</div><h1>ClearFlow Dental</h1><p>Loading your clinic workspace…</p></section>
+    </main>
   </div>
 </template>
