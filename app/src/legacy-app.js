@@ -10,14 +10,13 @@ let activeView = 'overview';
 let chatOpen = false;
 let messages = [];
 let sending = false;
-let sessionUser = null, sessionReady = false, clinics = [], activeTenantId = '';
+let sessionUser = null, activeTenantId = '';
 let conversationId = crypto.randomUUID();
 let overviewApp = null, navigationApp = null, settingsApp = null, clinicalApp = null;
 
 export function startLegacyWorkspace(user, clinicList = []) {
   sessionUser = user;
-  sessionReady = true;
-  clinics = Array.isArray(clinicList) ? clinicList : [];
+  const clinics = Array.isArray(clinicList) ? clinicList : [];
   activeTenantId = clinics[0]?.$id || '';
   render();
 }
@@ -26,8 +25,6 @@ function render() {
   if (navigationApp) { navigationApp.unmount(); navigationApp = null; }
   if (settingsApp) { settingsApp.unmount(); settingsApp = null; }
   if (clinicalApp) { clinicalApp.unmount(); clinicalApp = null; }
-  if (!sessionReady) { root.innerHTML = '<main class="auth-screen"><div class="auth-card"><div class="brand-mark">CF</div><h1>ClearFlow Dental</h1><p>Connecting securely…</p></div></main>'; return; }
-  if (!sessionUser) { root.innerHTML = '<main class="auth-screen"><div class="auth-card"><div class="brand-mark">CF</div><p class="eyebrow">CLINIC WORKSPACE</p><h1>Welcome to ClearFlow</h1><p>Sign in using your existing Appwrite email account.</p><form id="email-signin-form"><div class="field"><label for="login-email">Email address</label><input id="login-email" type="email" autocomplete="username" required placeholder="you@example.com"></div><div class="field"><label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required placeholder="Your Appwrite password"></div><button class="primary-button" id="email-signin" type="submit">Sign in</button><p id="signin-status" role="status"></p></form><small>Use your existing Appwrite account. No new account or Google OAuth is created.</small></div></main>'; return; }
   if (!activeTenantId) return;
   const title = views[activeView] || views.overview;
   root.innerHTML = `
