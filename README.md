@@ -11,9 +11,11 @@ Multi-tenant dental clinic workspace using Vue 3, Appwrite, and Windmill for sep
 - `app/src/services/` — frontend service boundary for authenticated Appwrite API actions.
 - `appwrite/functions/clearflow-dental-api/` — tenant-scoped application API and unit tests.
 - `appwrite/functions/clearflow-windmill-bridge/` — server-side bridge to a configured Windmill webhook.
+- `appwrite/schema/` and `scripts/appwrite-schema/` — schema manifest and read-only verifier.
 - `f/dental/` — Git-managed Windmill assets; secrets and resources are configured in Windmill, not committed here.
 - `appwrite.config.json` — Appwrite function deployment configuration.
 - `.github/workflows/` — frontend/backend validation and scoped deployment workflows.
+- [Repository architecture audit](docs/architecture/repository-audit-2026-10-29.md) — file inventory, findings, priorities, and a staged improvement plan.
 
 ## Frontend
 
