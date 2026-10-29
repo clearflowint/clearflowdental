@@ -1,17 +1,19 @@
-name: ClearFlow Dental feature-branch build
+name: ClearFlow Dental validation
 
 on:
   push:
     branches:
-      - feature/appwrite-ai-integration
+      - main
     paths:
       - "app/**"
+      - "appwrite/functions/clearflow-dental-api/**"
       - ".github/workflows/clearflow-dental-build.yml"
   pull_request:
     branches:
-      - feature/appwrite-ai-integration
+      - main
     paths:
       - "app/**"
+      - "appwrite/functions/clearflow-dental-api/**"
       - ".github/workflows/clearflow-dental-build.yml"
   workflow_dispatch:
 
@@ -19,27 +21,42 @@ permissions:
   contents: read
 
 concurrency:
-  group: clearflow-dental-feature-build
+  group: clearflow-dental-validation-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Install and build Vue application
+  frontend:
+    name: Build Vue frontend
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
     steps:
-      - name: Check out feature branch
+      - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm install
-
-      - name: Build production bundle
+      - name: Build production frontend
         run: npm run build
+
+  backend:
+    name: Test Appwrite API function
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: appwrite/functions/clearflow-dental-api
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install backend dependencies
+        run: npm install
+      - name: Run backend unit tests
+        run: npm test
