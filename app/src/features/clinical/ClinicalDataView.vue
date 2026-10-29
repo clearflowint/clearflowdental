@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { patientService, appointmentService, visitService } from '../../services/clinical-service.js';
-import { documentService } from '../../services/document-service.js';
+import { patientService, appointmentService, visitService, documentService } from '../../services/index.js';
 
 const props = defineProps({
   view: { type: String, required: true },
