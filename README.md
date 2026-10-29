@@ -10,10 +10,10 @@ Multi-tenant dental clinic workspace using Vue 3, Appwrite, and Windmill for sep
 - `app/src/features/` — workspace shell and feature screens.
 - `app/src/services/` — frontend service boundary for authenticated Appwrite API actions.
 - `appwrite/functions/clearflow-dental-api/` — tenant-scoped application API and unit tests.
-- `appwrite/functions/clearflow-windmill-bridge/` — authenticated server-side bridge to a configured Windmill webhook.
+- `appwrite/functions/clearflow-windmill-bridge/` — server-side bridge to a configured Windmill webhook.
 - `f/dental/` — Git-managed Windmill assets; secrets and resources are configured in Windmill, not committed here.
 - `appwrite.config.json` — Appwrite function deployment configuration.
-- `research/` — architecture research, decisions, field inventories, and implementation traceability.
+- `.github/workflows/` — frontend/backend validation and scoped deployment workflows.
 
 ## Frontend
 
@@ -47,13 +47,10 @@ The frontend sends authenticated actions through `app/src/appwrite-client.js`. F
 
 ## Validation and deployment
 
-- GitHub Actions validates frontend builds and Appwrite API unit tests on changes to `main` and pull requests targeting `main`.
+- GitHub Actions validates frontend builds and Appwrite API unit tests on relevant changes to `main` and pull requests.
 - Cloudflare Pages deploys the frontend from `main`.
+- Appwrite Windmill Bridge deployment runs on relevant changes to its function/configuration and deploys only that function.
+- Dental API deployment is manual and requires explicit confirmation; the workflow runs API unit tests before deploying only that function.
 - Windmill sync validation is a dry run. Production Windmill deployment is a separate manually confirmed workflow.
-- Appwrite functions are deployed separately using the Appwrite configuration and the authorized deployment process.
 
 Never commit provider API keys, Appwrite server API keys, Windmill tokens, encryption keys, or real patient information.
-
-## Research
-
-Start with the [Research Index](research/RESEARCH_INDEX.md) for detailed design decisions and implementation traceability.
