@@ -30,8 +30,9 @@ export async function callApi(action, payload = {}) {
     JSON.stringify({ action, payload, authContext: { userId: user.$id, jwt: jwt.jwt } }),
     false
   );
-  if (execution.statusCode < 200 || execution.statusCode >= 300) {
-    let detail = 'Request failed (' + execution.statusCode + ').';
+  const statusCode = execution.responseStatusCode ?? execution.statusCode ?? 0;
+  if (statusCode < 200 || statusCode >= 300) {
+    let detail = 'Request failed (' + statusCode + ').';
     try { detail = JSON.parse(execution.responseBody || '{}').error || detail; } catch {}
     throw new Error(detail);
   }
