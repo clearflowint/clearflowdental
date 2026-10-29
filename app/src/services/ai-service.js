@@ -12,9 +12,9 @@ export const aiService = {
   saveCredential({ tenantId, providerId, apiKey }) {
     return callApi('ai.credentials.save', { tenantId, providerId, apiKey });
   },
-  updateSettings({ tenantId, defaultProviderId, defaultModelId, monthlyBudgetMinor }) {
+  updateSettings({ tenantId, defaultProviderId, defaultModelId, monthlyBudgetMinor, memoryEnabled }) {
     return callApi('ai.settings.update', {
-      tenantId, defaultProviderId, defaultModelId, monthlyBudgetMinor
+      tenantId, defaultProviderId, defaultModelId, monthlyBudgetMinor, memoryEnabled
     });
   },
   chat({ tenantId, conversationId, message }) {
