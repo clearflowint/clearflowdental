@@ -8,12 +8,12 @@ const session = useSession();
 const clinic = useClinicWorkspace();
 const activeClinicId = ref('');
 
-async function startWorkspace(user) {
+async function startWorkspace(user, clinics = clinic.clinics.value) {
   if (!user) return;
   await nextTick();
   try {
     const workspace = await import('./legacy-app.js');
-    await workspace.startLegacyWorkspace(user);
+    await workspace.startLegacyWorkspace(user, clinics);
   } catch (error) {
     console.error('ClearFlow Dental workspace failed to start:', error);
     session.error.value = error?.message || 'The clinic workspace could not start.';
@@ -28,7 +28,7 @@ async function createClinic(input) {
   try {
     const clinics = await clinic.create(input);
     activeClinicId.value = clinics[0]?.$id || '';
-    if (activeClinicId.value) await startWorkspace(session.user.value);
+    if (activeClinicId.value) await startWorkspace(session.user.value, clinics);
   } catch (error) {
     console.error('Clinic creation failed:', error);
   }
@@ -42,7 +42,7 @@ watch(session.user, user => {
   if (user) {
     clinic.load().then(clinics => {
       activeClinicId.value = clinics[0]?.$id || '';
-      if (activeClinicId.value) startWorkspace(user);
+      if (activeClinicId.value) startWorkspace(user, clinics);
     }).catch(error => { console.error('Clinic loading failed:', error); });
   } else { activeClinicId.value = ''; }
 });
