@@ -119,12 +119,15 @@ async function saveSettings() {
       });
       apiKey.value = '';
     }
-    const budget = Number(monthlyBudget.value || 0);
+    const budgetValue = monthlyBudget.value.trim();
+    const budgetMinor = budgetValue === ''
+      ? null
+      : Math.round(Math.max(0, Number(budgetValue)) * 100);
     await aiService.updateSettings({
       tenantId: props.tenantId,
       defaultProviderId: providerId.value,
       defaultModelId: modelId.value,
-      monthlyBudgetMinor: Math.round(Math.max(0, budget) * 100),
+      monthlyBudgetMinor: budgetMinor,
       memoryEnabled: memoryEnabled.value
     });
     status.value = 'Settings saved.';
