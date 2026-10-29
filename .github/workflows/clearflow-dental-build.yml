@@ -10,6 +10,9 @@ on:
       - ".github/workflows/clearflow-dental-build.yml"
       - ".github/workflows/deploy-appwrite-windmill-bridge.yml"
       - ".github/workflows/deploy-dental-api.yml"
+      - "appwrite/schema/**"
+      - "scripts/appwrite-schema/**"
+      - ".github/workflows/verify-appwrite-schema.yml"
   pull_request:
     branches:
       - main
@@ -19,6 +22,9 @@ on:
       - ".github/workflows/clearflow-dental-build.yml"
       - ".github/workflows/deploy-appwrite-windmill-bridge.yml"
       - ".github/workflows/deploy-dental-api.yml"
+      - "appwrite/schema/**"
+      - "scripts/appwrite-schema/**"
+      - ".github/workflows/verify-appwrite-schema.yml"
   workflow_dispatch:
 
 permissions:
