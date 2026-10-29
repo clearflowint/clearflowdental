@@ -19,6 +19,9 @@ export async function currentUser() {
 export async function signInWithEmail(email, password) {
   return await account.createEmailPasswordSession(email.trim(), password);
 }
+export async function signUpWithEmail(name, email, password) {
+  return await account.create(ID.unique(), email.trim(), password, name.trim());
+}
 export async function signOut() {
   await account.deleteSession('current');
 }
