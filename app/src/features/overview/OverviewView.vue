@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue';
-import { overviewService } from '../../services/overview-service.js';
+import { overviewService } from '../../services/index.js';
 
 const summary = ref({ clinicName: '', patients: null, appointments: null, visits: null });
 const loading = ref(true);
