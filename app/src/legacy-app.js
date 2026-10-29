@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import OverviewView from './features/overview/OverviewView.vue';
+import WorkspaceNavigation from './features/workspace/WorkspaceNavigation.vue';
 import { aiService } from './services/index.js';
 const root = document.querySelector('#legacy-app');
 const views = { overview: 'Overview', patients: 'Patients', appointments: 'Appointments', visits: 'Visits', documents: 'Documents', settings: 'AI Settings' };
