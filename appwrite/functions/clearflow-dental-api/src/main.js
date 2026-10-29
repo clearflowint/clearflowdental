@@ -528,8 +528,8 @@ async function handle(db, storage, userId, body) {
 
     const preferenceRows = await listRows(db, 'tenant_ai_preferences', [Query.equal('tenantId', tenantId)]);
     const preferences = preferenceRows[0] || {};
-    const providerId = String(preferences.defaultProviderId || '');
-    const modelId = String(preferences.defaultModelId || '');
+    const providerId = String(payload.providerId || preferences.defaultProviderId || '');
+    const modelId = String(payload.modelId || preferences.defaultModelId || '');
     if (!providerId || !isSupportedProviderModel(providerId, modelId)) {
       throw Object.assign(new Error('Choose and save a supported AI provider and model in AI settings first.'), { status: 409 });
     }
