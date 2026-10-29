@@ -9,7 +9,12 @@ const account = new Account(client);
 const functions = new Functions(client);
 
 export async function currentUser() {
-  try { return await account.get(); } catch { return null; }
+  try {
+    return await account.get();
+  } catch (error) {
+    if (error?.code === 401 || error?.type === 'user_unauthorized' || error?.type === 'general_unauthorized') return null;
+    throw error;
+  }
 }
 export async function signInWithEmail(email, password) {
   return await account.createEmailPasswordSession(email.trim(), password);
