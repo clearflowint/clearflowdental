@@ -1,20 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AI_PROVIDERS, isSupportedProviderModel } from '../src/ai-config.js';
+import { AI_PROVIDERS, getProvider, isSupportedProvider, isSupportedProviderModel } from '../src/ai-config.js';
 
-test('AI provider catalogue contains unique provider identifiers and non-empty model lists', () => {
+test('provider catalogue contains unique IDs and API metadata', () => {
   const ids = AI_PROVIDERS.map(provider => provider.id);
   assert.equal(new Set(ids).size, ids.length);
   for (const provider of AI_PROVIDERS) {
     assert.ok(provider.name);
-    assert.ok(provider.models.length > 0);
+    assert.ok(provider.modelsUrl.startsWith('https://'));
+    assert.ok(provider.chatUrl.startsWith('https://'));
   }
 });
 
-test('AI model selection is constrained to the selected provider', () => {
-  assert.equal(isSupportedProviderModel('openai', 'gpt-4.1-mini'), true);
-  assert.equal(isSupportedProviderModel('google', 'gemini-2.5-flash'), true);
-  assert.equal(isSupportedProviderModel('openai', 'gemini-2.5-flash'), false);
-  assert.equal(isSupportedProviderModel('unknown', 'gpt-4.1-mini'), false);
+test('model IDs are validated dynamically instead of through a hardcoded allowlist', () => {
+  assert.equal(isSupportedProvider('openai'), true);
+  assert.equal(isSupportedProvider('unknown'), false);
+  assert.equal(isSupportedProviderModel('openai', 'new-model-release'), true);
   assert.equal(isSupportedProviderModel('openai', ''), false);
+  assert.equal(isSupportedProviderModel('openai', 'x'.repeat(201)), false);
+  assert.equal(isSupportedProviderModel('unknown', 'model'), false);
+  assert.equal(getProvider('openai').name, 'OpenAI');
 });
