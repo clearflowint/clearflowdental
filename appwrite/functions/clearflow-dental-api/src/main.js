@@ -558,8 +558,8 @@ async function handle(db, storage, userId, body) {
     const requestId = ID.unique();
     const startedAt = Date.now();
     const historyRows = await listRows(db, 'tenant_ai_messages', [
-      Query.equal('tenantId', tenantId), Query.equal('actorId', userId),
-      Query.equal('conversationId', conversationId), Query.orderAsc('createdAt')
+      Query.equal('tenantId', tenantId), Query.equal('conversationId', conversationId),
+      Query.orderAsc('createdAt')
     ]);
     const conversation = historyRows
       .filter(item => ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
