@@ -2,7 +2,7 @@ import { createApp } from 'vue';
 import OverviewView from './features/overview/OverviewView.vue';
 import WorkspaceNavigation from './features/workspace/WorkspaceNavigation.vue';
 import AISettingsView from './features/ai-settings/AISettingsView.vue';
-import { aiService } from './services/index.js';
+import { aiService, clinicService } from './services/index.js';
 const root = document.querySelector('#legacy-app');
 const views = { overview: 'Overview', patients: 'Patients', appointments: 'Appointments', visits: 'Visits', documents: 'Documents', settings: 'AI Settings' };
 let activeView = 'overview';
