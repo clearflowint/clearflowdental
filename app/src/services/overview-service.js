@@ -1,24 +1,25 @@
-import { callApi } from '../appwrite-client.js';
+import { clinicService } from './clinic-service.js';
+import { patientService, appointmentService, visitService } from './clinical-service.js';
 
-/** Read-only summary for the signed-in user's first available clinic. */
+/** Read-only summary assembled from the same services used by clinical screens. */
 export const overviewService = {
   async getSummary() {
-    const clinicResult = await callApi('clinic.list');
-    const clinics = clinicResult.clinics || [];
-    const tenantId = clinics[0]?.$id;
+    const clinics = await clinicService.list();
+    const clinic = clinics[0];
+    const tenantId = clinic?.$id;
     if (!tenantId) return { clinicName: '', patients: 0, appointments: 0, visits: 0 };
 
-    const [patientsResult, appointmentsResult, visitsResult] = await Promise.all([
-      callApi('patient.list', { tenantId }),
-      callApi('appointment.list', { tenantId }),
-      callApi('encounter.list', { tenantId })
+    const [patients, appointments, visits] = await Promise.all([
+      patientService.list(tenantId),
+      appointmentService.list(tenantId),
+      visitService.list(tenantId)
     ]);
 
     return {
-      clinicName: clinics[0]?.name || '',
-      patients: (patientsResult.patients || []).length,
-      appointments: (appointmentsResult.appointments || []).length,
-      visits: (visitsResult.encounters || []).length
+      clinicName: clinic.name || '',
+      patients: patients.length,
+      appointments: appointments.length,
+      visits: visits.length
     };
   }
 };
