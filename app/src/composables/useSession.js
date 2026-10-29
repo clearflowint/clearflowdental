@@ -1,6 +1,18 @@
 import { onMounted, ref } from 'vue';
 import { currentUser, signInWithEmail, signUpWithEmail, signOut } from '../appwrite-client.js';
 
+function explainAuthError(cause, fallback) {
+  const message = String(cause?.message || '');
+  const type = String(cause?.type || '');
+  if (cause instanceof TypeError || /failed to fetch|networkerror|load failed|fetch failed/i.test(message)) {
+    return 'The browser cannot reach the Appwrite sign-in endpoint. This is usually a DNS, TLS/certificate, or browser CORS/network issue—not an incorrect password. Verify the Appwrite endpoint is reachable from this browser and check the failed request to /v1/account/sessions/email in the browser Network panel.';
+  }
+  if (type === 'user_invalid_credentials' || cause?.code === 401) {
+    return 'Email or password is incorrect. If this is a new user, create the account first.';
+  }
+  return message || fallback;
+}
+
 export function useSession() {
   const user = ref(null);
   const ready = ref(false);
@@ -12,7 +24,7 @@ export function useSession() {
     try {
       user.value = await currentUser();
     } catch (cause) {
-      error.value = cause?.message || 'Unable to connect to the sign-in service.';
+      error.value = explainAuthError(cause, 'Unable to connect to the sign-in service.');
     } finally {
       ready.value = true;
     }
@@ -27,7 +39,7 @@ export function useSession() {
       if (!user.value) throw new Error('Sign-in completed but the session could not be loaded. Refresh and try again.');
       return user.value;
     } catch (cause) {
-      error.value = cause?.message || 'Sign-in failed. Check your credentials and Appwrite configuration.';
+      error.value = explainAuthError(cause, 'Sign-in failed. Check your credentials and Appwrite configuration.');
       throw cause;
     } finally {
       busy.value = false;
@@ -44,7 +56,7 @@ export function useSession() {
       if (!user.value) throw new Error('Account created, but the session could not be loaded. Please sign in.');
       return user.value;
     } catch (cause) {
-      error.value = cause?.message || 'Account creation failed. Check the email and password requirements.';
+      error.value = explainAuthError(cause, 'Account creation failed. Check the email and password requirements.');
       throw cause;
     } finally {
       busy.value = false;
@@ -58,7 +70,7 @@ export function useSession() {
       await signOut();
       user.value = null;
     } catch (cause) {
-      error.value = cause?.message || 'Sign-out failed.';
+      error.value = explainAuthError(cause, 'Sign-out failed.');
       throw cause;
     } finally {
       busy.value = false;
