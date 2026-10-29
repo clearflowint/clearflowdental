@@ -6,7 +6,6 @@ import { useSession } from './composables/useSession.js';
 
 const session = useSession();
 const clinic = useClinicWorkspace();
-const activeClinicId = ref('');
 
 async function startWorkspace(user, clinics = clinic.clinics.value) {
   if (!user) return;
