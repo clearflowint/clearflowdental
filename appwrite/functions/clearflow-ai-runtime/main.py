@@ -17,9 +17,11 @@ def respond(context, data, status=200):
     return context.res.json(data, status)
 
 class ProviderHTTPError(Exception):
-    def __init__(self, status, message):
+    def __init__(self, status, message, provider_code="", provider_type=""):
         super().__init__(message)
         self.status = int(status)
+        self.provider_code = str(provider_code or "")[:80]
+        self.provider_type = str(provider_type or "")[:80]
 
 
 def request_json(url, method, headers, body=None):
@@ -29,34 +31,52 @@ def request_json(url, method, headers, body=None):
         with urllib.request.urlopen(req, timeout=22) as response:
             return json.loads(response.read(2_000_000).decode())
     except urllib.error.HTTPError as exc:
-        # Provider error bodies contain the actionable reason (invalid key, restricted
-        # key, unsupported model, quota, etc.). Expose only a bounded message; never
-        # echo headers, request bodies, or credentials.
+        # Preserve the provider's actionable error while strictly bounding and
+        # sanitizing it. Never include request headers, credentials, or prompts.
+        raw_error = ""
         try:
             raw_error = exc.read(16384).decode("utf-8", errors="replace")
-            parsed = json.loads(raw_error) if raw_error else {}
-            detail = parsed.get("error", {}) if isinstance(parsed, dict) else {}
-            if isinstance(detail, dict):
-                provider_message = detail.get("message") or detail.get("status") or detail.get("type") or ""
-                provider_code = detail.get("code") or detail.get("type") or ""
-            else:
-                provider_message = str(detail or "")
-                provider_code = ""
         except Exception:
-            provider_message, provider_code = "", ""
-        provider_message = " ".join(str(provider_message).replace("\\n", " ").replace("\\r", " ").split())[:240]
-        provider_code = " ".join(str(provider_code).split())[:80]
+            pass
+        provider_message = ""
+        provider_code = ""
+        provider_type = ""
+        try:
+            parsed = json.loads(raw_error) if raw_error else {}
+            detail = parsed.get("error", parsed) if isinstance(parsed, dict) else {}
+            if isinstance(detail, dict):
+                provider_message = detail.get("message") or detail.get("detail") or detail.get("status") or ""
+                provider_code = detail.get("code") or ""
+                provider_type = detail.get("type") or detail.get("status") or ""
+            elif isinstance(detail, str):
+                provider_message = detail
+        except (ValueError, TypeError):
+            # Some gateways return plain text or HTML instead of JSON.
+            provider_message = raw_error
+
+        def safe_text(value, limit):
+            value = str(value or "")
+            value = value.replace("\\n", " ").replace("\\r", " ")
+            value = " ".join(value.split())
+            # Defensive redaction for any credential-like text in upstream errors.
+            value = __import__("re").sub(r"(?i)(bearer\\s+)[^\\s,;]+", r"\\1[redacted]", value)
+            value = __import__("re").sub(r"(?i)(api[_-]?key\\s*[:=]\\s*)[^\\s,;]+", r"\\1[redacted]", value)
+            return value[:limit]
+
+        provider_message = safe_text(provider_message, 240)
+        provider_code = safe_text(provider_code, 80)
+        provider_type = safe_text(provider_type, 80)
         code = int(exc.code)
-        if code in (401, 403):
-            label = "unauthorized" if code == 401 else "forbidden"
-            detail_text = f": {provider_message}" if provider_message else ""
-            code_text = f" [{provider_code}]" if provider_code else ""
-            raise ProviderHTTPError(code, f"Provider authentication failed (HTTP {code} {label}){code_text}{detail_text}.")
-        if code == 429:
-            detail_text = f": {provider_message}" if provider_message else ""
-            raise ProviderHTTPError(code, f"Provider rate limit or quota reached (HTTP 429){detail_text}.")
+        label = "unauthorized" if code == 401 else "forbidden" if code == 403 else "provider error"
+        code_text = f" [{provider_code}]" if provider_code else ""
+        type_text = f" ({provider_type})" if provider_type and provider_type != provider_code else ""
         detail_text = f": {provider_message}" if provider_message else ""
-        raise ProviderHTTPError(code, f"Provider request failed (HTTP {code}){detail_text}.")
+        raise ProviderHTTPError(
+            code,
+            f"Provider request failed (HTTP {code} {label}){code_text}{type_text}{detail_text}.",
+            provider_code=provider_code,
+            provider_type=provider_type,
+        )
     except (urllib.error.URLError, TimeoutError):
         raise RuntimeError("Could not reach the selected AI provider. Try again.")
 
@@ -145,6 +165,19 @@ def main(context):
         reply = chat(provider, model.strip(), key, safe)
         return respond(context, {"ok": True, "status": "completed", "reply": reply, "latencyMs": int((time.time()-started)*1000), "clinicalDataChanged": False})
     except ProviderHTTPError as exc:
+        # Appwrite execution records expose function logs even when responseBody
+        # is omitted by the execution metadata API. This diagnostic contains only
+        # provider error metadata; it never includes keys, headers, or prompts.
+        diagnostic = {
+            "event": "AI_PROVIDER_HTTP_ERROR",
+            "provider": str(body.get("providerId") or "")[:40],
+            "action": str(body.get("action") or "")[:20],
+            "httpStatus": exc.status,
+            "providerCode": exc.provider_code,
+            "providerType": exc.provider_type,
+            "message": str(exc)[:420],
+        }
+        context.log(json.dumps(diagnostic, separators=(",", ":")))
         status = 422 if exc.status in (401, 403) else 502
         return respond(context, {"ok": False, "error": str(exc)}, status)
     except ValueError as exc:
