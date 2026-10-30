@@ -506,6 +506,32 @@ async function handle(db, storage, userId, body) {
     return { settings };
   }
 
+  if (action === 'ai.conversations.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const rows = await listRows(db, 'tenant_ai_messages', [
+      Query.equal('tenantId', tenantId), Query.equal('actorId', userId),
+      Query.orderDesc('createdAt')
+    ]);
+    const grouped = new Map();
+    for (const row of [...rows].reverse()) {
+      const id = String(row.conversationId || '');
+      if (!id) continue;
+      if (!grouped.has(id)) grouped.set(id, {
+        conversationId: id, title: 'New conversation', lastMessageAt: row.createdAt || ''
+      });
+      const item = grouped.get(id);
+      if (row.role === 'user' && item.title === 'New conversation') {
+        item.title = String(row.content || '').replace(/\\s+/g, ' ').slice(0, 72) || 'New conversation';
+      }
+      if (String(row.createdAt || '') > item.lastMessageAt) item.lastMessageAt = row.createdAt;
+    }
+    const conversations = [...grouped.values()]
+      .sort((a, b) => String(b.lastMessageAt).localeCompare(String(a.lastMessageAt)))
+      .slice(0, 30);
+    return { conversations };
+  }
+
   if (action === 'ai.history.list') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
