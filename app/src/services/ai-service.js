@@ -10,7 +10,7 @@ export const aiService = {
     const result = await callApi('ai.models.list', { tenantId, providerId, apiKey });
     return result;
   },
-  async getSettings(tenantId) {
+  async listConversations(tenantId) {\n    const result = await callApi('ai.conversations.list', { tenantId });\n    return result.conversations || [];\n  },\n  async history({ tenantId, conversationId }) {\n    const result = await callApi('ai.history.list', { tenantId, conversationId });\n    return result.messages || [];\n  },\n  async getSettings(tenantId) {
     return callApi('ai.settings.get', { tenantId });
   },
   saveCredential({ tenantId, providerId, apiKey }) {
