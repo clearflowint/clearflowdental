@@ -17,11 +17,12 @@ def respond(context, data, status=200):
     return context.res.json(data, status)
 
 class ProviderHTTPError(Exception):
-    def __init__(self, status, message, provider_code="", provider_type=""):
+    def __init__(self, status, message, provider_code="", provider_type="", diagnostics=None):
         super().__init__(message)
         self.status = int(status)
         self.provider_code = str(provider_code or "")[:80]
         self.provider_type = str(provider_type or "")[:80]
+        self.diagnostics = diagnostics or {}
 
 
 def request_json(url, method, headers, body=None):
@@ -41,6 +42,17 @@ def request_json(url, method, headers, body=None):
         provider_message = ""
         provider_code = ""
         provider_type = ""
+        # Capture only non-sensitive edge metadata useful for identifying a
+        # provider-side Cloudflare challenge. Never log cookies or auth headers.
+        response_headers = getattr(exc, "headers", {}) or {}
+        diagnostics = {
+            "server": str(response_headers.get("server", ""))[:80],
+            "cfRay": str(response_headers.get("cf-ray", ""))[:80],
+            "cfMitigated": str(response_headers.get("cf-mitigated", ""))[:40],
+            "contentType": str(response_headers.get("content-type", ""))[:100],
+            "via": str(response_headers.get("via", ""))[:100],
+            "bodyKind": "html" if "<html" in raw_error.lower() or "<!doctype html" in raw_error.lower() else "json" if raw_error.lstrip().startswith("{") else "text" if raw_error else "empty",
+        }
         try:
             parsed = json.loads(raw_error) if raw_error else {}
             detail = parsed.get("error", parsed) if isinstance(parsed, dict) else {}
@@ -76,6 +88,7 @@ def request_json(url, method, headers, body=None):
             f"Provider request failed (HTTP {code} {label}){code_text}{type_text}{detail_text}.",
             provider_code=provider_code,
             provider_type=provider_type,
+            diagnostics=diagnostics,
         )
     except (urllib.error.URLError, TimeoutError):
         raise RuntimeError("Could not reach the selected AI provider. Try again.")
@@ -175,6 +188,7 @@ def main(context):
             "httpStatus": exc.status,
             "providerCode": exc.provider_code,
             "providerType": exc.provider_type,
+            "responseMetadata": exc.diagnostics,
             "message": str(exc)[:420],
         }
         context.log(json.dumps(diagnostic, separators=(",", ":")))
