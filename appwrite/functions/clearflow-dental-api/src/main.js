@@ -3,7 +3,6 @@ import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isA
 import { AI_PROVIDERS, isSupportedProvider, isSupportedProviderModel } from './ai-config.js';
 import { listProviderModels } from './ai-gateway.js';
 import { encryptProviderKey, decryptProviderKey } from './ai-credentials.js';
-import { runWindmillAi } from './ai-windmill.js';
 
 function normalizeAppwriteEndpoint(raw) {
   if (!raw) return raw;
