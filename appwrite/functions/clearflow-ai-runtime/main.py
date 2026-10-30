@@ -23,11 +23,30 @@ def request_json(url, method, headers, body=None):
         with urllib.request.urlopen(req, timeout=22) as response:
             return json.loads(response.read(2_000_000).decode())
     except urllib.error.HTTPError as exc:
-        if exc.code in (401, 403):
-            raise ValueError("The provider rejected this API key. Check the key and try again.")
-        if exc.code == 429:
-            raise RuntimeError("The provider rate limit was reached. Try again shortly.")
-        raise RuntimeError("The selected AI provider returned an error.")
+        # Provider error bodies contain the actionable reason (invalid model, malformed
+        # request, quota, etc.). Extract only a bounded message; never echo headers or keys.
+        try:
+            raw_error = exc.read(16384).decode("utf-8", errors="replace")
+            parsed = json.loads(raw_error) if raw_error else {}
+            detail = parsed.get("error", {}) if isinstance(parsed, dict) else {}
+            if isinstance(detail, dict):
+                provider_message = detail.get("message") or detail.get("status") or ""
+                provider_status = detail.get("status") or ""
+            else:
+                provider_message = str(detail or "")
+                provider_status = ""
+        except Exception:
+            provider_message, provider_status = "", ""
+        provider_message = str(provider_message).replace(key if "key" in locals() else "", "[redacted]") if provider_message else ""
+        provider_message = " ".join(provider_message.split())[:240]
+        code = int(exc.code)
+        if code in (401, 403):
+            raise ValueError("The provider rejected this API key. Check the key and its permissions.")
+        if code == 429:
+            raise RuntimeError("The provider rate limit or quota was reached. Try again after checking provider billing and limits.")
+        label = f" ({provider_status})" if provider_status else ""
+        detail_text = f": {provider_message}" if provider_message else ""
+        raise RuntimeError(f"The selected AI provider returned HTTP {code}{label}{detail_text}.")
     except (urllib.error.URLError, TimeoutError):
         raise RuntimeError("Could not reach the selected AI provider. Try again.")
 
