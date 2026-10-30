@@ -68,7 +68,7 @@ export async function listProviderModels(providerId, apiKey) {
     headers['anthropic-version'] = '2023-06-01';
     url += '?limit=1000';
   } else if (provider.apiStyle === 'google') {
-    url += '?key=' + encodeURIComponent(key);
+    headers['x-goog-api-key'] = key;
   } else {
     headers.Authorization = 'Bearer ' + key;
   }
@@ -98,7 +98,8 @@ export async function generateChat({ providerId, modelId, apiKey, message, messa
     headers['anthropic-version'] = '2023-06-01';
     body = { model: modelId, max_tokens: 1200, messages: conversation.map(item => ({ role: item.role, content: item.content })) };
   } else if (provider.apiStyle === 'google') {
-    url += '/' + encodeURIComponent(modelId) + ':generateContent?key=' + encodeURIComponent(key);
+    url += '/' + encodeURIComponent(modelId) + ':generateContent';
+    headers['x-goog-api-key'] = key;
     body = { contents: conversation.map(item => ({ role: item.role === 'assistant' ? 'model' : 'user', parts: [{ text: item.content }] })), generationConfig: { maxOutputTokens: 1200 } };
   } else {
     headers.Authorization = 'Bearer ' + key;
