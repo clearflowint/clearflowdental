@@ -46,6 +46,10 @@ def list_models(provider, key):
     items = data.get("data") if isinstance(data.get("data"), list) else data.get("models", [])
     result = set()
     for item in items:
+        if provider == "google" and isinstance(item, dict):
+            supported = item.get("supportedGenerationMethods", [])
+            if supported and "generateContent" not in supported:
+                continue
         value = item if isinstance(item, str) else item.get("id") or item.get("name") or ""
         if isinstance(value, str):
             if provider == "google" and value.startswith("models/"):
