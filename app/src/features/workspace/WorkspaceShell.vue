@@ -60,10 +60,6 @@ function closeChat() {
 async function openChat() {
   chatOpen.value = true;
   void refreshConversations();
-  if (chatProviders.value.length) {
-    await refreshChatModels();
-    return;
-  }
   chatConfigurationLoading.value = true;
   try {
     const [providerList, result] = await Promise.all([
@@ -73,8 +69,10 @@ async function openChat() {
     chatProviders.value = providerList || [];
     chatCredentials.value = result.providers || [];
     const settings = result.settings || {};
-    chatProviderId.value = settings.defaultProviderId || chatProviders.value[0]?.id || '';
-    await refreshChatModels(settings.defaultModelId || '');
+    if (!chatProviderId.value || !chatProviders.value.some(provider => provider.id === chatProviderId.value)) {
+      chatProviderId.value = settings.defaultProviderId || chatProviders.value[0]?.id || '';
+    }
+    await refreshChatModels(settings.defaultProviderId === chatProviderId.value ? settings.defaultModelId || '' : '');
   } catch (error) {
     chatModelStatus.value = error?.message || 'Could not load AI configuration.';
   } finally {
