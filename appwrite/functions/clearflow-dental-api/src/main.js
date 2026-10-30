@@ -1,8 +1,8 @@
-import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
+import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage, Functions } from 'node-appwrite';
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
 import { AI_PROVIDERS, isSupportedProvider, isSupportedProviderModel } from './ai-config.js';
 import { listProviderModels } from './ai-gateway.js';
-import { encryptProviderKey } from './ai-credentials.js';
+import { encryptProviderKey, decryptProviderKey } from './ai-credentials.js';
 import { runWindmillAi } from './ai-windmill.js';
 
 function normalizeAppwriteEndpoint(raw) {
@@ -42,6 +42,30 @@ async function listRows(db, tableId, queries) {
     throw e;
   }
 }
+async function runAppwriteAi(runtimeClient, payload) {
+  const functions = new Functions(runtimeClient);
+  let execution;
+  try {
+    execution = await functions.createExecution({
+      functionId: 'clearflow-ai-runtime',
+      body: JSON.stringify(payload),
+      async: false,
+      method: 'POST',
+      path: '/',
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch {
+    throw Object.assign(new Error('The Appwrite AI runtime could not be reached.'), { status: 502 });
+  }
+  let result = {};
+  try { result = JSON.parse(execution.responseBody || '{}'); } catch {}
+  if (execution.responseStatusCode < 200 || execution.responseStatusCode >= 300 || result.ok !== true) {
+    const message = typeof result.error === 'string' ? result.error.slice(0, 240) : 'The Appwrite AI runtime returned an incomplete response.';
+    throw Object.assign(new Error(message), { status: execution.responseStatusCode === 422 ? 422 : 502 });
+  }
+  return result;
+}
+
 async function membershipFor(db, userId, tenantId) {
   const rows = await listRows(db, 'clinic_memberships', [
     Query.equal('userId', userId), Query.equal('tenantId', tenantId), Query.equal('status', 'active')
@@ -63,7 +87,7 @@ async function logEvent(db, userId, tenantId, action, entityType, entityId, summ
     });
   } catch { /* audit failures are not silently treated as successful in the response paths that require them */ }
 }
-async function handle(db, storage, userId, body) {
+async function handle(db, storage, userId, body, runtimeClient) {
   const { action, payload = {} } = body;
   if (!userId) throw Object.assign(new Error('Sign in is required.'), { status: 401 });
 
@@ -422,8 +446,9 @@ async function handle(db, storage, userId, body) {
         Query.equal('status', 'connected')
       ]);
       if (!credentials[0]) return { models: [], status: 'provider_not_connected' };
-      const result = await runWindmillAi({
-        action: 'models', tenantId, actorId: userId, providerId, requestId: ID.unique()
+      const apiKey = decryptProviderKey(credentials[0]);
+      const result = await runAppwriteAi(runtimeClient, {
+        action: 'models', providerId, apiKey
       });
       return { models: result.models, status: 'ready' };
     }
@@ -582,9 +607,10 @@ async function handle(db, storage, userId, body) {
       .map(item => ({ role: item.role, content: item.content.slice(-4000) }));
     let completion;
     try {
-      completion = await runWindmillAi({
-        action: 'chat', tenantId, actorId: userId, providerId, modelId,
-        message, messages: [...conversation, { role: 'user', content: message }], requestId
+      const apiKey = decryptProviderKey(credentialRows[0]);
+      completion = await runAppwriteAi(runtimeClient, {
+        action: 'chat', providerId, modelId, apiKey,
+        message, messages: [...conversation, { role: 'user', content: message }]
       });
     } catch (cause) {
       throw Object.assign(
@@ -691,7 +717,7 @@ export default async ({ req, res, log, error }) => {
     const requestClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(runtimeKey);
     const requestDb = new TablesDB(requestClient);
     const requestStorage = new Storage(requestClient);
-    const result = await handle(requestDb, requestStorage, actorId, body);
+    const result = await handle(requestDb, requestStorage, actorId, body, requestClient);
     return response(res, { ok: true, ...result });
   } catch (e) {
     const status = Number(e?.status) || 500;
