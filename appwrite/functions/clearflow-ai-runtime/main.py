@@ -16,6 +16,12 @@ PROVIDERS = {
 def respond(context, data, status=200):
     return context.res.json(data, status)
 
+class ProviderHTTPError(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = int(status)
+
+
 def request_json(url, method, headers, body=None):
     raw = None if body is None else json.dumps(body).encode()
     req = urllib.request.Request(url, data=raw, headers=headers, method=method)
@@ -23,31 +29,34 @@ def request_json(url, method, headers, body=None):
         with urllib.request.urlopen(req, timeout=22) as response:
             return json.loads(response.read(2_000_000).decode())
     except urllib.error.HTTPError as exc:
-        # Provider error bodies contain the actionable reason (invalid model, malformed
-        # request, quota, etc.). Extract only a bounded message; never echo headers or keys.
+        # Provider error bodies contain the actionable reason (invalid key, restricted
+        # key, unsupported model, quota, etc.). Expose only a bounded message; never
+        # echo headers, request bodies, or credentials.
         try:
             raw_error = exc.read(16384).decode("utf-8", errors="replace")
             parsed = json.loads(raw_error) if raw_error else {}
             detail = parsed.get("error", {}) if isinstance(parsed, dict) else {}
             if isinstance(detail, dict):
-                provider_message = detail.get("message") or detail.get("status") or ""
-                provider_status = detail.get("status") or ""
+                provider_message = detail.get("message") or detail.get("status") or detail.get("type") or ""
+                provider_code = detail.get("code") or detail.get("type") or ""
             else:
                 provider_message = str(detail or "")
-                provider_status = ""
+                provider_code = ""
         except Exception:
-            provider_message, provider_status = "", ""
-        provider_message = str(provider_message) if provider_message else ""
-        provider_message = provider_message.replace("\\n", " ").replace("\\r", " ")
-        provider_message = " ".join(provider_message.split())[:240]
+            provider_message, provider_code = "", ""
+        provider_message = " ".join(str(provider_message).replace("\\n", " ").replace("\\r", " ").split())[:240]
+        provider_code = " ".join(str(provider_code).split())[:80]
         code = int(exc.code)
         if code in (401, 403):
-            raise ValueError("The provider rejected this API key. Check the key and its permissions.")
+            label = "unauthorized" if code == 401 else "forbidden"
+            detail_text = f": {provider_message}" if provider_message else ""
+            code_text = f" [{provider_code}]" if provider_code else ""
+            raise ProviderHTTPError(code, f"Provider authentication failed (HTTP {code} {label}){code_text}{detail_text}.")
         if code == 429:
-            raise RuntimeError("The provider rate limit or quota was reached. Try again after checking provider billing and limits.")
-        label = f" ({provider_status})" if provider_status else ""
+            detail_text = f": {provider_message}" if provider_message else ""
+            raise ProviderHTTPError(code, f"Provider rate limit or quota reached (HTTP 429){detail_text}.")
         detail_text = f": {provider_message}" if provider_message else ""
-        raise RuntimeError(f"The selected AI provider returned HTTP {code}{label}{detail_text}.")
+        raise ProviderHTTPError(code, f"Provider request failed (HTTP {code}){detail_text}.")
     except (urllib.error.URLError, TimeoutError):
         raise RuntimeError("Could not reach the selected AI provider. Try again.")
 
@@ -135,6 +144,9 @@ def main(context):
         started = time.time()
         reply = chat(provider, model.strip(), key, safe)
         return respond(context, {"ok": True, "status": "completed", "reply": reply, "latencyMs": int((time.time()-started)*1000), "clinicalDataChanged": False})
+    except ProviderHTTPError as exc:
+        status = 422 if exc.status in (401, 403) else 502
+        return respond(context, {"ok": False, "error": str(exc)}, status)
     except ValueError as exc:
         return respond(context, {"ok": False, "error": str(exc)}, 422)
     except RuntimeError as exc:
