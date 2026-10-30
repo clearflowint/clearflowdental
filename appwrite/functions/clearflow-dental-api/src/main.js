@@ -593,7 +593,6 @@ async function handle(db, storage, userId, body) {
       );
     }
     const reply = completion.reply;
-    const tokenUsage = completion.usage || { input: 0, output: 0 };
     const latencyMs = Number(completion.latencyMs) || Math.max(0, Date.now() - startedAt);
     try {
       await db.createRow({
@@ -609,20 +608,7 @@ async function handle(db, storage, userId, body) {
     } catch {
       throw Object.assign(new Error('AI replied, but conversation history could not be saved. Apply the AI message table migration.'), { status: 503 });
     }
-    // Usage rows are recorded without storing prompts, responses, or API keys.
-    // Initial prototype cost is left at zero until per-model price tables are added.
-    try {
-      await db.createRow({
-        databaseId, tableId: 'tenant_ai_usage', rowId: ID.unique(),
-        data: {
-          tenantId, actorId: userId, providerId, modelId, requestId,
-          inputTokens: tokenUsage.input, outputTokens: tokenUsage.output,
-          costMinor: 0, currency: 'INR', status: 'completed', latencyMs, occurredAt: now()
-        },
-        permissions: userRead(userId)
-      });
-    } catch (e) { log('AI reply succeeded but usage logging failed; no prompt or credential data logged.'); }
-    return { ok: true, status: 'completed', requestId, reply: reply.slice(0, 12000), clinicalDataChanged: false, latencyMs, usage: tokenUsage };
+    return { ok: true, status: 'completed', requestId, reply: reply.slice(0, 12000), clinicalDataChanged: false, latencyMs };
   }
 
   if (action === 'workspace.search') {
