@@ -1,6 +1,7 @@
-import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage } from 'node-appwrite';
+import { Client, Account, ID, Permission, Role, Query, TablesDB, Storage, Functions } from 'node-appwrite';
 import { normalizeSlug, parseDateRange, isSourceCategory, isTreatmentStatus, isAppointmentStatus, isContactType, CONTACT_LABELS, normalizeContactValue } from './domain.js';
-import { AI_PROVIDERS, isSupportedProviderModel } from './ai-config.js';
+import { AI_PROVIDERS, isSupportedProvider, isSupportedProviderModel } from './ai-config.js';
+import { listProviderModels } from './ai-gateway.js';
 import { encryptProviderKey, decryptProviderKey } from './ai-credentials.js';
 
 function normalizeAppwriteEndpoint(raw) {
@@ -40,6 +41,41 @@ async function listRows(db, tableId, queries) {
     throw e;
   }
 }
+async function runAppwriteAi(runtimeClient, payload) {
+  const functions = new Functions(runtimeClient);
+  let execution;
+  try {
+    execution = await functions.createExecution({
+      functionId: 'clearflow-ai-runtime',
+      body: JSON.stringify(payload),
+      async: false,
+      method: 'POST',
+      path: '/',
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (cause) {
+    // Preserve actionable Appwrite diagnostics without logging request payloads, keys, or headers.
+    const safeMessage = String(cause?.message || 'unknown Appwrite execution error')
+      .replace(/(?:Bearer|Basic)\\s+\\S+/gi, '[redacted]')
+      .replace(/(?:api[_-]?key|secret|token)=\\S+/gi, '$1=[redacted]')
+      .slice(0, 220);
+    const diagnostic = {
+      name: String(cause?.name || 'Error').slice(0, 60),
+      code: String(cause?.code || '').slice(0, 40),
+      type: String(cause?.type || '').slice(0, 80),
+      message: safeMessage
+    };
+    throw Object.assign(new Error('The Appwrite AI runtime could not be reached. ' + JSON.stringify(diagnostic)), { status: 502 });
+  }
+  let result = {};
+  try { result = JSON.parse(execution.responseBody || '{}'); } catch {}
+  if (execution.responseStatusCode < 200 || execution.responseStatusCode >= 300 || result.ok !== true) {
+    const message = typeof result.error === 'string' ? result.error.slice(0, 240) : 'The Appwrite AI runtime returned an incomplete response.';
+    throw Object.assign(new Error(message), { status: execution.responseStatusCode === 422 ? 422 : 502 });
+  }
+  return result;
+}
+
 async function membershipFor(db, userId, tenantId) {
   const rows = await listRows(db, 'clinic_memberships', [
     Query.equal('userId', userId), Query.equal('tenantId', tenantId), Query.equal('status', 'active')
@@ -61,7 +97,7 @@ async function logEvent(db, userId, tenantId, action, entityType, entityId, summ
     });
   } catch { /* audit failures are not silently treated as successful in the response paths that require them */ }
 }
-async function handle(db, storage, userId, body) {
+async function handle(db, storage, userId, body, runtimeClient) {
   const { action, payload = {} } = body;
   if (!userId) throw Object.assign(new Error('Sign in is required.'), { status: 401 });
 
@@ -399,7 +435,36 @@ async function handle(db, storage, userId, body) {
   if (action === 'ai.providers.list') {
     const tenantId = String(payload.tenantId || '');
     await requireMembership(db, userId, tenantId);
-    return { providers: AI_PROVIDERS.map(provider => ({ id: provider.id, name: provider.name, models: [...provider.models] })) };
+    return {
+      providers: AI_PROVIDERS.map(({ id, name, icon }) => ({ id, name, icon }))
+    };
+  }
+
+  if (action === 'ai.models.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const providerId = String(payload.providerId || '');
+    if (!isSupportedProvider(providerId)) {
+      throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
+    }
+
+    // A key entered in the settings form is used only for discovery and is not stored here.
+    const apiKey = String(payload.apiKey || '').trim();
+    if (!apiKey) {
+      const credentials = await listRows(db, 'tenant_ai_provider_credentials', [
+        Query.equal('tenantId', tenantId), Query.equal('providerId', providerId),
+        Query.equal('status', 'connected')
+      ]);
+      if (!credentials[0]) return { models: [], status: 'provider_not_connected' };
+      const apiKey = decryptProviderKey(credentials[0]);
+      const result = await runAppwriteAi(runtimeClient, {
+        action: 'models', providerId, apiKey
+      });
+      return { models: result.models, status: 'ready' };
+    }
+
+    const models = await listProviderModels(providerId, apiKey);
+    return { models, status: 'ready' };
   }
 
   if (action === 'ai.settings.get') {
@@ -451,7 +516,7 @@ async function handle(db, storage, userId, body) {
     }
     const providerId = String(payload.defaultProviderId || '');
     const modelId = String(payload.defaultModelId || '');
-    if (providerId && !AI_PROVIDERS.some(provider => provider.id === providerId)) throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
+    if (providerId && !isSupportedProvider(providerId)) throw Object.assign(new Error('Choose a supported AI provider.'), { status: 400 });
     if (providerId && !isSupportedProviderModel(providerId, modelId)) throw Object.assign(new Error('Choose a model from the selected provider.'), { status: 400 });
     const budget = payload.monthlyBudgetMinor === '' || payload.monthlyBudgetMinor == null ? null : Number(payload.monthlyBudgetMinor);
     if (budget !== null && (!Number.isSafeInteger(budget) || budget < 0 || budget > 100000000000)) throw Object.assign(new Error('Enter a valid non-negative monthly budget in paise.'), { status: 400 });
@@ -474,6 +539,32 @@ async function handle(db, storage, userId, body) {
     }
     await logEvent(db, userId, tenantId, 'ai.settings.updated', 'ai_settings', tenantId, 'AI provider preferences updated');
     return { settings };
+  }
+
+  if (action === 'ai.conversations.list') {
+    const tenantId = String(payload.tenantId || '');
+    await requireMembership(db, userId, tenantId);
+    const rows = await listRows(db, 'tenant_ai_messages', [
+      Query.equal('tenantId', tenantId), Query.equal('actorId', userId),
+      Query.orderDesc('createdAt')
+    ]);
+    const grouped = new Map();
+    for (const row of [...rows].reverse()) {
+      const id = String(row.conversationId || '');
+      if (!id) continue;
+      if (!grouped.has(id)) grouped.set(id, {
+        conversationId: id, title: 'New conversation', lastMessageAt: row.createdAt || ''
+      });
+      const item = grouped.get(id);
+      if (row.role === 'user' && item.title === 'New conversation') {
+        item.title = String(row.content || '').replace(/\\s+/g, ' ').slice(0, 72) || 'New conversation';
+      }
+      if (String(row.createdAt || '') > item.lastMessageAt) item.lastMessageAt = row.createdAt;
+    }
+    const conversations = [...grouped.values()]
+      .sort((a, b) => String(b.lastMessageAt).localeCompare(String(a.lastMessageAt)))
+      .slice(0, 30);
+    return { conversations };
   }
 
   if (action === 'ai.history.list') {
@@ -499,8 +590,8 @@ async function handle(db, storage, userId, body) {
 
     const preferenceRows = await listRows(db, 'tenant_ai_preferences', [Query.equal('tenantId', tenantId)]);
     const preferences = preferenceRows[0] || {};
-    const providerId = String(preferences.defaultProviderId || '');
-    const modelId = String(preferences.defaultModelId || '');
+    const providerId = String(payload.providerId || preferences.defaultProviderId || '');
+    const modelId = String(payload.modelId || preferences.defaultModelId || '');
     if (!providerId || !isSupportedProviderModel(providerId, modelId)) {
       throw Object.assign(new Error('Choose and save a supported AI provider and model in AI settings first.'), { status: 409 });
     }
@@ -510,69 +601,35 @@ async function handle(db, storage, userId, body) {
     if (!credentialRows[0]) {
       return { ok: false, status: 'provider_not_connected', message: 'Connect this clinic’s provider API key in AI settings before chatting.', clinicalDataChanged: false };
     }
-    if (!process.env.CLEARFLOW_AI_ENCRYPTION_KEY) {
-      throw Object.assign(new Error('AI credential encryption is not configured on the server.'), { status: 503 });
-    }
-    if (Number.isSafeInteger(preferences.monthlyBudgetMinor) && preferences.monthlyBudgetMinor >= 0) {
-      const monthStart = new Date();
-      monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
-      const usage = await listRows(db, 'tenant_ai_usage', [
-        Query.equal('tenantId', tenantId), Query.greaterThanEqual('occurredAt', monthStart.toISOString())
-      ]);
-      const spent = usage.reduce((sum, row) => sum + (Number(row.costMinor) || 0), 0);
-      if (spent >= preferences.monthlyBudgetMinor) {
-        return { ok: false, status: 'budget_exhausted', message: 'This clinic has reached its configured monthly AI budget.', clinicalDataChanged: false };
-      }
-    }
+    // Budget is stored as a clinic preference only. Provider pricing and complete cost aggregation are not implemented,
+    // so do not claim or simulate hard budget enforcement using zero-cost usage rows.
 
-    const apiKey = decryptProviderKey(credentialRows[0]);
-    let targetUrl, headers, requestBody, extractReply, extractUsage;
-    if (providerId === 'anthropic') {
-      targetUrl = 'https://api.anthropic.com/v1/messages';
-      headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
-      requestBody = { model: modelId, max_tokens: 1200, messages: [{ role: 'user', content: message }] };
-      extractReply = data => (data.content || []).filter(part => part.type === 'text').map(part => part.text).join('\n');
-      extractUsage = data => ({ input: data.usage?.input_tokens || 0, output: data.usage?.output_tokens || 0 });
-    } else if (providerId === 'google') {
-      targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modelId) + ':generateContent?key=' + encodeURIComponent(apiKey);
-      headers = { 'Content-Type': 'application/json' };
-      requestBody = { contents: [{ parts: [{ text: message }] }], generationConfig: { maxOutputTokens: 1200 } };
-      extractReply = data => (data.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('\n');
-      extractUsage = data => ({ input: data.usageMetadata?.promptTokenCount || 0, output: data.usageMetadata?.candidatesTokenCount || 0 });
-    } else {
-      const base = providerId === 'groq' ? 'https://api.groq.com/openai/v1' :
-        providerId === 'mistral' ? 'https://api.mistral.ai/v1' :
-        providerId === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1';
-      targetUrl = base + '/chat/completions';
-      headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey };
-      requestBody = { model: modelId, messages: [{ role: 'user', content: message }], max_tokens: 1200 };
-      extractReply = data => data.choices?.[0]?.message?.content || '';
-      extractUsage = data => ({ input: data.usage?.prompt_tokens || 0, output: data.usage?.completion_tokens || 0 });
-    }
 
     const requestId = ID.unique();
     const startedAt = Date.now();
-    let upstream, result;
+    const historyRows = await listRows(db, 'tenant_ai_messages', [
+      Query.equal('tenantId', tenantId), Query.equal('conversationId', conversationId),
+      Query.orderAsc('createdAt')
+    ]);
+    const conversation = historyRows
+      .filter(item => item.actorId === userId && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
+      .slice(-12)
+      .map(item => ({ role: item.role, content: item.content.slice(-4000) }));
+    let completion;
     try {
-      upstream = await fetch(targetUrl, {
-        method: 'POST', headers, body: JSON.stringify(requestBody), signal: AbortSignal.timeout(45000)
+      const apiKey = decryptProviderKey(credentialRows[0]);
+      completion = await runAppwriteAi(runtimeClient, {
+        action: 'chat', providerId, modelId, apiKey,
+        message, messages: [...conversation, { role: 'user', content: message }]
       });
-      result = await upstream.json();
-    } catch {
-      throw Object.assign(new Error('The AI provider could not be reached. Check the clinic provider key and try again.'), { status: 502 });
+    } catch (cause) {
+      throw Object.assign(
+        new Error(cause?.message || 'The AI provider could not complete the request.'),
+        { status: Number(cause?.status) || 502 }
+      );
     }
-    if (!upstream.ok) {
-      const providerMessage = String(result?.error?.message || result?.message || '');
-      if (upstream.status === 401 || upstream.status === 403) {
-        throw Object.assign(new Error('The provider rejected this clinic API key. Reconnect the key in AI settings.'), { status: 422 });
-      }
-      if (upstream.status === 429) throw Object.assign(new Error('The provider rate limit was reached. Try again shortly.'), { status: 429 });
-      throw Object.assign(new Error('The AI provider returned an error' + (providerMessage ? ': ' + providerMessage.slice(0, 180) : '.') ), { status: 502 });
-    }
-    const reply = String(extractReply(result) || '').trim();
-    if (!reply) throw Object.assign(new Error('The provider returned an empty response. Try again.'), { status: 502 });
-    const tokenUsage = extractUsage(result);
-    const latencyMs = Math.max(0, Date.now() - startedAt);
+    const reply = completion.reply;
+    const latencyMs = Number(completion.latencyMs) || Math.max(0, Date.now() - startedAt);
     try {
       await db.createRow({
         databaseId, tableId: 'tenant_ai_messages', rowId: ID.unique(),
@@ -587,20 +644,7 @@ async function handle(db, storage, userId, body) {
     } catch {
       throw Object.assign(new Error('AI replied, but conversation history could not be saved. Apply the AI message table migration.'), { status: 503 });
     }
-    // Usage rows are recorded without storing prompts, responses, or API keys.
-    // Initial prototype cost is left at zero until per-model price tables are added.
-    try {
-      await db.createRow({
-        databaseId, tableId: 'tenant_ai_usage', rowId: ID.unique(),
-        data: {
-          tenantId, actorId: userId, providerId, modelId, requestId,
-          inputTokens: tokenUsage.input, outputTokens: tokenUsage.output,
-          costMinor: 0, currency: 'INR', status: 'completed', latencyMs, occurredAt: now()
-        },
-        permissions: userRead(userId)
-      });
-    } catch (e) { log('AI reply succeeded but usage logging failed; no prompt or credential data logged.'); }
-    return { ok: true, status: 'completed', requestId, reply: reply.slice(0, 12000), clinicalDataChanged: false, latencyMs, usage: tokenUsage };
+    return { ok: true, status: 'completed', requestId, reply: reply.slice(0, 12000), clinicalDataChanged: false, latencyMs };
   }
 
   if (action === 'workspace.search') {
@@ -683,7 +727,7 @@ export default async ({ req, res, log, error }) => {
     const requestClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(runtimeKey);
     const requestDb = new TablesDB(requestClient);
     const requestStorage = new Storage(requestClient);
-    const result = await handle(requestDb, requestStorage, actorId, body);
+    const result = await handle(requestDb, requestStorage, actorId, body, requestClient);
     return response(res, { ok: true, ...result });
   } catch (e) {
     const status = Number(e?.status) || 500;

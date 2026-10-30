@@ -35,7 +35,7 @@
       ],
       "events": [],
       "schedule": "",
-      "timeout": 20,
+      "timeout": 60,
       "enabled": true,
       "logging": true,
       "ignore": [
@@ -45,8 +45,29 @@
       "scopes": [
         "rows.read",
         "rows.write",
-        "files.read"
+        "files.read",
+        "functions.write"
       ],
+      "vars": []
+    },
+    {
+      "$id": "clearflow-ai-runtime",
+      "name": "ClearFlow AI Runtime",
+      "runtime": "python-3.12",
+      "path": "appwrite/functions/clearflow-ai-runtime",
+      "entrypoint": "main.py",
+      "commands": "",
+      "execute": [],
+      "events": [],
+      "schedule": "",
+      "timeout": 30,
+      "enabled": true,
+      "logging": true,
+      "ignore": [
+        "__pycache__",
+        ".git"
+      ],
+      "scopes": [],
       "vars": []
     }
   ]

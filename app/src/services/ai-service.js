@@ -1,10 +1,22 @@
 import { callApi } from '../appwrite-client.js';
 
-/** AI settings and provider credentials are always handled by the authenticated backend. */
+/** AI settings and provider credentials are handled by the authenticated backend. */
 export const aiService = {
   async listProviders(tenantId) {
     const result = await callApi('ai.providers.list', { tenantId });
     return result.providers || [];
+  },
+  async listModels({ tenantId, providerId, apiKey = '' }) {
+    const result = await callApi('ai.models.list', { tenantId, providerId, apiKey });
+    return result;
+  },
+  async listConversations(tenantId) {
+    const result = await callApi('ai.conversations.list', { tenantId });
+    return result.conversations || [];
+  },
+  async history({ tenantId, conversationId }) {
+    const result = await callApi('ai.history.list', { tenantId, conversationId });
+    return result.messages || [];
   },
   async getSettings(tenantId) {
     return callApi('ai.settings.get', { tenantId });
@@ -17,7 +29,7 @@ export const aiService = {
       tenantId, defaultProviderId, defaultModelId, monthlyBudgetMinor, memoryEnabled
     });
   },
-  chat({ tenantId, conversationId, message }) {
-    return callApi('ai.chat', { tenantId, conversationId, message });
+  chat({ tenantId, conversationId, message, providerId, modelId }) {
+    return callApi('ai.chat', { tenantId, conversationId, message, providerId, modelId });
   }
 };

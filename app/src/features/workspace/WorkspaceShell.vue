@@ -22,9 +22,23 @@ const views = {
 const activeView = ref('overview');
 const chatOpen = ref(false);
 const messages = ref([]);
+const conversations = ref([]);
+const historyLoading = ref(false);
 const sending = ref(false);
 const draft = ref('');
 const conversationId = ref(crypto.randomUUID());
+const chatProviders = ref([]);
+const chatCredentials = ref([]);
+const chatApiKey = ref('');
+const chatCredentialSaving = ref(false);
+const chatCredentialStatus = ref('');
+const chatModels = ref([]);
+const chatProviderId = ref('');
+const chatModelId = ref('');
+const chatModelStatus = ref('Connect a provider in AI Settings to load models.');
+const chatModelsLoading = ref(false);
+const chatConfigurationLoading = ref(false);
+const selectedChatProvider = computed(() => chatProviders.value.find(provider => provider.id === chatProviderId.value));
 const pageTitle = computed(() => views[activeView.value] || views.overview);
 const displayName = computed(() => props.user?.name || props.user?.email || 'Signed in');
 const avatarLabel = computed(() => displayName.value.slice(0, 2).toUpperCase());
@@ -43,6 +57,124 @@ function closeChat() {
   chatOpen.value = false;
 }
 
+async function openChat() {
+  chatOpen.value = true;
+  void refreshConversations();
+  chatConfigurationLoading.value = true;
+  try {
+    const [providerList, result] = await Promise.all([
+      aiService.listProviders(props.tenantId),
+      aiService.getSettings(props.tenantId)
+    ]);
+    chatProviders.value = providerList || [];
+    chatCredentials.value = result.providers || [];
+    const settings = result.settings || {};
+    if (!chatProviderId.value || !chatProviders.value.some(provider => provider.id === chatProviderId.value)) {
+      chatProviderId.value = settings.defaultProviderId || chatProviders.value[0]?.id || '';
+    }
+    await refreshChatModels(settings.defaultProviderId === chatProviderId.value ? settings.defaultModelId || '' : '');
+  } catch (error) {
+    chatModelStatus.value = error?.message || 'Could not load AI configuration.';
+  } finally {
+    chatConfigurationLoading.value = false;
+  }
+}
+
+async function refreshChatModels(preferredModelId = '') {
+  if (!props.tenantId || !chatProviderId.value || chatModelsLoading.value) return;
+  chatModelsLoading.value = true;
+  chatModelStatus.value = 'Loading models from provider…';
+  try {
+    const result = await aiService.listModels({
+      tenantId: props.tenantId,
+      providerId: chatProviderId.value
+    });
+    chatModels.value = result.models || [];
+    const preferred = preferredModelId || chatModelId.value;
+    chatModelId.value = chatModels.value.some(model => model.id === preferred)
+      ? preferred
+      : chatModels.value[0]?.id || '';
+    chatModelStatus.value = chatModels.value.length
+      ? `${chatModels.value.length} models available from ${selectedChatProvider.value?.name || 'provider'}.`
+      : 'No saved key for this provider. Connect one in AI Settings.';
+  } catch (error) {
+    chatModels.value = [];
+    chatModelId.value = '';
+    chatModelStatus.value = error?.message || 'Could not load models.';
+  } finally {
+    chatModelsLoading.value = false;
+  }
+}
+
+async function onChatProviderChange() {
+  chatApiKey.value = '';
+  chatCredentialStatus.value = '';
+  chatModelId.value = '';
+  chatModels.value = [];
+  await refreshChatModels();
+}
+
+
+async function connectChatProvider() {
+  const apiKey = chatApiKey.value.trim();
+  if (!chatProviderId.value || apiKey.length < 12 || chatCredentialSaving.value) {
+    chatCredentialStatus.value = 'Choose a provider and enter its API key.';
+    return;
+  }
+  chatCredentialSaving.value = true;
+  chatCredentialStatus.value = 'Checking provider key and discovering models…';
+  try {
+    const discovered = await aiService.listModels({
+      tenantId: props.tenantId,
+      providerId: chatProviderId.value,
+      apiKey
+    });
+    if (!discovered.models?.length) {
+      throw new Error('No compatible models were returned for this key.');
+    }
+    await aiService.saveCredential({
+      tenantId: props.tenantId,
+      providerId: chatProviderId.value,
+      apiKey
+    });
+    chatApiKey.value = '';
+    const result = await aiService.getSettings(props.tenantId);
+    chatCredentials.value = result.providers || [];
+    chatModels.value = discovered.models;
+    chatModelId.value = chatModels.value[0]?.id || '';
+    chatCredentialStatus.value = 'Provider connected. Key stored encrypted; the key field has been cleared.';
+  } catch (error) {
+    chatCredentialStatus.value = error?.message || 'Could not connect this provider.';
+  } finally {
+    chatCredentialSaving.value = false;
+  }
+}
+
+function chatCredentialLabel(providerId) {
+  const item = chatCredentials.value.find(row => row.providerId === providerId && row.status === 'connected');
+  return item ? 'Connected · ••••' + (item.maskedSuffix || '••••') : 'Not connected';
+}
+
+async function refreshConversations() {
+  if (!props.tenantId || historyLoading.value) return;
+  historyLoading.value = true;
+  try { conversations.value = await aiService.listConversations(props.tenantId); }
+  catch { conversations.value = []; }
+  finally { historyLoading.value = false; }
+}
+
+async function loadConversation(id) {
+  if (!id || sending.value) return;
+  try {
+    const rows = await aiService.history({ tenantId: props.tenantId, conversationId: id });
+    conversationId.value = id;
+    messages.value = rows.map(row => ({ role: row.role, text: row.content }));
+    await scrollChatToBottom();
+  } catch (error) {
+    chatModelStatus.value = error?.message || 'Could not load conversation history.';
+  }
+}
+
 function resetChat() {
   messages.value = [];
   sending.value = false;
@@ -59,18 +191,29 @@ async function sendDraft() {
 
 async function sendMessage(message) {
   messages.value.push({ role: 'user', text: message });
+  if (!chatProviderId.value || !chatModelId.value) {
+    messages.value.push({
+      role: 'assistant',
+      text: 'No AI model is ready. Open AI Settings, connect a provider API key, then discover and save a model.'
+    });
+    await scrollChatToBottom();
+    return;
+  }
   sending.value = true;
   await scrollChatToBottom();
   try {
     const result = await aiService.chat({
       tenantId: props.tenantId,
       conversationId: conversationId.value,
-      message
+      message,
+      providerId: chatProviderId.value,
+      modelId: chatModelId.value
     });
     messages.value.push({
       role: 'assistant',
       text: result.reply || result.message || 'No response text returned.'
     });
+    void refreshConversations();
   } catch (error) {
     messages.value.push({
       role: 'assistant',
@@ -123,7 +266,7 @@ function handleComposerKeydown(event) {
       <footer>ClearFlow Dental · Prototype build · Not for real patient data</footer>
     </main>
   </div>
-  <button class="ai-launcher" aria-label="Open AI assistant" title="Open AI assistant" @click="chatOpen = true">✦<span></span></button>
+  <button class="ai-launcher" aria-label="Open AI assistant" title="Open AI assistant" @click="openChat">✦<span></span></button>
   <div
     class="modal-backdrop"
     :class="{ open: chatOpen }"
@@ -136,7 +279,7 @@ function handleComposerKeydown(event) {
       <aside class="chat-side">
         <div class="chat-side-head"><strong>ClearFlow AI</strong><button class="icon-button" aria-label="Close chat" @click="closeChat">×</button></div>
         <button class="new-chat" @click="resetChat">＋ &nbsp; New conversation</button>
-        <p class="history-label">RECENT</p><div class="history-item current">New conversation</div>
+        <p class="history-label">RECENT</p><div v-if="historyLoading" class="history-item">Loading conversations…</div><button v-for="item in conversations" :key="item.conversationId" class="history-item" :class="{ current: item.conversationId === conversationId }" type="button" @click="loadConversation(item.conversationId)">{{ item.title }}</button><div v-if="!historyLoading && !conversations.length" class="history-item">No saved conversations yet</div>
         <div class="chat-side-foot">AI can make mistakes. Review all clinical information before using it in care decisions.</div>
       </aside>
       <div class="chat-main">
@@ -144,6 +287,43 @@ function handleComposerKeydown(event) {
           <div class="assistant-title"><button class="icon-button mobile-back" aria-label="Close chat" @click="closeChat">‹</button><div class="assistant-avatar">✦</div><div><strong>ClearFlow Assistant</strong><small>Clinic workspace assistant · Prototype</small></div></div>
           <div class="chat-header-actions"><button class="secondary-button desktop-only" @click="resetChat">New chat</button><button class="icon-button" aria-label="Close assistant" @click="closeChat">×</button></div>
         </header>
+        <div class="chat-model-bar">
+          <div class="chat-model-field">
+            <label for="chat-provider">Provider</label>
+            <div class="provider-select-row">
+              <span class="provider-mark" aria-hidden="true">{{ selectedChatProvider?.name?.slice(0, 1) || 'AI' }}</span>
+              <select id="chat-provider" v-model="chatProviderId" :disabled="chatConfigurationLoading || chatModelsLoading || sending" @change="onChatProviderChange">
+                <option v-for="provider in chatProviders" :key="provider.id" :value="provider.id">{{ provider.name }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="chat-model-field">
+            <label for="chat-model">Model</label>
+            <select id="chat-model" v-model="chatModelId" :disabled="chatModelsLoading || sending || !chatModels.length">
+              <option v-for="model in chatModels" :key="model.id" :value="model.id">{{ model.name }}</option>
+            </select>
+          </div>
+          <span class="chat-model-status" role="status">{{ chatModelsLoading ? 'Loading models…' : chatModelStatus }}</span>
+          <div class="chat-provider-connections">
+            <div class="chat-provider-statuses">
+              <span v-for="provider in chatProviders" :key="provider.id" class="save-status">
+                {{ provider.name }}: {{ chatCredentialLabel(provider.id) }}
+              </span>
+            </div>
+            <div class="provider-key-row">
+              <input v-model="chatApiKey" type="password" autocomplete="new-password" spellcheck="false"
+                :placeholder="'Connect ' + (selectedChatProvider?.name || 'provider') + ' API key'"
+                :disabled="chatCredentialSaving || chatConfigurationLoading">
+              <button class="secondary-button" type="button"
+                :disabled="chatCredentialSaving || !chatApiKey.trim()"
+                @click="connectChatProvider">
+                {{ chatCredentialSaving ? 'Connecting…' : 'Save key' }}
+              </button>
+            </div>
+            <small>Clinic-owned keys are encrypted before storage. Only connection status and masked suffix are displayed.</small>
+            <p class="save-status" role="status">{{ chatCredentialStatus }}</p>
+          </div>
+        </div>
         <div class="chat-scroll" id="chat-scroll">
           <div v-if="messages.length" class="messages">
             <div v-for="(message, index) in messages" :key="index" class="message" :class="message.role">
