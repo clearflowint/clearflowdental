@@ -37,7 +37,8 @@ def request_json(url, method, headers, body=None):
                 provider_status = ""
         except Exception:
             provider_message, provider_status = "", ""
-        provider_message = str(provider_message).replace(key if "key" in locals() else "", "[redacted]") if provider_message else ""
+        provider_message = str(provider_message) if provider_message else ""
+        provider_message = provider_message.replace("\\n", " ").replace("\\r", " ")
         provider_message = " ".join(provider_message.split())[:240]
         code = int(exc.code)
         if code in (401, 403):
