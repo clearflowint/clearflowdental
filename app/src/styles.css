@@ -31,3 +31,14 @@
 .chat-model-field select{width:100%;min-width:0;border:1px solid #dce6e4;border-radius:9px;background:#fff;color:#20383d;padding:9px 10px;font-size:12px}
 .chat-model-status{grid-column:1/-1;color:#73868b;font-size:11px;line-height:1.4;overflow-wrap:anywhere}
 @media(max-width:600px){.chat-model-bar{padding:10px 13px;gap:8px}.chat-model-field select{padding:9px 7px;font-size:11px}.chat-model-status{font-size:10px}}
+
+
+/* Chat provider connection controls */
+.chat-provider-connections{grid-column:1/-1;min-width:0;display:grid;gap:8px;padding-top:2px}
+.chat-provider-statuses{display:flex;flex-wrap:wrap;gap:6px 12px;min-width:0}
+.chat-provider-statuses .save-status{color:#647a7e;font-size:10px;overflow-wrap:anywhere}
+.chat-provider-connections .provider-key-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;min-width:0}
+.chat-provider-connections input{width:100%;min-width:0;border:1px solid #dce6e4;border-radius:9px;background:#fff;color:#20383d;padding:10px 11px;font-size:12px}
+.chat-provider-connections>small{color:#829196;font-size:10px;line-height:1.45}
+.chat-provider-connections>.save-status{margin:0;overflow-wrap:anywhere}
+@media(max-width:600px){.chat-provider-connections .provider-key-row{grid-template-columns:minmax(0,1fr) auto}.chat-provider-connections .secondary-button{padding:10px 11px;font-size:11px}.chat-provider-statuses{gap:5px 9px}}
