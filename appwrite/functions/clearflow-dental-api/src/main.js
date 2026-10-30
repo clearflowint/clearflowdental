@@ -540,17 +540,9 @@ async function handle(db, storage, userId, body) {
     if (!credentialRows[0]) {
       return { ok: false, status: 'provider_not_connected', message: 'Connect this clinic’s provider API key in AI settings before chatting.', clinicalDataChanged: false };
     }
-    if (Number.isSafeInteger(preferences.monthlyBudgetMinor) && preferences.monthlyBudgetMinor >= 0) {
-      const monthStart = new Date();
-      monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
-      const usage = await listRows(db, 'tenant_ai_usage', [
-        Query.equal('tenantId', tenantId), Query.greaterThanEqual('occurredAt', monthStart.toISOString())
-      ]);
-      const spent = usage.reduce((sum, row) => sum + (Number(row.costMinor) || 0), 0);
-      if (spent >= preferences.monthlyBudgetMinor) {
-        return { ok: false, status: 'budget_exhausted', message: 'This clinic has reached its configured monthly AI budget.', clinicalDataChanged: false };
-      }
-    }
+    // Budget is stored as a clinic preference only. Provider pricing and complete cost aggregation are not implemented,
+    // so do not claim or simulate hard budget enforcement using zero-cost usage rows.
+
 
     const requestId = ID.unique();
     const startedAt = Date.now();
