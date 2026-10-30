@@ -192,9 +192,10 @@ onMounted(loadSettings);
     <section class="settings-card">
       <h3>Usage preferences</h3>
       <div class="form-row">
-        <div class="field"><label for="monthly-budget">Monthly AI budget (INR)</label><input id="monthly-budget" v-model="monthlyBudget" type="number" min="0" :disabled="saving"></div>
+        <div class="field"><label for="monthly-budget">Target monthly AI budget (INR)</label><input id="monthly-budget" v-model="monthlyBudget" type="number" min="0" :disabled="saving"></div>
         <div class="field"><label for="memory-enabled">Assistant memory</label><label class="checkbox-line"><input id="memory-enabled" v-model="memoryEnabled" type="checkbox" :disabled="saving"> Enable assistant memory (preference only)</label></div>
       </div>
+      <p class="settings-note">Prototype limitation: this amount is saved as a preference only. Model pricing, complete cost tracking, and automatic budget enforcement are not implemented yet.</p>
       <div class="settings-actions">
         <button class="primary-button" id="save-ai-settings" type="button" :disabled="saving || loading || !providerId || !modelId" @click="saveSettings">{{ saving ? 'Saving…' : 'Save settings' }}</button>
         <span id="settings-status" class="save-status" role="status">{{ status }}</span>
