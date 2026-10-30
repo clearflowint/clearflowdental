@@ -448,6 +448,7 @@ Record material changes to the sequence or scope here, with a date and reason. K
 | Date | Decision/change | Reason and evidence |
 |---|---|---|
 | 2026-10-29 | Initial roadmap created | Based on the architecture goal and repository audit dated 2026-10-29. |
+| 2026-10-30 | Prioritize AI module completion before detailed clinic workflow design | Product direction confirmed: finish the provider-neutral AI module and Appwrite–Windmill–LiteLLM path first; then design clinic workflows around the verified AI capabilities. Keep tenant isolation, credential protection, and synthetic-only testing as required boundaries. |
 
 ## Related documents
 
