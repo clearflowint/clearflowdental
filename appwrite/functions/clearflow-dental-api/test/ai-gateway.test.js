@@ -77,3 +77,48 @@ test('unknown provider is rejected before making a request', async () => {
   await assert.rejects(() => listProviderModels('unknown', 'key'), /supported AI provider/);
   await assert.rejects(() => generateChat({ providerId: 'unknown', modelId: 'x', apiKey: 'key', message: 'hi' }), /supported AI provider/);
 });
+
+test('Google model discovery sends API key in header, not URL', async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = '';
+  let requestedHeaders = {};
+  globalThis.fetch = async (url, options) => {
+    requestedUrl = String(url);
+    requestedHeaders = options.headers;
+    return { ok: true, status: 200, json: async () => ({ models: [{ name: 'models/gemini-test' }] }) };
+  };
+  try {
+    const models = await listProviderModels('google', 'temporary-google-test-key');
+    assert.deepEqual(models, [{ id: 'gemini-test', name: 'gemini-test' }]);
+    assert.equal(requestedUrl, 'https://generativelanguage.googleapis.com/v1beta/models');
+    assert.equal(requestedHeaders['x-goog-api-key'], 'temporary-google-test-key');
+    assert.equal(requestedUrl.includes('temporary-google-test-key'), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Google chat sends API key in header, not URL', async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = '';
+  let requestedHeaders = {};
+  globalThis.fetch = async (url, options) => {
+    requestedUrl = String(url);
+    requestedHeaders = options.headers;
+    return {
+      ok: true, status: 200,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'Google test reply' }] } }] })
+    };
+  };
+  try {
+    const result = await generateChat({
+      providerId: 'google', modelId: 'gemini-test', apiKey: 'temporary-google-test-key', message: 'Synthetic test'
+    });
+    assert.equal(result.reply, 'Google test reply');
+    assert.equal(requestedUrl, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent');
+    assert.equal(requestedHeaders['x-goog-api-key'], 'temporary-google-test-key');
+    assert.equal(requestedUrl.includes('temporary-google-test-key'), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
