@@ -28,6 +28,10 @@ const sending = ref(false);
 const draft = ref('');
 const conversationId = ref(crypto.randomUUID());
 const chatProviders = ref([]);
+const chatCredentials = ref([]);
+const chatApiKey = ref('');
+const chatCredentialSaving = ref(false);
+const chatCredentialStatus = ref('');
 const chatModels = ref([]);
 const chatProviderId = ref('');
 const chatModelId = ref('');
@@ -67,6 +71,7 @@ async function openChat() {
       aiService.getSettings(props.tenantId)
     ]);
     chatProviders.value = providerList || [];
+    chatCredentials.value = result.providers || [];
     const settings = result.settings || {};
     chatProviderId.value = settings.defaultProviderId || chatProviders.value[0]?.id || '';
     await refreshChatModels(settings.defaultModelId || '');
@@ -104,9 +109,52 @@ async function refreshChatModels(preferredModelId = '') {
 }
 
 async function onChatProviderChange() {
+  chatApiKey.value = '';
+  chatCredentialStatus.value = '';
   chatModelId.value = '';
   chatModels.value = [];
   await refreshChatModels();
+}
+
+
+async function connectChatProvider() {
+  const apiKey = chatApiKey.value.trim();
+  if (!chatProviderId.value || apiKey.length < 12 || chatCredentialSaving.value) {
+    chatCredentialStatus.value = 'Choose a provider and enter its API key.';
+    return;
+  }
+  chatCredentialSaving.value = true;
+  chatCredentialStatus.value = 'Checking provider key and discovering models…';
+  try {
+    const discovered = await aiService.listModels({
+      tenantId: props.tenantId,
+      providerId: chatProviderId.value,
+      apiKey
+    });
+    if (!discovered.models?.length) {
+      throw new Error('No compatible models were returned for this key.');
+    }
+    await aiService.saveCredential({
+      tenantId: props.tenantId,
+      providerId: chatProviderId.value,
+      apiKey
+    });
+    chatApiKey.value = '';
+    const result = await aiService.getSettings(props.tenantId);
+    chatCredentials.value = result.providers || [];
+    chatModels.value = discovered.models;
+    chatModelId.value = chatModels.value[0]?.id || '';
+    chatCredentialStatus.value = 'Provider connected. Key stored encrypted; the key field has been cleared.';
+  } catch (error) {
+    chatCredentialStatus.value = error?.message || 'Could not connect this provider.';
+  } finally {
+    chatCredentialSaving.value = false;
+  }
+}
+
+function chatCredentialLabel(providerId) {
+  const item = chatCredentials.value.find(row => row.providerId === providerId && row.status === 'connected');
+  return item ? 'Connected · ••••' + (item.maskedSuffix || '••••') : 'Not connected';
 }
 
 async function refreshConversations() {
@@ -258,6 +306,25 @@ function handleComposerKeydown(event) {
             </select>
           </div>
           <span class="chat-model-status" role="status">{{ chatModelsLoading ? 'Loading models…' : chatModelStatus }}</span>
+          <div class="chat-provider-connections">
+            <div class="chat-provider-statuses">
+              <span v-for="provider in chatProviders" :key="provider.id" class="save-status">
+                {{ provider.name }}: {{ chatCredentialLabel(provider.id) }}
+              </span>
+            </div>
+            <div class="provider-key-row">
+              <input v-model="chatApiKey" type="password" autocomplete="new-password" spellcheck="false"
+                :placeholder="'Connect ' + (selectedChatProvider?.name || 'provider') + ' API key'"
+                :disabled="chatCredentialSaving || chatConfigurationLoading">
+              <button class="secondary-button" type="button"
+                :disabled="chatCredentialSaving || !chatApiKey.trim()"
+                @click="connectChatProvider">
+                {{ chatCredentialSaving ? 'Connecting…' : 'Save key' }}
+              </button>
+            </div>
+            <small>Clinic-owned keys are encrypted before storage. Only connection status and masked suffix are displayed.</small>
+            <p class="save-status" role="status">{{ chatCredentialStatus }}</p>
+          </div>
         </div>
         <div class="chat-scroll" id="chat-scroll">
           <div v-if="messages.length" class="messages">
