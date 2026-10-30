@@ -22,6 +22,8 @@ const views = {
 const activeView = ref('overview');
 const chatOpen = ref(false);
 const messages = ref([]);
+const conversations = ref([]);
+const historyLoading = ref(false);
 const sending = ref(false);
 const draft = ref('');
 const conversationId = ref(crypto.randomUUID());
@@ -53,6 +55,7 @@ function closeChat() {
 
 async function openChat() {
   chatOpen.value = true;
+  void refreshConversations();
   if (chatProviders.value.length) {
     await refreshChatModels();
     return;
@@ -106,6 +109,26 @@ async function onChatProviderChange() {
   await refreshChatModels();
 }
 
+async function refreshConversations() {
+  if (!props.tenantId || historyLoading.value) return;
+  historyLoading.value = true;
+  try { conversations.value = await aiService.listConversations(props.tenantId); }
+  catch { conversations.value = []; }
+  finally { historyLoading.value = false; }
+}
+
+async function loadConversation(id) {
+  if (!id || sending.value) return;
+  try {
+    const rows = await aiService.history({ tenantId: props.tenantId, conversationId: id });
+    conversationId.value = id;
+    messages.value = rows.map(row => ({ role: row.role, text: row.content }));
+    await scrollChatToBottom();
+  } catch (error) {
+    chatModelStatus.value = error?.message || 'Could not load conversation history.';
+  }
+}
+
 function resetChat() {
   messages.value = [];
   sending.value = false;
@@ -144,6 +167,7 @@ async function sendMessage(message) {
       role: 'assistant',
       text: result.reply || result.message || 'No response text returned.'
     });
+    void refreshConversations();
   } catch (error) {
     messages.value.push({
       role: 'assistant',
@@ -209,7 +233,7 @@ function handleComposerKeydown(event) {
       <aside class="chat-side">
         <div class="chat-side-head"><strong>ClearFlow AI</strong><button class="icon-button" aria-label="Close chat" @click="closeChat">×</button></div>
         <button class="new-chat" @click="resetChat">＋ &nbsp; New conversation</button>
-        <p class="history-label">RECENT</p><div class="history-item current">New conversation</div>
+        <p class="history-label">RECENT</p><div v-if="historyLoading" class="history-item">Loading conversations…</div><button v-for="item in conversations" :key="item.conversationId" class="history-item" :class="{ current: item.conversationId === conversationId }" type="button" @click="loadConversation(item.conversationId)">{{ item.title }}</button><div v-if="!historyLoading && !conversations.length" class="history-item">No saved conversations yet</div>
         <div class="chat-side-foot">AI can make mistakes. Review all clinical information before using it in care decisions.</div>
       </aside>
       <div class="chat-main">
