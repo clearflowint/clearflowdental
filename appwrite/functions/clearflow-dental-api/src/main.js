@@ -53,8 +53,19 @@ async function runAppwriteAi(runtimeClient, payload) {
       path: '/',
       headers: { 'Content-Type': 'application/json' }
     });
-  } catch {
-    throw Object.assign(new Error('The Appwrite AI runtime could not be reached.'), { status: 502 });
+  } catch (cause) {
+    // Preserve actionable Appwrite diagnostics without logging request payloads, keys, or headers.
+    const safeMessage = String(cause?.message || 'unknown Appwrite execution error')
+      .replace(/(?:Bearer|Basic)\\s+\\S+/gi, '[redacted]')
+      .replace(/(?:api[_-]?key|secret|token)=\\S+/gi, '$1=[redacted]')
+      .slice(0, 220);
+    const diagnostic = {
+      name: String(cause?.name || 'Error').slice(0, 60),
+      code: String(cause?.code || '').slice(0, 40),
+      type: String(cause?.type || '').slice(0, 80),
+      message: safeMessage
+    };
+    throw Object.assign(new Error('The Appwrite AI runtime could not be reached. ' + JSON.stringify(diagnostic)), { status: 502 });
   }
   let result = {};
   try { result = JSON.parse(execution.responseBody || '{}'); } catch {}
